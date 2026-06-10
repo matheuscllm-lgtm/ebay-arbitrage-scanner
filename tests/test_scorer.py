@@ -92,3 +92,9 @@ def test_low_liquidity_flagged():
     assert o is not None
     assert o.liquidity_tier == "D"
     assert o.verdict == "REVISAR"
+
+
+def test_rejected_below_threshold_is_dropped():
+    # raw sem NM e margem negativa: nao vira linha nenhuma (nem REJEITADO)
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo", 400.0), FAIR)
+    assert o is None

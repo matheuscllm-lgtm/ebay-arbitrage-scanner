@@ -20,6 +20,9 @@ cards:
     number: 4
     language: EN
     pc_url: https://www.pricecharting.com/game/pokemon-base-set/charizard-4
+    # A reimpressao de Celebrations (2021) tambem se anuncia como "4/102 Base
+    # Set" mas vale ~10x menos -- falso positivo confirmado no primeiro scan.
+    exclude_keywords: [celebrations, classic collection, classic coll]
 
   - name: Umbreon VMAX
     set: Evolving Skies

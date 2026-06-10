@@ -107,3 +107,34 @@ def test_no_match_wrong_number():
 
 def test_no_match_wrong_card():
     assert not tp.card_matches_title(CARD, "Espeon VMAX 270/203 PSA 10")
+
+
+# --- exclude_keywords (falso positivo Celebrations, achado no 1o scan real) ---
+
+ZARD = WatchCard(name="Charizard", set_name="Base Set", number="4",
+                 language="EN", pc_url="",
+                 exclude_keywords=["celebrations", "classic collection",
+                                   "classic coll"])
+
+def test_celebrations_reprint_excluded():
+    assert not tp.card_matches_title(
+        ZARD, "Charizard PSA 9 Celebrations Classic 4/102 Holo Base Set 2021")
+
+def test_original_still_matches():
+    assert tp.card_matches_title(
+        ZARD, "1999 Pokemon Base Set Charizard 4/102 Holo PSA 9")
+
+def test_poker_card_rejected():
+    flags = tp.risk_flags("1996 Charizard #006 Playing Poker Green Back 4 Clubs")
+    assert any(f.startswith("REJEITAR") for f in flags)
+
+def test_accessory_case_rejected():
+    flags = tp.risk_flags("POKEMON TCG EXTENDED ART ACRYLIC CASE CARD UMBREON VMAX 215")
+    assert any(f.startswith("REJEITAR") for f in flags)
+
+def test_ambiguous_grade_detected():
+    assert tp.grade_is_ambiguous(
+        "Charizard 4/102 Holo BGS 8.5 NM-MINT FRESH GRADE PSA 9", "PSA 9")
+
+def test_clean_grade_not_ambiguous():
+    assert not tp.grade_is_ambiguous("Charizard 4/102 Holo PSA 9", "PSA 9")

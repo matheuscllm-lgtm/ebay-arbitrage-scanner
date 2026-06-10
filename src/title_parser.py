@@ -41,7 +41,10 @@ _CONDITION_BAD = re.compile(
 _REJECT_KEYWORDS = re.compile(
     r"\b(proxy|proxies|replica|reprint|custom|fake|orica|altered|art\s*card|"
     r"goldcard|gold\s+card|metal\s+card|sticker|digital|online\s+code|"
-    r"code\s+card|empty|box\s+only|case\s+only|slab\s+only|toploader)\b", re.I
+    r"code\s+card|empty|box\s+only|case\s+only|slab\s+only|toploader|"
+    r"poker|playing\s+card|acrylic|case\s+card|magnetic\s+case|alloy|"
+    r"display|binder|blanket|mystery\s+pack|chase\s+pack|fan\s+art|"
+    r"wood(?:en)?|plush|figure|keychain|pin|patch|playmat|sleeve)\b", re.I
 )
 _LOT_KEYWORDS = re.compile(
     r"\b(lot|bundle|x\s*\d{2,}|\d{2,}\s*x\b|collection|bulk|choose|pick|"
@@ -69,6 +72,23 @@ def detect_grade(title):
     if m:
         return None  # graduada, mas numa grade/empresa fora do escopo
     return "RAW"
+
+
+def grade_is_ambiguous(title, detected_grade):
+    """True se o titulo menciona OUTRA nota alem da detectada.
+
+    Caso real do 1o scan: 'Charizard BGS 8.5 NM-MINT FRESH GRADE PSA 9' --
+    a carta E BGS 8.5; o 'PSA 9' e expectativa do vendedor. Qualquer mencao
+    de nota diferente da detectada = ambiguo = fora.
+    """
+    if detected_grade in (None, "RAW"):
+        return False
+    expected = detected_grade.replace(" ", "").upper()
+    for m in _OUT_OF_SCOPE_GRADE.finditer(title):
+        mention = (m.group(1) + m.group(2)).upper()
+        if mention != expected:
+            return True
+    return False
 
 
 def detect_language(title):
@@ -119,6 +139,9 @@ def card_matches_title(card, title):
     t = title.lower()
     if card.name.lower() not in t:
         return False
+    for kw in card.exclude_keywords:
+        if kw.lower() in t:
+            return False
     if card.number:
         num = card.number.lower().lstrip("0") or card.number.lower()
         pattern = r"(?:#|no\.?\s*|\b)0*%s\b" % re.escape(num)

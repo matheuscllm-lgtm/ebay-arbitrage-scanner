@@ -30,6 +30,9 @@ class WatchCard:
     language: str             # "EN" ou "JP"
     pc_url: str               # URL do produto no PriceCharting (fonte do preco justo)
     ebay_query: str = ""      # query base no eBay; vazio = gerada automaticamente
+    # Palavras que indicam OUTRO produto parecido (ex.: reimpressao Celebrations
+    # do Charizard Base Set). Titulo contendo qualquer uma = nao e esta carta.
+    exclude_keywords: list = field(default_factory=list)
 
     def default_query(self) -> str:
         return self.ebay_query or f"pokemon {self.name} {self.number} {self.set_name}"

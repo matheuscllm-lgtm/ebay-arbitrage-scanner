@@ -82,6 +82,10 @@ def evaluate(card, listing, fair, config=None):
         grade = "FORA DO ESCOPO"
         flags.append("GRADE: empresa/nota fora do escopo (so PSA 9/10, BGS 9.5/10, CGC 9.5/10)")
         rejected = True
+    elif title_parser.grade_is_ambiguous(listing.title, grade):
+        flags.append("GRADE AMBIGUA: titulo menciona mais de uma nota -- "
+                     "provavel hype do vendedor, conferir foto do slab")
+        rejected = True
 
     lang = title_parser.detect_language(listing.title)
     if lang == "OTHER":
@@ -102,8 +106,10 @@ def evaluate(card, listing, fair, config=None):
         return None  # sem preco justo para essa grade, nao da pra avaliar
 
     margin_pct = (fair_price - listing.price) / listing.price * 100.0
-    if margin_pct < threshold and not rejected:
-        return None  # abaixo do threshold: nao reporta
+    if margin_pct < threshold:
+        # Abaixo do threshold nao interessa -- nem como linha rejeitada
+        # (senao a tabela afoga em rejeitados de margem negativa).
+        return None
 
     sales = fair.sales_per_month.get(grade, 0.0)
     tier = liquidity_tier(sales)
@@ -128,6 +134,7 @@ def evaluate(card, listing, fair, config=None):
 
     if rejected:
         verdict = "REJEITADO"
+        score = 0.0  # rejeitado nao compete no ranking; fica no fim da tabela
     elif margin_pct > float(cfg["suspicious_margin_percent"]):
         verdict = "SUSPEITO"
         flags.append(
