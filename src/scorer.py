@@ -1,0 +1,151 @@
+"""O metodo de avaliacao -- transforma (anuncio + preco justo) em veredito.
+
+Regras canonicas do operador (cross-scanner):
+- Margem BRUTA pura: (preco_justo - preco_do_anuncio) / preco_do_anuncio.
+  ZERO taxas embutidas (sem fee, frete, cartao, IOF, FX) -- operador calcula
+  taxas por fora. Frete aparece em coluna separada, informativo.
+- Threshold de margem: 30% (inteiro percentual no config, sem pegadinha de fracao).
+- Piso de preco: USD 10 (~R$50) -- carta abaixo disso nao vale o esforco.
+- O scanner NUNCA recomenda compra. Veredito e classificacao tecnica;
+  decisao de capital e do operador.
+
+Componentes do score (0-100):
+- Margem (peso 45): 30% de margem = 50 pts; 100%+ = 100 pts (linear no meio).
+- Liquidez (peso 25): vendas/mes da grade no PriceCharting.
+    Tier A >= 10/mes (100 pts) | B >= 3 (75) | C >= 1 (45) | D < 1 (15).
+- Tendencia (peso 15): variacao recente do preco justo (delta PriceCharting).
+    Subindo = 100, estavel = 60, caindo = 20.
+- Risco (peso 15): comeca em 100, cada flag tira 35 pts (minimo 0).
+
+Vereditos:
+- REJEITADO: flag de rejeicao (proxy/replica/lote), grade fora do escopo,
+  raw sem NM confirmado, ou idioma fora do escopo.
+- SUSPEITO: margem > 60% (bom demais costuma ser scam/carta errada) ou
+  vendedor de risco alto. Validar manualmente antes de qualquer acao.
+- OPORTUNIDADE: margem >= threshold, liquidez tier A-C, sem flag grave.
+- REVISAR: o resto que passou do threshold mas tem alguma ressalva.
+"""
+from .models import Opportunity
+from . import title_parser
+
+DEFAULT_CONFIG = {
+    "min_gross_margin_percent": 30,   # percentual INTEIRO (30 = 30%)
+    "min_price_usd": 10.0,
+    "suspicious_margin_percent": 60,
+    "weights": {"margin": 0.45, "liquidity": 0.25, "trend": 0.15, "risk": 0.15},
+}
+
+
+def liquidity_tier(sales_per_month):
+    if sales_per_month >= 10:
+        return "A"
+    if sales_per_month >= 3:
+        return "B"
+    if sales_per_month >= 1:
+        return "C"
+    return "D"
+
+
+def _margin_points(margin_pct, threshold):
+    if margin_pct <= threshold:
+        return max(0.0, margin_pct / threshold * 50.0)
+    # 30% -> 50 pts ... 100% -> 100 pts
+    return min(100.0, 50.0 + (margin_pct - threshold) / (100.0 - threshold) * 50.0)
+
+
+def _trend_points(delta):
+    if delta > 0:
+        return 100.0
+    if delta < 0:
+        return 20.0
+    return 60.0
+
+
+def evaluate(card, listing, fair, config=None):
+    """Avalia um anuncio contra o preco justo. Retorna Opportunity ou None.
+
+    None = nem vale linha na tabela (carta nao casa, abaixo do piso, etc).
+    """
+    cfg = dict(DEFAULT_CONFIG, **(config or {}))
+    threshold = float(cfg["min_gross_margin_percent"])
+
+    if listing.price < float(cfg["min_price_usd"]):
+        return None
+    if not title_parser.card_matches_title(card, listing.title):
+        return None
+
+    grade = title_parser.detect_grade(listing.title)
+    flags = title_parser.risk_flags(listing.title, listing)
+    rejected = False
+
+    if grade is None:
+        grade = "FORA DO ESCOPO"
+        flags.append("GRADE: empresa/nota fora do escopo (so PSA 9/10, BGS 9.5/10, CGC 9.5/10)")
+        rejected = True
+
+    lang = title_parser.detect_language(listing.title)
+    if lang == "OTHER":
+        flags.append("IDIOMA: fora do escopo (so EN e JP)")
+        rejected = True
+    elif lang != card.language:
+        flags.append(f"IDIOMA: anuncio parece {lang}, watchlist espera {card.language}")
+
+    if grade == "RAW" and not title_parser.is_nm_acceptable(listing.title, listing.condition):
+        flags.append("CONDICAO: raw sem NM confirmado (invariante: raw so Near Mint)")
+        rejected = True
+
+    if any(f.startswith("REJEITAR") or f.startswith("LOTE") for f in flags):
+        rejected = True
+
+    fair_price = fair.price(grade)
+    if not fair_price:
+        return None  # sem preco justo para essa grade, nao da pra avaliar
+
+    margin_pct = (fair_price - listing.price) / listing.price * 100.0
+    if margin_pct < threshold and not rejected:
+        return None  # abaixo do threshold: nao reporta
+
+    sales = fair.sales_per_month.get(grade, 0.0)
+    tier = liquidity_tier(sales)
+    delta = fair.deltas.get(grade, 0.0)
+
+    raw_price = fair.price("RAW") or 0.0
+    spread9 = spread10 = 0.0
+    if grade == "RAW" and raw_price:
+        psa9, psa10 = fair.price("PSA 9"), fair.price("PSA 10")
+        spread9 = ((psa9 - raw_price) / raw_price * 100.0) if psa9 else 0.0
+        spread10 = ((psa10 - raw_price) / raw_price * 100.0) if psa10 else 0.0
+
+    w = cfg["weights"]
+    risk_points = max(0.0, 100.0 - 35.0 * len(flags))
+    liq_points = {"A": 100.0, "B": 75.0, "C": 45.0, "D": 15.0}[tier]
+    score = (
+        w["margin"] * _margin_points(margin_pct, threshold)
+        + w["liquidity"] * liq_points
+        + w["trend"] * _trend_points(delta)
+        + w["risk"] * risk_points
+    )
+
+    if rejected:
+        verdict = "REJEITADO"
+    elif margin_pct > float(cfg["suspicious_margin_percent"]):
+        verdict = "SUSPEITO"
+        flags.append(
+            f"MARGEM: {margin_pct:.0f}% acima do normal -- conferir se a carta/grade "
+            "e mesmo a esperada antes de qualquer acao"
+        )
+    elif tier == "D":
+        verdict = "REVISAR"
+        flags.append("LIQUIDEZ: menos de 1 venda/mes nessa grade (dificil revender)")
+    elif flags:
+        verdict = "REVISAR"
+    else:
+        verdict = "OPORTUNIDADE"
+
+    return Opportunity(
+        card=card, listing=listing, grade=grade, fair_value=fair_price,
+        gross_margin_pct=round(margin_pct, 1), liquidity_per_month=sales,
+        liquidity_tier=tier, trend_delta=delta,
+        spread_psa9_pct=round(spread9, 0), spread_psa10_pct=round(spread10, 0),
+        risk_flags=flags, score=round(score, 1), verdict=verdict,
+    )

@@ -1,0 +1,6 @@
+# Configuracao do scanner.
+# ATENCAO convencao: min_gross_margin_percent e percentual INTEIRO (30 = 30%).
+
+min_gross_margin_percent: 30   # margem bruta minima pra reportar (regra canonica)
+min_price_usd: 10.0            # piso de preco (~R$50): abaixo disso, ignora
+suspicious_margin_percent: 60  # acima disso vira SUSPEITO (bom demais = conferir)

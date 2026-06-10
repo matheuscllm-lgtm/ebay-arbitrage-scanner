@@ -1,0 +1,50 @@
+# Watchlist: as cartas que o scanner vigia.
+#
+# O scanner e watchlist-driven de proposito: identificar uma carta a partir de
+# um titulo qualquer do eBay e a maior fonte de erro em arbitragem. Partir da
+# carta (com URL exata do PriceCharting) e buscar anuncios DELA inverte o
+# problema e da precisao.
+#
+# Campos:
+#   name      - nome da carta como aparece em titulos do eBay
+#   set       - nome do set
+#   number    - numero da carta no set (usado pra confirmar identidade no titulo)
+#   language  - EN ou JP
+#   pc_url    - URL do produto no PriceCharting (fonte do preco justo).
+#               JP tem produto separado (prefixo pokemon-japanese-...).
+#   ebay_query - (opcional) query customizada se o nome gerar muito ruido
+
+cards:
+  - name: Charizard
+    set: Base Set
+    number: 4
+    language: EN
+    pc_url: https://www.pricecharting.com/game/pokemon-base-set/charizard-4
+
+  - name: Umbreon VMAX
+    set: Evolving Skies
+    number: 215
+    language: EN
+    pc_url: https://www.pricecharting.com/game/pokemon-evolving-skies/umbreon-vmax-215
+    ebay_query: umbreon vmax 215 evolving skies
+
+  - name: Charizard ex
+    set: Obsidian Flames
+    number: 223
+    language: EN
+    pc_url: https://www.pricecharting.com/game/pokemon-obsidian-flames/charizard-ex-223
+    ebay_query: charizard ex 223 obsidian flames
+
+  - name: Pikachu
+    set: Van Gogh Museum Promo
+    number: 85
+    language: EN
+    pc_url: https://www.pricecharting.com/game/pokemon-promo/pikachu-with-grey-felt-hat-85
+    ebay_query: pikachu with grey felt hat 85 promo
+
+  - name: Lugia V
+    set: Silver Tempest
+    number: 186
+    language: EN
+    pc_url: https://www.pricecharting.com/game/pokemon-silver-tempest/lugia-v-186
+    ebay_query: lugia v 186 silver tempest alt art
