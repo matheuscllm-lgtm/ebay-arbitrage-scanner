@@ -4,3 +4,9 @@
 min_gross_margin_percent: 30   # margem bruta minima pra reportar (regra canonica)
 min_price_usd: 10.0            # piso de preco (~R$50): abaixo disso, ignora
 suspicious_margin_percent: 60  # acima disso vira SUSPEITO (bom demais = conferir)
+
+# Modo confiavel (--confiavel). Decisao 2026-06-10: 50/98 em vez de 100/99
+# (abre funil p/ vendedor medio honesto; golpista tem 0-9 avals, nao 96-98%).
+# 96% foi avaliado e rejeitado: nivel de conta comprada/sequestrada.
+trusted_min_feedback: 50
+trusted_min_feedback_pct: 98.0

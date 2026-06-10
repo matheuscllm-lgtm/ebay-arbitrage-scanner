@@ -35,8 +35,8 @@ DEFAULT_CONFIG = {
     "weights": {"margin": 0.45, "liquidity": 0.25, "trend": 0.15, "risk": 0.15},
     # Modo confiavel (--confiavel): so anuncios "compraveis de verdade".
     "trusted_mode": False,
-    "trusted_min_feedback": 100,      # vendedor com >= 100 transacoes
-    "trusted_min_feedback_pct": 99.0, # e >= 99% de feedback positivo
+    "trusted_min_feedback": 50,       # vendedor com >= 50 transacoes
+    "trusted_min_feedback_pct": 98.0, # e >= 98% de feedback positivo
 }
 
 
