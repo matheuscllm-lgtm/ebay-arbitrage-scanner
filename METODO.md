@@ -95,6 +95,30 @@ O score serve para **ordenar a tabela**, não para decidir compra.
 | SUSPEITO | margem > 60% ou risco alto — conferir manualmente antes de qualquer coisa |
 | REJEITADO | violou regra dura (condição, escopo, proxy) — listado só para auditoria |
 
+## 5.1 Confiabilidade (modo `--confiavel`)
+
+Comprar com segurança é uma pergunta diferente de "o que está barato": é
+"**de quem** estou comprando e **quem garante** o que chega". O modo confiável
+codifica isso:
+
+- **Filtro de vendedor**: ≥100 transações e ≥99% de feedback positivo
+  (golpista não tem histórico — todas as fraudes do primeiro scan vinham de
+  vendedores com 0 avaliações).
+- **Faixa de margem saudável**: 30–60%. Desconto acima de 60% é quase sempre
+  golpe ou carta errada; margem de 35% de vendedor confiável vale mais que
+  1.500% de um fantasma.
+- **Score de confiança (0–100), separado da margem**: histórico do vendedor +
+  selos estruturais do eBay. Margem gigante NÃO melhora este score.
+- **Selos**: `AG` = Authenticity Guarantee (cartas ≥US$250 nos EUA passam por
+  autenticação física CGC/PSA antes da entrega — o golpe "PSA 10 que é raw"
+  morre aí); `TR` = Top Rated Seller (histórico + devolução 30 dias).
+- Linhas rejeitadas não aparecem: a tabela do modo confiável é 100% acionável.
+
+Trade-off honesto: na maioria dos scans o modo confiável retorna pouquíssimas
+linhas (às vezes zero). Isso é o filtro funcionando — a arbitragem real
+aparece com recorrência (anúncio novo mal precificado), não em qualquer
+snapshot.
+
 ## 6. Checklist manual antes de qualquer compra (operador)
 
 O scanner não enxerga fotos. Antes de agir numa linha da tabela:

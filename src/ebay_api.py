@@ -110,6 +110,14 @@ class EbayClient:
                     break
             seller = item.get("seller", {})
             buying = item.get("buyingOptions", []) or []
+            # qualifiedPrograms so vem no endpoint de DETALHE (1 chamada por
+            # anuncio -- caro). A elegibilidade e deterministica por politica
+            # do eBay: cartas de TCG >= $250 localizadas nos EUA entram
+            # automaticamente no Authenticity Guarantee.
+            programs = item.get("qualifiedPrograms", []) or []
+            country = (item.get("itemLocation", {}) or {}).get("country", "")
+            ag = ("AUTHENTICITY_GUARANTEE" in programs
+                  or (country == "US" and price >= 250.0))
             listings.append(Listing(
                 item_id=item.get("itemId", ""),
                 title=item.get("title", ""),
@@ -122,5 +130,7 @@ class EbayClient:
                 seller_feedback_score=int(seller.get("feedbackScore", 0) or 0),
                 url=item.get("itemWebUrl", ""),
                 image_url=(item.get("image", {}) or {}).get("imageUrl", ""),
+                authenticity_guarantee=ag,
+                top_rated=bool(item.get("topRatedBuyingExperience", False)),
             ))
         return listings

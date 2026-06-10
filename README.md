@@ -45,8 +45,17 @@ PSA). Custo de operação: **zero** — nenhuma assinatura paga.
 ```powershell
 cd C:\Users\mathe\ebay-arbitrage-scanner
 .venv\Scripts\python main.py                  # scan completo (precisa das chaves eBay)
+.venv\Scripts\python main.py --confiavel      # modo confiável: só anúncios compráveis
 .venv\Scripts\python main.py --pricing-only   # só preço justo (funciona sem chave nenhuma)
 ```
+
+**Modo confiável** (`--confiavel`): mostra apenas anúncios de vendedores com
+histórico real (≥100 avaliações e ≥99% de feedback positivo) e margem na faixa
+saudável (30–60% — desconto acima disso é quase sempre golpe). Cada linha traz
+o **score de confiança** (0–100, separado da margem) e os selos **AG**
+(Authenticity Guarantee — cartas ≥US$250 nos EUA passam por autenticação
+física antes de chegar) e **TR** (Top Rated Seller). Retorna poucas linhas,
+mas todas acionáveis.
 
 A entrega do resultado é **tabela markdown no chat** (todas as linhas, com flag
 por linha). O CSV em `data/last_scan.csv` é só registro local.

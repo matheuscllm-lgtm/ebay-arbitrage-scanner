@@ -27,10 +27,14 @@ MYP, Liga, sealed, PSA Arbitrage) — não compartilha código com eles.
 
 ```powershell
 cd C:\Users\mathe\ebay-arbitrage-scanner
-.venv\Scripts\python -m pytest tests/ -q        # 38 testes
+.venv\Scripts\python -m pytest tests/ -q        # 57 testes
 .venv\Scripts\python main.py --pricing-only     # sem credenciais (PriceCharting apenas)
 .venv\Scripts\python main.py                    # scan completo (exige EBAY_CLIENT_ID/SECRET)
+.venv\Scripts\python main.py --confiavel        # so vendedores >=100 avals/99%+, margem 30-60%
 ```
+
+Credenciais: env vars de USUARIO Windows desde 2026-06-10 (keyset "MinhaLojaEbay").
+Sessao de terminal antiga pode nao herdar -- passar inline se `ausentes`.
 
 Venv local em `.venv` (Python 3.12). Na nuvem: `python -m venv .venv` +
 `pip install -r requirements.txt`.
@@ -51,6 +55,11 @@ Venv local em `.venv` (Python 3.12). Na nuvem: `python -m venv .venv` +
   o agregado de vendidos vem do PriceCharting.
 
 ## Armadilhas conhecidas
+
+- `qualifiedPrograms` (Authenticity Guarantee) NAO vem no endpoint de busca
+  da Browse API, so no de detalhe. O flag AG e calculado por politica do eBay:
+  carta >= $250 localizada nos EUA = AG automatico. Nao "consertar" tentando
+  ler o campo da busca.
 
 - PSA 9.5 não existe; o regex de PSA 9 usa `(?![\d.])` para não casar "9.5".
 - O parser de volume do PriceCharting depende da ORDEM das células de volume

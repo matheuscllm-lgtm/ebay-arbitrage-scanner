@@ -132,3 +132,52 @@ def test_raw_with_ungraded_condition_ok():
     )
     assert o is not None
     assert not any("identidade" in f for f in o.risk_flags)
+
+
+# --- modo confiavel + trust score ---------------------------------------------
+
+def test_trust_score_layers():
+    weak = L("t", 100.0, seller_feedback_score=0, seller_feedback_pct=0.0)
+    strong = L("t", 100.0, seller_feedback_score=5000, seller_feedback_pct=99.9)
+    armored = L("t", 100.0, seller_feedback_score=5000, seller_feedback_pct=99.9,
+                authenticity_guarantee=True, top_rated=True)
+    assert scorer.trust_score(weak) <= 15
+    assert scorer.trust_score(strong) >= 80
+    assert scorer.trust_score(armored) == 100.0
+
+
+def test_trusted_mode_filters_new_seller():
+    cfg = {"trusted_mode": True}
+    o = scorer.evaluate(
+        CARD, L("Charizard 4 Base Set PSA 9", 2200.0, seller_feedback_score=3),
+        FAIR, cfg)
+    assert o is None
+
+
+def test_trusted_mode_filters_huge_margin():
+    # margem 1343% (Celebrations-like) some no modo confiavel
+    cfg = {"trusted_mode": True}
+    o = scorer.evaluate(CARD, L("Charizard 4 Base Set PSA 9", 220.0), FAIR, cfg)
+    assert o is None
+
+
+def test_trusted_mode_keeps_good_seller_healthy_margin():
+    cfg = {"trusted_mode": True}
+    o = scorer.evaluate(
+        CARD,
+        L("Charizard 4 Base Set PSA 9", 2200.0,
+          seller_feedback_score=850, seller_feedback_pct=99.7, top_rated=True),
+        FAIR, cfg)
+    assert o is not None
+    assert o.verdict == "OPORTUNIDADE"
+    assert o.trust_score >= 75
+
+
+def test_trusted_mode_drops_rejected_rows():
+    cfg = {"trusted_mode": True}
+    o = scorer.evaluate(
+        CARD,
+        L("Charizard 4/102 Base Set Holo", 200.0,   # raw sem NM -> rejeitado
+          seller_feedback_score=850, seller_feedback_pct=99.7),
+        FAIR, cfg)
+    assert o is None

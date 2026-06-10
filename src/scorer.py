@@ -33,7 +33,43 @@ DEFAULT_CONFIG = {
     "min_price_usd": 10.0,
     "suspicious_margin_percent": 60,
     "weights": {"margin": 0.45, "liquidity": 0.25, "trend": 0.15, "risk": 0.15},
+    # Modo confiavel (--confiavel): so anuncios "compraveis de verdade".
+    "trusted_mode": False,
+    "trusted_min_feedback": 100,      # vendedor com >= 100 transacoes
+    "trusted_min_feedback_pct": 99.0, # e >= 99% de feedback positivo
 }
+
+
+def trust_score(listing):
+    """Confiabilidade do anuncio (0-100), SEPARADA da margem.
+
+    Mede 'de quem estou comprando e quem garante', nao 'quanto desconto':
+    historico do vendedor + selos estruturais do eBay (Authenticity
+    Guarantee, Top Rated). Margem gigante nao melhora este score.
+    """
+    n = listing.seller_feedback_score
+    pct = listing.seller_feedback_pct
+    if n < 50:
+        pts = 10.0
+    elif n < 100:
+        pts = 35.0
+    elif n < 1000:
+        pts = 60.0
+    else:
+        pts = 75.0
+    if pct >= 99.5:
+        pts += 10
+    elif pct >= 99.0:
+        pts += 5
+    elif pct and pct < 98.0:
+        pts -= 25
+    if listing.top_rated:
+        pts += 10
+    if listing.authenticity_guarantee:
+        pts += 15
+    if listing.buying_option == "AUCTION":
+        pts -= 10
+    return max(0.0, min(100.0, pts))
 
 
 def liquidity_tier(sales_per_month):
@@ -124,6 +160,20 @@ def evaluate(card, listing, fair, config=None):
         # (senao a tabela afoga em rejeitados de margem negativa).
         return None
 
+    if cfg.get("trusted_mode"):
+        # Modo confiavel: so o que e compravel de verdade.
+        # 1) Vendedor com historico real (golpista nao tem 100 avaliacoes a 99%).
+        if (listing.seller_feedback_score < int(cfg["trusted_min_feedback"])
+                or listing.seller_feedback_pct < float(cfg["trusted_min_feedback_pct"])):
+            return None
+        # 2) Faixa de margem saudavel: desconto acima do limite de suspeita e
+        #    quase sempre golpe/carta errada -- fora do modo confiavel.
+        if margin_pct > float(cfg["suspicious_margin_percent"]):
+            return None
+        # 3) Nada de linha rejeitada: a tabela confiavel e 100% acionavel.
+        if rejected:
+            return None
+
     sales = fair.sales_per_month.get(grade, 0.0)
     tier = liquidity_tier(sales)
     delta = fair.deltas.get(grade, 0.0)
@@ -168,4 +218,5 @@ def evaluate(card, listing, fair, config=None):
         liquidity_tier=tier, trend_delta=delta,
         spread_psa9_pct=round(spread9, 0), spread_psa10_pct=round(spread10, 0),
         risk_flags=flags, score=round(score, 1), verdict=verdict,
+        trust_score=round(trust_score(listing), 0),
     )

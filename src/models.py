@@ -64,6 +64,12 @@ class Listing:
     seller_feedback_score: int
     url: str
     image_url: str = ""
+    # Protecoes estruturais do eBay:
+    # - Authenticity Guarantee: cartas >$250 (EUA) passam por autenticacao
+    #   fisica (CGC/PSA) antes de chegar ao comprador.
+    # - Top Rated: selo do eBay p/ vendedor com historico + devolucao 30d.
+    authenticity_guarantee: bool = False
+    top_rated: bool = False
 
 
 @dataclass
@@ -84,3 +90,4 @@ class Opportunity:
     verdict: str = ""         # OPORTUNIDADE / REVISAR / SUSPEITO / REJEITADO
     fair_value_source: str = ""  # URL do PriceCharting (link de referencia)
     median_ask: float = 0.0   # mediana dos anuncios eBay da mesma grade (sanity check)
+    trust_score: float = 0.0  # 0-100: confiabilidade do vendedor/anuncio (separado da margem)

@@ -27,6 +27,10 @@ def main():
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument("--pricing-only", action="store_true",
                     help="so busca preco justo (PriceCharting); nao consulta eBay")
+    ap.add_argument("--confiavel", action="store_true",
+                    help="modo confiavel: so vendedores com historico (>=100 "
+                         "avaliacoes, >=99%%) e margem na faixa saudavel "
+                         "(30-60%%); tabela 100%% acionavel")
     ap.add_argument("--csv", default="data/last_scan.csv",
                     help="caminho do CSV de registro local")
     args = ap.parse_args()
@@ -36,6 +40,8 @@ def main():
             config = yaml.safe_load(f) or {}
     except FileNotFoundError:
         config = {}
+    if args.confiavel:
+        config["trusted_mode"] = True
 
     fair_values, opportunities = scanner.run_scan(
         watchlist_path=args.watchlist, config=config,
