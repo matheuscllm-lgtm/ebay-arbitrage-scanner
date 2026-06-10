@@ -73,12 +73,20 @@ class EbayClient:
         return self._token
 
     def search(self, query, min_price=10.0, max_price=None, limit=50,
-               fixed_price_only=False):
-        """Busca anuncios ativos. Retorna lista de models.Listing."""
+               fixed_price_only=False, location_country="US"):
+        """Busca anuncios ativos. Retorna lista de models.Listing.
+
+        location_country: filtro server-side de localizacao do item. Default
+        US -- a entrega e na COMC (Algona, WA), entao so vendedor americano
+        interessa (frete domestico, sem importacao, elegivel ao Authenticity
+        Guarantee).
+        """
         from .models import Listing
 
         price_filter = f"price:[{min_price:g}..{'' if max_price is None else f'{max_price:g}'}]"
         filters = [price_filter, "priceCurrency:USD"]
+        if location_country:
+            filters.append(f"itemLocationCountry:{location_country}")
         if fixed_price_only:
             filters.append("buyingOptions:{FIXED_PRICE}")
         params = {
@@ -132,5 +140,6 @@ class EbayClient:
                 image_url=(item.get("image", {}) or {}).get("imageUrl", ""),
                 authenticity_guarantee=ag,
                 top_rated=bool(item.get("topRatedBuyingExperience", False)),
+                country=country,
             ))
         return listings

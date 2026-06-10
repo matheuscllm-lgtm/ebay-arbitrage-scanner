@@ -70,6 +70,7 @@ class Listing:
     # - Top Rated: selo do eBay p/ vendedor com historico + devolucao 30d.
     authenticity_guarantee: bool = False
     top_rated: bool = False
+    country: str = ""         # pais onde o item esta (itemLocation.country)
 
 
 @dataclass

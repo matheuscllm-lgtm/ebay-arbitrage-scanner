@@ -33,6 +33,8 @@ DEFAULT_CONFIG = {
     "min_price_usd": 10.0,
     "suspicious_margin_percent": 60,
     "weights": {"margin": 0.45, "liquidity": 0.25, "trend": 0.15, "risk": 0.15},
+    # Entrega na COMC (Algona, WA, EUA): so item localizado nos EUA.
+    "required_location_country": "US",
     # Modo confiavel (--confiavel): so anuncios "compraveis de verdade".
     "trusted_mode": False,
     "trusted_min_feedback": 50,       # vendedor com >= 50 transacoes
@@ -106,6 +108,11 @@ def evaluate(card, listing, fair, config=None):
     threshold = float(cfg["min_gross_margin_percent"])
 
     if listing.price < float(cfg["min_price_usd"]):
+        return None
+    # Localizacao: entrega e na COMC (EUA) -- item fora dos EUA nao serve
+    # (a API ja filtra server-side; isto e o cinto de seguranca).
+    required_country = cfg.get("required_location_country")
+    if required_country and listing.country and listing.country != required_country:
         return None
     if not title_parser.card_matches_title(card, listing.title):
         return None

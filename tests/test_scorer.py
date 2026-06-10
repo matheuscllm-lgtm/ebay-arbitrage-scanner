@@ -181,3 +181,17 @@ def test_trusted_mode_drops_rejected_rows():
           seller_feedback_score=850, seller_feedback_pct=99.7),
         FAIR, cfg)
     assert o is None
+
+
+# --- localizacao US-only (entrega na COMC, Algona WA) ---------------------------
+
+def test_non_us_listing_dropped():
+    o = scorer.evaluate(
+        CARD, L("Charizard 4 Base Set PSA 9", 2200.0, country="JP"), FAIR)
+    assert o is None
+
+
+def test_us_listing_kept():
+    o = scorer.evaluate(
+        CARD, L("Charizard 4 Base Set PSA 9", 2200.0, country="US"), FAIR)
+    assert o is not None

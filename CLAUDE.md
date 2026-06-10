@@ -22,6 +22,10 @@ MYP, Liga, sealed, PSA Arbitrage) — não compartilha código com eles.
 5. **Threshold deste repo é percentual INTEIRO** (`min_gross_margin_percent: 30`).
    Atenção: CT usa fração (0.30), MYP/Liga usam inteiro — aqui é inteiro,
    nomeado explicitamente para não haver pegadinha.
+6. **Só vendedor com item nos EUA.** A entrega é na COMC (Algona, WA
+   98001-7409, EUA — mailbox de armazenamento). Filtro `itemLocationCountry:US`
+   na API + checagem no scorer. Cartas JP da watchlist = vendedores
+   americanos vendendo carta japonesa, nunca vendedor no Japão.
 
 ## Como rodar
 

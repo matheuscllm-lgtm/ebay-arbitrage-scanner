@@ -10,3 +10,9 @@ suspicious_margin_percent: 60  # acima disso vira SUSPEITO (bom demais = conferi
 # 96% foi avaliado e rejeitado: nivel de conta comprada/sequestrada.
 trusted_min_feedback: 50
 trusted_min_feedback_pct: 98.0
+
+# Entrega na COMC -- Algona, WA 98001-7409, EUA (mailbox de armazenamento).
+# Logo: SO vendedor com item localizado nos EUA (frete domestico, sem
+# importacao, elegivel ao Authenticity Guarantee). Filtro aplicado na API
+# (itemLocationCountry) + cinto de seguranca no scorer.
+required_location_country: US
