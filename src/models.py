@@ -82,3 +82,5 @@ class Opportunity:
     risk_flags: list = field(default_factory=list)
     score: float = 0.0        # 0-100
     verdict: str = ""         # OPORTUNIDADE / REVISAR / SUSPEITO / REJEITADO
+    fair_value_source: str = ""  # URL do PriceCharting (link de referencia)
+    median_ask: float = 0.0   # mediana dos anuncios eBay da mesma grade (sanity check)

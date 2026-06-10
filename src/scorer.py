@@ -98,6 +98,19 @@ def evaluate(card, listing, fair, config=None):
         flags.append("CONDICAO: raw sem NM confirmado (invariante: raw so Near Mint)")
         rejected = True
 
+    # Fraude classica do eBay: titulo anuncia "PSA 10" mas o campo de condicao
+    # do proprio eBay diz "Ungraded" (carta crua). Caso real: Moonbreon "PSA 10"
+    # a $1.800, vendedor 0 feedback, Estado = "Nao classificado" (2026-06-10).
+    cond = (listing.condition or "").lower()
+    if grade != "RAW" and "ungraded" in cond:
+        flags.append(f"FRAUDE PROVAVEL: titulo anuncia {grade} mas o campo "
+                     "condicao do eBay diz UNGRADED (carta crua)")
+        rejected = True
+    elif grade == "RAW" and "graded" in cond and "ungraded" not in cond:
+        flags.append("CONDICAO: campo eBay diz 'Graded' mas o titulo nao traz "
+                     "nota -- identidade da carta incerta")
+        rejected = True
+
     if any(f.startswith("REJEITAR") or f.startswith("LOTE") for f in flags):
         rejected = True
 

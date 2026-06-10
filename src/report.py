@@ -22,9 +22,10 @@ def to_markdown(opportunities):
         return "_Nenhum anuncio passou do threshold neste scan._"
     rows = sorted(opportunities, key=lambda o: -o.score)
     header = (
-        "| Carta | Grade | Preco | Frete | Preco justo | Margem | Liq/mes | Tier "
-        "| Tendencia | Spread PSA9 | Spread PSA10 | Score | Veredito | Flags | Link |\n"
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+        "| Carta | Grade | Preco | Frete | Preco justo | Mediana eBay | Margem "
+        "| Liq/mes | Tier | Tendencia | Spread PSA9 | Spread PSA10 | Score "
+        "| Veredito | Flags | Anuncio | Referencia |\n"
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
     )
     lines = []
     for o in rows:
@@ -32,12 +33,15 @@ def to_markdown(opportunities):
         spread9 = f"+{o.spread_psa9_pct:.0f}%" if o.spread_psa9_pct else "-"
         spread10 = f"+{o.spread_psa10_pct:.0f}%" if o.spread_psa10_pct else "-"
         flags = "; ".join(o.risk_flags) if o.risk_flags else "-"
+        median = f"${o.median_ask:,.2f}" if o.median_ask else "-"
+        ref = f"[PriceCharting]({o.fair_value_source})" if o.fair_value_source else "-"
         lines.append(
             f"| {c.name} #{c.number} ({c.set_name}, {c.language}) | {o.grade} "
             f"| ${l.price:,.2f} | ${l.shipping:,.2f} | ${o.fair_value:,.2f} "
-            f"| {o.gross_margin_pct:.0f}% | {o.liquidity_per_month:g} | {o.liquidity_tier} "
+            f"| {median} | {o.gross_margin_pct:.0f}% "
+            f"| {o.liquidity_per_month:g} | {o.liquidity_tier} "
             f"| {_trend_arrow(o.trend_delta)} | {spread9} | {spread10} "
-            f"| {o.score:.0f} | {o.verdict} | {flags} | [eBay]({l.url}) |"
+            f"| {o.score:.0f} | {o.verdict} | {flags} | [eBay]({l.url}) | {ref} |"
         )
     return header + "\n".join(lines)
 
@@ -47,9 +51,9 @@ def to_csv(opportunities, path):
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     fields = [
         "card", "number", "set", "language", "grade", "price_usd", "shipping_usd",
-        "fair_value_usd", "gross_margin_pct", "sales_per_month", "liquidity_tier",
-        "trend_delta_usd", "spread_psa9_pct", "spread_psa10_pct", "score",
-        "verdict", "flags", "seller_feedback_pct", "seller_feedback_score",
+        "fair_value_usd", "median_ask_usd", "gross_margin_pct", "sales_per_month",
+        "liquidity_tier", "trend_delta_usd", "spread_psa9_pct", "spread_psa10_pct",
+        "score", "verdict", "flags", "seller_feedback_pct", "seller_feedback_score",
         "buying_option", "title", "url", "fair_value_source",
     ]
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -59,12 +63,12 @@ def to_csv(opportunities, path):
             c, l = o.card, o.listing
             writer.writerow([
                 c.name, c.number, c.set_name, c.language, o.grade, l.price,
-                l.shipping, o.fair_value, o.gross_margin_pct,
+                l.shipping, o.fair_value, o.median_ask, o.gross_margin_pct,
                 o.liquidity_per_month, o.liquidity_tier, o.trend_delta,
                 o.spread_psa9_pct, o.spread_psa10_pct, o.score, o.verdict,
                 "; ".join(o.risk_flags), l.seller_feedback_pct,
                 l.seller_feedback_score, l.buying_option, l.title, l.url,
-                getattr(o, "fair_value_source", ""),
+                o.fair_value_source,
             ])
     return path
 

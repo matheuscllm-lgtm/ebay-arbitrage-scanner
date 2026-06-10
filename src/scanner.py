@@ -1,9 +1,16 @@
 """Orquestracao: watchlist -> preco justo -> anuncios -> avaliacao."""
+import statistics
 import sys
 
 from .models import WatchCard
-from . import pricecharting, scorer
+from . import pricecharting, scorer, title_parser
 from .ebay_api import EbayClient, EbayAuthError
+
+# Se o preco justo estiver muito longe da mediana dos anuncios reais da mesma
+# grade, a REFERENCIA pode estar errada/defasada (nao o anuncio). Limites:
+REF_HIGH_RATIO = 1.5   # justo > 1.5x mediana dos anuncios -> ref pode estar inflada
+REF_LOW_RATIO = 0.6    # justo < 0.6x mediana -> ref pode estar defasada pra baixo
+REF_MIN_SAMPLES = 3    # minimo de anuncios limpos pra calcular mediana
 
 # Sufixos de busca por grade: uma query generica acha raw + graded juntos,
 # mas queries dedicadas a PSA/BGS/CGC melhoram o recall de slabs baratos.
@@ -28,6 +35,51 @@ def load_watchlist(path="watchlist.yaml"):
     return cards
 
 
+def _clean_ask_prices(card, listings):
+    """Precos pedidos por grade, so de anuncios 'limpos' (carta certa, sem
+    acessorio/lote, raw com NM). E a base da mediana usada pra conferir se a
+    REFERENCIA (PriceCharting) esta alinhada com o mercado real do eBay."""
+    asks = {}
+    for listing in listings:
+        if not title_parser.card_matches_title(card, listing.title):
+            continue
+        grade = title_parser.detect_grade(listing.title)
+        if grade is None:
+            continue
+        tf = title_parser.risk_flags(listing.title)
+        if any(f.startswith(("REJEITAR", "LOTE")) for f in tf):
+            continue
+        if grade == "RAW" and not title_parser.is_nm_acceptable(
+                listing.title, listing.condition):
+            continue
+        asks.setdefault(grade, []).append(listing.price)
+    return asks
+
+
+def _annotate_ref_alignment(opp, asks):
+    """Compara o preco justo com a mediana dos anuncios da mesma grade."""
+    prices = asks.get(opp.grade, [])
+    if len(prices) < REF_MIN_SAMPLES:
+        return
+    median = statistics.median(prices)
+    opp.median_ask = round(median, 2)
+    if median <= 0:
+        return
+    ratio = opp.fair_value / median
+    if ratio > REF_HIGH_RATIO:
+        opp.risk_flags.append(
+            f"REF DESALINHADA: preco justo e {ratio:.1f}x a mediana de "
+            f"{len(prices)} anuncios (${median:,.0f}) -- referencia pode "
+            "estar inflada; conferir no link antes de confiar na margem")
+        if opp.verdict == "OPORTUNIDADE":
+            opp.verdict = "REVISAR"
+    elif ratio < REF_LOW_RATIO:
+        opp.risk_flags.append(
+            f"REF DESALINHADA: preco justo e so {ratio:.1f}x a mediana de "
+            f"{len(prices)} anuncios (${median:,.0f}) -- referencia pode "
+            "estar defasada pra baixo")
+
+
 def scan_card(card, ebay, config, log=print):
     """Escaneia uma carta da watchlist. Retorna (fair_value, [Opportunity])."""
     fair = pricecharting.get_fair_value(card.pc_url)
@@ -35,9 +87,10 @@ def scan_card(card, ebay, config, log=print):
         log(f"  AVISO: sem precos no PriceCharting para {card.name} ({card.pc_url})")
         return fair, []
 
+    # 1) Coleta com dedupe (por id E por titulo+preco: anuncios multi-variacao
+    #    do eBay voltam com itemId diferente por variacao, mesmo conteudo).
     seen_ids = set()
-    seen_count = 0
-    opportunities = []
+    unique_listings = []
     base_query = card.default_query()
     for suffix in GRADE_QUERY_SUFFIXES:
         listings = ebay.search(
@@ -45,19 +98,26 @@ def scan_card(card, ebay, config, log=print):
             min_price=float(config.get("min_price_usd", 10.0)),
         )
         for listing in listings:
-            # Dedupe por id E por (titulo, preco): anuncios multi-variacao do
-            # eBay voltam com itemId diferente por variacao, mesmo conteudo.
             fingerprint = (listing.title.strip().lower(), listing.price)
             if listing.item_id in seen_ids or fingerprint in seen_ids:
                 continue
             seen_ids.add(listing.item_id)
             seen_ids.add(fingerprint)
-            seen_count += 1
-            opp = scorer.evaluate(card, listing, fair, config)
-            if opp is not None:
-                opp.fair_value_source = fair.source_url
-                opportunities.append(opp)
-    log(f"  {card.name} #{card.number}: {seen_count} anuncios vistos, "
+            unique_listings.append(listing)
+
+    # 2) Mediana de mercado por grade (sanity check da referencia).
+    asks = _clean_ask_prices(card, unique_listings)
+
+    # 3) Avaliacao.
+    opportunities = []
+    for listing in unique_listings:
+        opp = scorer.evaluate(card, listing, fair, config)
+        if opp is not None:
+            opp.fair_value_source = fair.source_url
+            _annotate_ref_alignment(opp, asks)
+            opportunities.append(opp)
+
+    log(f"  {card.name} #{card.number}: {len(unique_listings)} anuncios vistos, "
         f"{len(opportunities)} acima do threshold")
     return fair, opportunities
 

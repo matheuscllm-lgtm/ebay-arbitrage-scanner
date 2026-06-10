@@ -98,3 +98,37 @@ def test_rejected_below_threshold_is_dropped():
     # raw sem NM e margem negativa: nao vira linha nenhuma (nem REJEITADO)
     o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo", 400.0), FAIR)
     assert o is None
+
+
+def test_grade_vs_condition_fraud():
+    # caso real 2026-06-10: "PSA 10" no titulo, condicao eBay = Ungraded
+    o = scorer.evaluate(
+        CARD,
+        L("Charizard 4/102 Base Set Holo PSA 10", 1800.0,
+          condition="Ungraded - Like New or better", seller_feedback_score=0),
+        FAIR,
+    )
+    assert o is not None
+    assert o.verdict == "REJEITADO"
+    assert any("FRAUDE" in f for f in o.risk_flags)
+
+
+def test_graded_condition_consistent_ok():
+    o = scorer.evaluate(
+        CARD, L("Charizard 4/102 Base Set PSA 9", 2200.0, condition="Graded"),
+        FAIR,
+    )
+    assert o is not None
+    assert not any("FRAUDE" in f for f in o.risk_flags)
+
+
+def test_raw_with_ungraded_condition_ok():
+    # raw legitimo: condicao "Ungraded" nao pode disparar o check de 'Graded'
+    o = scorer.evaluate(
+        CARD,
+        L("Charizard 4/102 Base Set Holo NM", 200.0,
+          condition="Ungraded - Near Mint or better"),
+        FAIR,
+    )
+    assert o is not None
+    assert not any("identidade" in f for f in o.risk_flags)
