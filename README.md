@@ -33,8 +33,13 @@ PSA). Custo de operação: **zero** — nenhuma assinatura paga.
 ## Escopo fixo
 
 - Apenas Pokémon TCG (categoria 183454 do eBay — cartas avulsas de TCG).
-- Grades aceitas: raw (somente Near Mint), PSA 10, PSA 9, BGS 9.5/10,
-  CGC 9.5/10. Qualquer outra grade/empresa é rejeitada.
+- **Somente graded** (decisão 2026-06-10): PSA 10, PSA 9, BGS 9.5/10,
+  CGC 9.5/10. Raw está fora do funil (`graded_only: true` no config) —
+  a nota de uma empresa de grading é verificável pelo nº de certificação;
+  a condição de uma carta crua, não. Qualquer outra grade/empresa é rejeitada.
+- Vendedores: **somente itens localizados nos EUA** — a entrega é no mailbox
+  da COMC (Algona, WA), então frete é doméstico e cartas ≥US$250 passam pelo
+  Authenticity Guarantee.
 - Idiomas: inglês (EN) e japonês (JP). Outros idiomas são rejeitados.
 - Piso de preço: USD 10 (~R$50). Margem mínima: 30% **bruta** (sem nenhuma
   taxa embutida — frete, taxas de importação e câmbio o operador calcula por

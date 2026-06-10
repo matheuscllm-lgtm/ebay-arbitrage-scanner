@@ -16,3 +16,8 @@ trusted_min_feedback_pct: 98.0
 # importacao, elegivel ao Authenticity Guarantee). Filtro aplicado na API
 # (itemLocationCountry) + cinto de seguranca no scorer.
 required_location_country: US
+
+# Escopo (decisao 2026-06-10): SO graded cards -- PSA 9/10, BGS 9.5/10,
+# CGC 9.5/10. Raw fora do funil (nota de terceiro e verificavel por cert
+# lookup; condicao de raw nao e). Reverter = graded_only: false.
+graded_only: true

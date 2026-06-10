@@ -35,6 +35,10 @@ DEFAULT_CONFIG = {
     "weights": {"margin": 0.45, "liquidity": 0.25, "trend": 0.15, "risk": 0.15},
     # Entrega na COMC (Algona, WA, EUA): so item localizado nos EUA.
     "required_location_country": "US",
+    # Decisao do operador 2026-06-10: scanner e SO para graded cards
+    # (PSA 9/10, BGS 9.5/10, CGC 9.5/10). Raw fica fora do funil -- a nota
+    # de terceiro e verificavel (cert lookup); condicao de raw nao e.
+    "graded_only": True,
     # Modo confiavel (--confiavel): so anuncios "compraveis de verdade".
     "trusted_mode": False,
     "trusted_min_feedback": 50,       # vendedor com >= 50 transacoes
@@ -118,6 +122,9 @@ def evaluate(card, listing, fair, config=None):
         return None
 
     grade = title_parser.detect_grade(listing.title)
+    if cfg.get("graded_only") and grade == "RAW":
+        return None  # escopo atual: so graded (PSA 9/10, BGS 9.5/10, CGC 9.5/10)
+
     flags = title_parser.risk_flags(listing.title, listing)
     rejected = False
 

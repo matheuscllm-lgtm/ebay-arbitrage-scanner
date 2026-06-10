@@ -23,15 +23,13 @@ def to_markdown(opportunities):
     rows = sorted(opportunities, key=lambda o: -o.score)
     header = (
         "| Carta | Grade | Preco | Frete | Preco justo | Mediana eBay | Margem "
-        "| Liq/mes | Tier | Tendencia | Spread PSA9 | Spread PSA10 | Score "
+        "| Liq/mes | Tier | Tendencia | Score "
         "| Conf | Protecao | Veredito | Flags | Anuncio | Referencia |\n"
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
     )
     lines = []
     for o in rows:
         c, l = o.card, o.listing
-        spread9 = f"+{o.spread_psa9_pct:.0f}%" if o.spread_psa9_pct else "-"
-        spread10 = f"+{o.spread_psa10_pct:.0f}%" if o.spread_psa10_pct else "-"
         flags = "; ".join(o.risk_flags) if o.risk_flags else "-"
         median = f"${o.median_ask:,.2f}" if o.median_ask else "-"
         ref = f"[PriceCharting]({o.fair_value_source})" if o.fair_value_source else "-"
@@ -43,7 +41,7 @@ def to_markdown(opportunities):
             f"| ${l.price:,.2f} | ${l.shipping:,.2f} | ${o.fair_value:,.2f} "
             f"| {median} | {o.gross_margin_pct:.0f}% "
             f"| {o.liquidity_per_month:g} | {o.liquidity_tier} "
-            f"| {_trend_arrow(o.trend_delta)} | {spread9} | {spread10} "
+            f"| {_trend_arrow(o.trend_delta)} "
             f"| {o.score:.0f} | {o.trust_score:.0f} | {badges} "
             f"| {o.verdict} | {flags} | [eBay]({l.url}) | {ref} |"
         )

@@ -15,6 +15,9 @@ REF_MIN_SAMPLES = 3    # minimo de anuncios limpos pra calcular mediana
 # Sufixos de busca por grade: uma query generica acha raw + graded juntos,
 # mas queries dedicadas a PSA/BGS/CGC melhoram o recall de slabs baratos.
 GRADE_QUERY_SUFFIXES = ["", " psa", " bgs", " cgc"]
+# Em modo graded-only a query generica so traria raw (descartado) -- buscar
+# direto por empresa de grading rende mais slabs por pagina.
+GRADED_ONLY_SUFFIXES = [" psa", " bgs", " cgc"]
 
 
 def load_watchlist(path="watchlist.yaml"):
@@ -92,7 +95,9 @@ def scan_card(card, ebay, config, log=print):
     seen_ids = set()
     unique_listings = []
     base_query = card.default_query()
-    for suffix in GRADE_QUERY_SUFFIXES:
+    suffixes = (GRADED_ONLY_SUFFIXES if config.get("graded_only", True)
+                else GRADE_QUERY_SUFFIXES)
+    for suffix in suffixes:
         listings = ebay.search(
             base_query + suffix,
             min_price=float(config.get("min_price_usd", 10.0)),

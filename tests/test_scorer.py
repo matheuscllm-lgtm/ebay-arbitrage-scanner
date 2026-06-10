@@ -21,6 +21,11 @@ def L(title, price, **kw):
     return Listing(**defaults)
 
 
+
+# Modo legado p/ testar a logica de raw (escopo atual e graded-only,
+# mas a maquinaria de raw fica testada caso o flag seja revertido).
+CFG_RAW = {"graded_only": False}
+
 def test_psa9_good_margin_is_opportunity():
     # PSA 9 justo $3175; anuncio $2200 -> margem 44%
     o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set PSA 9", 2200.0), FAIR)
@@ -45,14 +50,14 @@ def test_too_good_is_suspicious():
 
 
 def test_raw_without_nm_rejected():
-    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo", 200.0), FAIR)
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo", 200.0), FAIR, CFG_RAW)
     assert o is not None
     assert o.verdict == "REJEITADO"
     assert any("CONDICAO" in f for f in o.risk_flags)
 
 
 def test_raw_nm_has_grading_spread():
-    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo NM", 200.0), FAIR)
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo NM", 200.0), FAIR, CFG_RAW)
     assert o is not None
     assert o.spread_psa10_pct > 8000  # PSA10 ~89x o raw
     assert o.spread_psa9_pct > 800
@@ -96,7 +101,7 @@ def test_low_liquidity_flagged():
 
 def test_rejected_below_threshold_is_dropped():
     # raw sem NM e margem negativa: nao vira linha nenhuma (nem REJEITADO)
-    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo", 400.0), FAIR)
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo", 400.0), FAIR, CFG_RAW)
     assert o is None
 
 
@@ -128,7 +133,7 @@ def test_raw_with_ungraded_condition_ok():
         CARD,
         L("Charizard 4/102 Base Set Holo NM", 200.0,
           condition="Ungraded - Near Mint or better"),
-        FAIR,
+        FAIR, CFG_RAW,
     )
     assert o is not None
     assert not any("identidade" in f for f in o.risk_flags)
@@ -179,7 +184,7 @@ def test_trusted_mode_drops_rejected_rows():
         CARD,
         L("Charizard 4/102 Base Set Holo", 200.0,   # raw sem NM -> rejeitado
           seller_feedback_score=850, seller_feedback_pct=99.7),
-        FAIR, cfg)
+        FAIR, dict(cfg, graded_only=False))
     assert o is None
 
 
@@ -195,3 +200,16 @@ def test_us_listing_kept():
     o = scorer.evaluate(
         CARD, L("Charizard 4 Base Set PSA 9", 2200.0, country="US"), FAIR)
     assert o is not None
+
+
+# --- escopo graded-only (decisao do operador 2026-06-10) -----------------------
+
+def test_graded_only_drops_raw_by_default():
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo NM", 100.0), FAIR)
+    assert o is None
+
+
+def test_graded_only_keeps_slabs():
+    o = scorer.evaluate(CARD, L("Charizard 4 Base Set PSA 9", 2200.0), FAIR)
+    assert o is not None
+    assert o.grade == "PSA 9"

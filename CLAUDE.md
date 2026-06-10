@@ -15,8 +15,10 @@ MYP, Liga, sealed, PSA Arbitrage) — não compartilha código com eles.
    capital é decisão do operador. Vereditos são classificação técnica.
 2. **Margem bruta pura, threshold 30%.** `(justo − preço)/preço`, ZERO taxa
    embutida. Piso USD 10.
-3. **Raw só Near Mint.** Match conservador: qualquer sinal de condição
-   inferior rejeita, mesmo com "NM" presente ("NM/LP" → rejeita).
+3. **Só graded (2026-06-10):** PSA 9/10, BGS 9.5/10, CGC 9.5/10. Raw está
+   fora do funil (`graded_only: true`). A lógica de raw NM-only segue no
+   código (testada via `CFG_RAW` nos testes) caso o operador reverta — se
+   reverter: raw só Near Mint, match conservador ("NM/LP" → rejeita).
 4. **Entrega = tabela markdown no chat**, todas as linhas, flag por linha.
    Nunca arquivo/planilha por padrão (só se o operador pedir).
 5. **Threshold deste repo é percentual INTEIRO** (`min_gross_margin_percent: 30`).
