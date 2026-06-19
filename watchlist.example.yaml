@@ -1,0 +1,23 @@
+# Example target list. Copy to `watchlist.yaml` and fill with your own items.
+#
+# The tool is list-driven on purpose: matching an item from an arbitrary
+# listing title is the biggest source of error. Starting from a known item
+# (with an exact reference URL) and searching for listings of THAT item
+# inverts the problem and gives precision.
+#
+# Fields:
+#   name             - item name as it appears in listing titles
+#   set              - set / series name
+#   number           - item number within the set (confirms identity in title)
+#   language         - EN or JP
+#   pc_url           - reference product URL (price reference)
+#   ebay_query       - (optional) custom query if the name is noisy
+#   exclude_keywords - (optional) words that indicate a different lookalike item
+
+cards:
+  - name: Example Item
+    set: Example Set
+    number: 1
+    language: EN
+    pc_url: https://www.example.com/reference/example-item-1
+    exclude_keywords: [reprint, replica]

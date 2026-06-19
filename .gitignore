@@ -1,6 +1,18 @@
 .venv/
 __pycache__/
 *.pyc
-data/cache/
-data/*.csv
 .pytest_cache/
+
+# Local data and scan output (never publish deal lists)
+data/
+data/cache/
+*.csv
+*.xlsx
+*.json
+
+# Local strategy / method / target list (kept out of the public repo)
+METODO.md
+watchlist.yaml
+
+# Local-only credentials
+.env
