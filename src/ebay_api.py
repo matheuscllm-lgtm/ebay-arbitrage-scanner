@@ -32,10 +32,26 @@ class EbayAuthError(RuntimeError):
     pass
 
 
+def _clean_secret(value):
+    """Remove BOM/zero-width/espacos de uma credencial lida do ambiente.
+
+    Uma chave colada com BOM (U+FEFF) ou zero-width (U+200B) -- comum ao
+    copiar de alguns editores/paineis -- viraria um header Authorization
+    Basic invalido (-> eBay 401, "configurado mas nao autentica"). Pior: uma
+    chave que seja SO esses invisiveis passaria como "configurada" (truthy) e
+    tomaria 401 em vez de cair limpo no modo pricing-only. `.strip()` NAO
+    remove BOM/zero-width (nao sao whitespace), entao removemos explicito.
+    Erro recorrente numero 1 da frota (cross-scanner; ver CLAUDE.md).
+    """
+    if not value:
+        return ""
+    return value.replace("\ufeff", "").replace("\u200b", "").strip()
+
+
 class EbayClient:
     def __init__(self, client_id=None, client_secret=None, marketplace="EBAY_US"):
-        self.client_id = client_id or os.environ.get("EBAY_CLIENT_ID", "")
-        self.client_secret = client_secret or os.environ.get("EBAY_CLIENT_SECRET", "")
+        self.client_id = _clean_secret(client_id or os.environ.get("EBAY_CLIENT_ID", ""))
+        self.client_secret = _clean_secret(client_secret or os.environ.get("EBAY_CLIENT_SECRET", ""))
         self.marketplace = marketplace
         self._token = None
         self._token_expires_at = 0.0
