@@ -24,15 +24,17 @@ def to_markdown(opportunities):
     header = (
         "| Carta | Grade | Preco | Frete | Preco justo | Mediana eBay | Margem "
         "| Liq/mes | Tier | Tendencia | Score "
-        "| Conf | Protecao | Veredito | Flags | Anuncio | Referencia |\n"
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+        "| Conf | Protecao | Veredito | Flags | Links |\n"
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
     )
     lines = []
     for o in rows:
         c, l = o.card, o.listing
         flags = "; ".join(o.risk_flags) if o.risk_flags else "-"
         median = f"${o.median_ask:,.2f}" if o.median_ask else "-"
-        ref = f"[PriceCharting]({o.fair_value_source})" if o.fair_value_source else "-"
+        oferta = f"[oferta]({l.url})" if l.url else "—"
+        ref = f"[referência]({o.fair_value_source})" if o.fair_value_source else "—"
+        links = f"{oferta} · {ref}"
         badges = "+".join(
             b for b, on in (("AG", l.authenticity_guarantee), ("TR", l.top_rated))
             if on) or "-"
@@ -43,7 +45,7 @@ def to_markdown(opportunities):
             f"| {o.liquidity_per_month:g} | {o.liquidity_tier} "
             f"| {_trend_arrow(o.trend_delta)} "
             f"| {o.score:.0f} | {o.trust_score:.0f} | {badges} "
-            f"| {o.verdict} | {flags} | [eBay]({l.url}) | {ref} |"
+            f"| {o.verdict} | {flags} | {links} |"
         )
     return header + "\n".join(lines)
 
