@@ -28,8 +28,8 @@ def main():
     ap.add_argument("--pricing-only", action="store_true",
                     help="so busca preco justo (PriceCharting); nao consulta eBay")
     ap.add_argument("--confiavel", action="store_true",
-                    help="modo confiavel: so vendedores com historico (>=100 "
-                         "avaliacoes, >=99%%) e margem na faixa saudavel "
+                    help="modo confiavel: so vendedores com historico (>=50 "
+                         "avaliacoes, >=98%%) e margem na faixa saudavel "
                          "(30-60%%); tabela 100%% acionavel")
     ap.add_argument("--csv", default="data/last_scan.csv",
                     help="caminho do CSV de registro local")
