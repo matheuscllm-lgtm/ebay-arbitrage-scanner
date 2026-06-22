@@ -176,7 +176,7 @@ def evaluate(card, listing, fair, config=None):
 
     if cfg.get("trusted_mode"):
         # Modo confiavel: so o que e compravel de verdade.
-        # 1) Vendedor com historico real (golpista nao tem 100 avaliacoes a 99%).
+        # 1) Vendedor com historico real (golpista nao tem 50 avaliacoes a 98%).
         if (listing.seller_feedback_score < int(cfg["trusted_min_feedback"])
                 or listing.seller_feedback_pct < float(cfg["trusted_min_feedback_pct"])):
             return None

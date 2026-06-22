@@ -188,6 +188,29 @@ def test_trusted_mode_drops_rejected_rows():
     assert o is None
 
 
+def test_trusted_mode_threshold_boundary():
+    # Trava o limiar EXATO do modo confiavel: >= 50 avaliacoes E >= 98.0%.
+    # (A doc/ajuda ja divergiu para 100/99 no passado; este teste fixa o valor
+    # canonico do config p/ que um drift futuro quebre o CI em vez de passar.)
+    cfg = {"trusted_mode": True}
+    title = "Charizard 4 Base Set PSA 9"  # margem ~44% (saudavel: 30 < m < 60)
+
+    on_edge = scorer.evaluate(
+        CARD, L(title, 2200.0, seller_feedback_score=50, seller_feedback_pct=98.0),
+        FAIR, cfg)
+    assert on_edge is not None, "vendedor exatamente em 50/98.0 deve passar"
+
+    too_few = scorer.evaluate(
+        CARD, L(title, 2200.0, seller_feedback_score=49, seller_feedback_pct=98.0),
+        FAIR, cfg)
+    assert too_few is None, "49 avaliacoes (< 50) deve ser filtrado"
+
+    low_pct = scorer.evaluate(
+        CARD, L(title, 2200.0, seller_feedback_score=50, seller_feedback_pct=97.9),
+        FAIR, cfg)
+    assert low_pct is None, "97.9% (< 98.0) deve ser filtrado"
+
+
 # --- localizacao US-only (entrega na COMC, Algona WA) ---------------------------
 
 def test_non_us_listing_dropped():
