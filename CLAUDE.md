@@ -33,7 +33,7 @@ MYP, Liga, sealed, PSA Arbitrage) — não compartilha código com eles.
 
 ```powershell
 cd C:\Users\mathe\ebay-arbitrage-scanner
-.venv\Scripts\python -m pytest tests/ -q        # 57 testes
+.venv\Scripts\python -m pytest tests/ -q        # 65 testes
 .venv\Scripts\python main.py --pricing-only     # sem credenciais (PriceCharting apenas)
 .venv\Scripts\python main.py                    # scan completo (exige EBAY_CLIENT_ID/SECRET)
 .venv\Scripts\python main.py --confiavel        # so vendedores >=100 avals/99%+, margem 30-60%
