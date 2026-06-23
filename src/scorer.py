@@ -164,9 +164,24 @@ def evaluate(card, listing, fair, config=None):
     if any(f.startswith("REJEITAR") or f.startswith("LOTE") for f in flags):
         rejected = True
 
-    fair_price = fair.price(grade)
+    # Lookup do preco justo. O PriceCharting NAO tem coluna separada para
+    # BGS 9.5 / CGC 9.5 -- ele agrega tudo num rotulo generico "Grade 9.5"
+    # (chave "GRADE 9.5"). Sem este mapeamento, BGS/CGC 9.5 cairiam aqui com
+    # fair_price=None e a oferta sumiria silenciosamente de todo scan.
+    # A grade REAL (BGS 9.5 / CGC 9.5) continua exibida; so o lookup usa o bucket.
+    GENERIC_95 = ("BGS 9.5", "CGC 9.5")
+    lookup_grade = "GRADE 9.5" if grade in GENERIC_95 else grade
+    fair_price = fair.price(lookup_grade)
     if not fair_price:
         return None  # sem preco justo para essa grade, nao da pra avaliar
+    if grade in GENERIC_95:
+        # Honestidade da frota: o bucket "GRADE 9.5" mistura PSA/BGS/CGC, entao
+        # o preco de referencia 9.5 e uma APROXIMACAO, nao o valor da empresa
+        # especifica. Sinalizar para o operador conferir antes de agir.
+        flags.append(
+            f"REF 9.5: preco justo de {grade} usa o bucket generico "
+            "'GRADE 9.5' do PriceCharting (agrega PSA/BGS/CGC -- aproximacao)"
+        )
 
     margin_pct = (fair_price - listing.price) / listing.price * 100.0
     if margin_pct < threshold:
@@ -188,9 +203,11 @@ def evaluate(card, listing, fair, config=None):
         if rejected:
             return None
 
-    sales = fair.sales_per_month.get(grade, 0.0)
+    # Liquidez/tendencia tambem saem do bucket usado no preco (lookup_grade):
+    # para BGS/CGC 9.5 isso e o generico "GRADE 9.5" do PriceCharting.
+    sales = fair.sales_per_month.get(lookup_grade, 0.0)
     tier = liquidity_tier(sales)
-    delta = fair.deltas.get(grade, 0.0)
+    delta = fair.deltas.get(lookup_grade, 0.0)
 
     raw_price = fair.price("RAW") or 0.0
     spread9 = spread10 = 0.0

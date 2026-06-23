@@ -236,3 +236,50 @@ def test_graded_only_keeps_slabs():
     o = scorer.evaluate(CARD, L("Charizard 4 Base Set PSA 9", 2200.0), FAIR)
     assert o is not None
     assert o.grade == "PSA 9"
+
+
+# --- BGS 9.5 / CGC 9.5 -> bucket generico "GRADE 9.5" do PriceCharting --------
+# Regressao: o PriceCharting nao tem coluna separada para BGS 9.5 / CGC 9.5,
+# so o rotulo generico "Grade 9.5" (chave "GRADE 9.5"). Antes do fix,
+# fair.price("BGS 9.5") -> None e a oferta sumia silenciosamente de TODO scan.
+
+FAIR_95 = FairValue(
+    prices={"RAW": 338.42, "PSA 9": 3175.04, "PSA 10": 30085.73,
+            "GRADE 9.5": 8000.0},
+    deltas={"GRADE 9.5": 12.0},
+    sales_per_month={"GRADE 9.5": 5.0},
+)
+
+
+def test_bgs_95_uses_generic_grade_95_bucket():
+    # Antes do fix: retornava None (some do scan). Agora vira Opportunity.
+    # BGS 9.5 justo $8000 (bucket generico); anuncio $4000 -> margem 100%.
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set BGS 9.5", 4000.0),
+                        FAIR_95)
+    assert o is not None
+    # A grade REAL exibida continua sendo BGS 9.5 (so o lookup usa o bucket).
+    assert o.grade == "BGS 9.5"
+    assert o.fair_value == 8000.0
+    assert 90 < o.gross_margin_pct < 110
+    # Honestidade: nota de que a referencia 9.5 e o bucket generico.
+    assert any("bucket generico" in f for f in o.risk_flags)
+    # Liquidez/tendencia tambem saem do bucket generico.
+    assert o.liquidity_per_month == 5.0
+    assert o.trend_delta == 12.0
+
+
+def test_cgc_95_uses_generic_grade_95_bucket():
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set CGC 9.5", 4000.0),
+                        FAIR_95)
+    assert o is not None
+    assert o.grade == "CGC 9.5"
+    assert o.fair_value == 8000.0
+    assert any("bucket generico" in f for f in o.risk_flags)
+
+
+def test_grade_95_without_bucket_still_skipped():
+    # Nunca fabricar preco: se "GRADE 9.5" tambem nao existe, mantem o skip.
+    fair_no_95 = FairValue(prices={"RAW": 338.42, "PSA 9": 3175.04})
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set BGS 9.5", 4000.0),
+                        fair_no_95)
+    assert o is None
