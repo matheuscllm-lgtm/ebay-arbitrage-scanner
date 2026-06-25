@@ -18,7 +18,7 @@ Erros recorrentes (3 famílias — detalhe no manual):
 2. **Git:** galho ou `main` local defasado por squash-merge PARECE pendência. O teste real de "já mergeado" é `git diff --stat origin/main <galho>` estar vazio (não `git merge-base`).
 3. **Honestidade de preço:** inflação de referência, fallback tratado como real, NM frouxo → sempre validar versão/condição e rotular fallback.
 
-**Este scanner:** referência de preço = PriceCharting (valor justo raw NM + graded); listings via eBay Browse API; chaves = `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET` (no PC; CI é offline).
+**Este scanner:** referência de preço = PriceCharting (valor justo raw NM + graded; guarda de referência desalinhada) com listings via eBay Browse API; chaves = `EBAY_CLIENT_ID`/`EBAY_CLIENT_SECRET`/`EBAY_DEV_ID`/`EBAY_ENV`/`EBAY_MARKETPLACE_ID`/`EBAY_SCOPE` (secrets no repo, Actions+Codespaces; CI é offline).
 
 ## O que é
 
