@@ -283,3 +283,86 @@ def test_grade_95_without_bucket_still_skipped():
     o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set BGS 9.5", 4000.0),
                         fair_no_95)
     assert o is None
+
+
+# --- referencia TCGplayer (tcgcsv) — raw usa TCG como principal (2026-07) ------
+
+from src.tcg_reference import TcgReference  # noqa: E402
+
+
+def TCG(market=400.0):
+    return TcgReference(market_usd=market,
+                        product_url="https://www.tcgplayer.com/product/123",
+                        group_name="Base Set", sub_type="Holofoil")
+
+
+def test_raw_uses_tcg_market_as_primary_ref():
+    # PC RAW = 338.42; TCG market = 400 -> margem calculada sobre o TCG.
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo NM", 260.0),
+                        FAIR, CFG_RAW, tcg_ref=TCG(400.0))
+    assert o is not None
+    assert o.ref_kind == "tcgplayer"
+    assert o.fair_value == 400.0
+    assert o.tcg_market == 400.0
+    assert o.tcg_url == "https://www.tcgplayer.com/product/123"
+    # PC 338.42 vs TCG 400: divergencia 15% < 40% -> sem flag, segue limpo.
+    assert not any("DIVERGENTE" in f for f in o.risk_flags)
+    assert o.verdict == "OPORTUNIDADE"
+
+
+def test_raw_pc_tcg_divergence_flags_and_demotes():
+    # PC RAW 700 vs TCG 400 -> divergencia 75% > 40% -> flag + max REVISAR.
+    fair = FairValue(prices={"RAW": 700.0, "PSA 9": 3175.04},
+                     sales_per_month={"RAW": 60.0})
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo NM", 280.0),
+                        fair, CFG_RAW, tcg_ref=TCG(400.0))
+    assert o is not None
+    assert o.ref_kind == "tcgplayer"
+    assert o.fair_value == 400.0  # margem sobre o TCG, nao sobre o PC
+    assert any("REF RAW DIVERGENTE (PC vs TCG)" in f for f in o.risk_flags)
+    assert o.verdict == "REVISAR"
+
+
+def test_raw_fallback_without_tcg_is_labeled_not_demoted():
+    # Sem TCG market: raw segue no PriceCharting, com flag HONESTA visivel.
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo NM", 230.0),
+                        FAIR, CFG_RAW)  # tcg_ref=None
+    assert o is not None
+    assert o.ref_kind == "pricecharting"
+    assert o.fair_value == FAIR.price("RAW")
+    assert o.tcg_market is None and o.tcg_url == ""
+    assert any("REF: PriceCharting (sem TCG)" in f for f in o.risk_flags)
+    # Flag informativa: nao rebaixa o veredito nem zera o score.
+    assert o.verdict == "OPORTUNIDADE"
+    assert o.score > 0
+
+
+def test_graded_ref_below_raw_tcg_flags_and_demotes():
+    # Justo PSA 9 = 3175 abaixo do market raw TCG 5000 -> ref graded stale.
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set PSA 9", 2200.0),
+                        FAIR, tcg_ref=TCG(5000.0))
+    assert o is not None
+    assert o.ref_kind == "pricecharting"  # graded segue PriceCharting
+    assert o.fair_value == FAIR.price("PSA 9")
+    assert any("REF GRADED < RAW TCG" in f for f in o.risk_flags)
+    assert o.verdict == "REVISAR"
+
+
+def test_graded_with_sane_tcg_stays_opportunity():
+    # Market raw TCG (400) < justo PSA 9 (3175): sem flag, comportamento igual.
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set PSA 9", 2200.0),
+                        FAIR, tcg_ref=TCG(400.0))
+    assert o is not None
+    assert o.verdict == "OPORTUNIDADE"
+    assert not any(f.startswith("REF") for f in o.risk_flags)
+    assert o.tcg_market == 400.0  # registrado pra auditoria mesmo sem flag
+
+
+def test_raw_without_pc_price_still_works_with_tcg():
+    # PriceCharting sem Ungraded, mas TCG tem market: raw ainda e avaliavel.
+    fair = FairValue(prices={"PSA 9": 3175.04}, sales_per_month={})
+    o = scorer.evaluate(CARD, L("Charizard 4/102 Base Set Holo NM", 260.0),
+                        fair, CFG_RAW, tcg_ref=TCG(400.0))
+    assert o is not None
+    assert o.fair_value == 400.0
+    assert o.ref_kind == "tcgplayer"

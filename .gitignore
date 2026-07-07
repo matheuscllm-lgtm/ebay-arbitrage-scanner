@@ -6,6 +6,7 @@ __pycache__/
 # Local data and scan output (never publish deal lists)
 data/
 data/cache/
+results/
 *.csv
 *.xlsx
 *.json

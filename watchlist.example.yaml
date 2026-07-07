@@ -13,6 +13,14 @@
 #   pc_url           - reference product URL (price reference)
 #   ebay_query       - (optional) custom query if the name is noisy
 #   exclude_keywords - (optional) words that indicate a different lookalike item
+#   group            - (optional) logical group label; scan a single group with
+#                      `python main.py --group <name>`, list groups with
+#                      `python main.py --list-groups`
+#   tcg_set          - (optional) set name override for the tcgcsv/TCGplayer
+#                      reference lookup, used when `set` does not match the
+#                      tcgcsv group name exactly (case-insensitive exact match).
+#                      Example: set "151" is listed on tcgcsv as
+#                      "SV: Scarlet & Violet 151".
 
 cards:
   - name: Example Item
@@ -21,3 +29,5 @@ cards:
     language: EN
     pc_url: https://www.example.com/reference/example-item-1
     exclude_keywords: [reprint, replica]
+    group: chase-en
+    tcg_set: "Example Set (Full TCGCSV Name)"

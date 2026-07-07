@@ -33,6 +33,13 @@ class WatchCard:
     # Palavras que indicam OUTRO produto parecido (ex.: reimpressao Celebrations
     # do Charizard Base Set). Titulo contendo qualquer uma = nao e esta carta.
     exclude_keywords: list = field(default_factory=list)
+    # Grupo logico da watchlist (ex.: "chase-en"); vazio = sem grupo.
+    # Filtravel via `main.py --group <nome>`; `--list-groups` lista todos.
+    group: str = ""
+    # Override do nome do set no tcgcsv/TCGplayer quando o nome da watchlist
+    # nao bate com o `name` dos groups do tcgcsv (ex.: set: "151" vs
+    # tcgcsv "SV: Scarlet & Violet 151"). Vazio = usa `set` direto.
+    tcg_set: str = ""
 
     def default_query(self) -> str:
         return self.ebay_query or f"pokemon {self.name} {self.number} {self.set_name}"
@@ -92,3 +99,11 @@ class Opportunity:
     fair_value_source: str = ""  # URL do PriceCharting (link de referencia)
     median_ask: float = 0.0   # mediana dos anuncios eBay da mesma grade (sanity check)
     trust_score: float = 0.0  # 0-100: confiabilidade do vendedor/anuncio (separado da margem)
+    # Referencia TCGplayer (via tcgcsv.com) da carta RAW, quando disponivel.
+    # Para listing RAW ela e a referencia PRINCIPAL da margem; para graded e
+    # so sanity check (TCGplayer nao tem preco graded).
+    tcg_market: float | None = None  # market price TCGplayer (USD) ou None
+    tcg_url: str = ""         # URL do produto no TCGplayer (vinda do tcgcsv)
+    # Qual fonte foi usada na MARGEM desta linha:
+    # "tcgplayer" (raw com TCG market) ou "pricecharting" (graded, ou raw fallback).
+    ref_kind: str = "pricecharting"
