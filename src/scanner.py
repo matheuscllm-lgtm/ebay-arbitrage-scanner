@@ -3,7 +3,7 @@ import statistics
 import sys
 
 from .models import WatchCard
-from . import pricecharting, scorer, title_parser
+from . import pricecharting, scorer, tcg_reference, title_parser
 from .ebay_api import EbayClient, EbayAuthError
 
 # Se o preco justo estiver muito longe da mediana dos anuncios reais da mesma
@@ -34,8 +34,28 @@ def load_watchlist(path="watchlist.yaml"):
             pc_url=entry["pc_url"],
             ebay_query=entry.get("ebay_query", ""),
             exclude_keywords=entry.get("exclude_keywords", []) or [],
+            group=str(entry.get("group", "") or ""),
+            tcg_set=str(entry.get("tcg_set", "") or ""),
         ))
     return cards
+
+
+def group_counts(cards):
+    """Grupos presentes na watchlist -> contagem de cartas (ordem de aparicao).
+
+    Cartas sem `group:` entram no bucket "(sem grupo)"."""
+    counts = {}
+    for card in cards:
+        key = card.group or "(sem grupo)"
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def filter_group(cards, group):
+    """Filtra a watchlist por grupo. `group` vazio/None = todas as cartas."""
+    if not group:
+        return cards
+    return [c for c in cards if c.group == group]
 
 
 def _clean_ask_prices(card, listings):
@@ -90,6 +110,14 @@ def scan_card(card, ebay, config, log=print):
         log(f"  AVISO: sem precos no PriceCharting para {card.name} ({card.pc_url})")
         return fair, []
 
+    # Referencia TCGplayer (tcgcsv) da carta: principal para RAW, sanity check
+    # para graded. Tolerante a falha (None) -- o scan nunca quebra por isto, e
+    # sem TCG o raw cai no fallback PriceCharting ROTULADO (nunca silencioso).
+    tcg_ref = tcg_reference.get_tcg_reference(card)
+    if tcg_ref is None:
+        log(f"  (sem referencia TCGplayer p/ {card.name} -- raw usara "
+            "PriceCharting rotulado; graded segue PriceCharting normal)")
+
     # 1) Coleta com dedupe (por id E por titulo+preco: anuncios multi-variacao
     #    do eBay voltam com itemId diferente por variacao, mesmo conteudo).
     seen_ids = set()
@@ -116,7 +144,7 @@ def scan_card(card, ebay, config, log=print):
     # 3) Avaliacao.
     opportunities = []
     for listing in unique_listings:
-        opp = scorer.evaluate(card, listing, fair, config)
+        opp = scorer.evaluate(card, listing, fair, config, tcg_ref=tcg_ref)
         if opp is not None:
             opp.fair_value_source = fair.source_url
             _annotate_ref_alignment(opp, asks)
@@ -128,11 +156,20 @@ def scan_card(card, ebay, config, log=print):
 
 
 def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
-             log=print):
-    """Roda o scan completo. Retorna (fair_values, opportunities)."""
+             log=print, group=None):
+    """Roda o scan completo. Retorna (fair_values, opportunities).
+
+    `group`: nome de um grupo da watchlist (campo `group:` por carta) para
+    escanear so aquele subconjunto; None/vazio = todas as cartas."""
     config = config or {}
-    cards = load_watchlist(watchlist_path)
-    log(f"Watchlist: {len(cards)} cartas")
+    cards = filter_group(load_watchlist(watchlist_path), group)
+    if group:
+        log(f"Watchlist (grupo '{group}'): {len(cards)} cartas")
+        if not cards:
+            log(f"AVISO: nenhum card no grupo '{group}' -- confira "
+                "`python main.py --list-groups`")
+    else:
+        log(f"Watchlist: {len(cards)} cartas")
 
     ebay = None
     if not pricing_only:
