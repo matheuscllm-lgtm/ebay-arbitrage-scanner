@@ -220,9 +220,17 @@ def pick_market_price(price_rows):
 def get_tcg_reference(card, cache_dir=DEFAULT_CACHE_DIR):
     """WatchCard -> TcgReference (market USD + URL do produto) ou None.
 
-    None = sem referencia TCGplayer confiavel (set nao resolvido, carta nao
-    achada, ou produto sem marketPrice). O caller decide o fallback rotulado.
+    None = sem referencia TCGplayer confiavel (carta nao-EN, set nao resolvido,
+    carta nao achada, ou produto sem marketPrice). O caller decide o fallback
+    rotulado.
     """
+    # A categoria 3 do tcgcsv e o catalogo INGLES do TCGplayer: uma carta JP
+    # casaria com o produto EN homonimo e a margem sairia de um produto que
+    # nao e o anunciado, rotulada como "TCG real". Carta nao-EN fica sem TCG
+    # ref e cai no fallback PriceCharting ROTULADO (a pagina JP la e a certa).
+    if str(getattr(card, "language", "EN") or "EN").strip().upper() != "EN":
+        return None
+
     groups = _results(_fetch_json(f"{TCGCSV_BASE}/groups", cache_dir))
     group = resolve_group(card, groups)
     if not group or group.get("groupId") is None:

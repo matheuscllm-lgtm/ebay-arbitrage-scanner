@@ -81,7 +81,7 @@ def main():
     cards_in_scope = scanner.filter_group(
         scanner.load_watchlist(args.watchlist), args.group)
 
-    fair_values, opportunities = scanner.run_scan(
+    fair_values, opportunities, effective_pricing_only = scanner.run_scan(
         watchlist_path=args.watchlist, config=config,
         pricing_only=args.pricing_only, group=args.group,
     )
@@ -98,7 +98,14 @@ def main():
         path = report.to_csv(opportunities, args.csv)
         print(f"\nRegistro local: {path} ({len(opportunities)} linhas)")
 
-    if not args.pricing_only:
+    if effective_pricing_only and not args.pricing_only:
+        # Scan degradou (EBAY_CLIENT_ID/SECRET ausentes): gravar um artefato
+        # com 0 rows aqui sobrescreveria o ultimo scan REAL no path default e
+        # a entrega sairia "verde mas vazia". Nao gravar e avisar alto.
+        print("AVISO: o scan degradou para pricing-only (chaves eBay ausentes) "
+              f"-- artefato JSON NAO gravado ({args.out} preservado). "
+              "Configure EBAY_CLIENT_ID/SECRET e rode de novo.")
+    if not effective_pricing_only:
         payload = report.scan_payload(
             opportunities, watchlist_count=len(cards_in_scope), config=config,
             include_raw=args.include_raw, group=args.group,

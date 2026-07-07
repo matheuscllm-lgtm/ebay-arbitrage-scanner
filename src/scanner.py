@@ -161,7 +161,12 @@ def scan_card(card, ebay, config, log=print):
 
 def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
              log=print, group=None):
-    """Roda o scan completo. Retorna (fair_values, opportunities).
+    """Roda o scan completo. Retorna (fair_values, opportunities, pricing_only).
+
+    O terceiro elemento e o modo EFETIVO do run: True quando o scan rodou em
+    pricing-only — pedido explicitamente OU degradado por falta de
+    EBAY_CLIENT_ID/SECRET. O caller usa isso para nao tratar um run degradado
+    como scan real (ex.: nao sobrescrever o artefato JSON do ultimo scan).
 
     `group`: nome de um grupo da watchlist (campo `group:` por carta) para
     escanear so aquele subconjunto; None/vazio = todas as cartas."""
@@ -200,4 +205,4 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
             sys.exit(2)
         except Exception as e:
             log(f"  ERRO em {card.name} #{card.number}: {e} -- seguindo adiante")
-    return fair_values, all_opportunities
+    return fair_values, all_opportunities, pricing_only

@@ -28,7 +28,7 @@ Erros recorrentes (3 famílias — detalhe no manual):
 2. **Git:** branch ou `main` local defasado por squash-merge PARECE pendência. O teste real de "já mergeado" é `git diff --stat origin/main <branch>` estar vazio (não `git merge-base`).
 3. **Honestidade de preço:** inflação de referência, fallback tratado como real, NM frouxo → sempre validar versão/condição e rotular fallback.
 
-**Este scanner:** referência de preço em 2 trilhos — **graded** = PriceCharting por grade (TCGplayer não tem preço graded; guarda de referência desalinhada + sanity check contra o market raw TCG); **raw NM** (opt-in `--include-raw`) = **TCGplayer market via tcgcsv.com** (`src/tcg_reference.py`, mesma fonte real do MYP v5.15+) com PriceCharting Ungraded como cross-check (divergência >40% = flag + REVISAR) e fallback PriceCharting **rotulado** (`REF: PriceCharting (sem TCG)`) quando o tcgcsv não cobre a carta. Listings via eBay Browse API; chaves que o CÓDIGO lê = `EBAY_CLIENT_ID`/`EBAY_CLIENT_SECRET` (`src/ebay_api.py`; marketplace `EBAY_US` e scope OAuth são hardcoded). `EBAY_DEV_ID`/`EBAY_ENV`/`EBAY_MARKETPLACE_ID`/`EBAY_SCOPE` existem como secrets do repo (Actions+Codespaces) mas não são consumidas por nenhum arquivo. CI é offline e não usa secret.
+**Este scanner:** referência de preço em 2 trilhos — **graded** = PriceCharting por grade (TCGplayer não tem preço graded; guarda de referência desalinhada + sanity check contra o market raw TCG); **raw NM** (opt-in `--include-raw`) = **TCGplayer market via tcgcsv.com** (`src/tcg_reference.py`, mesma fonte real do MYP v5.15+) com PriceCharting Ungraded como cross-check (divergência >40% = flag + REVISAR) e fallback PriceCharting **rotulado** (`REF: PriceCharting (sem TCG)`) quando o tcgcsv não cobre a carta **ou quando a carta não é EN** (a categoria 3 do tcgcsv é o catálogo INGLÊS do TCGplayer — carta JP nunca ganha referência TCG, senão a margem sairia do produto errado; PR #19). Listings via eBay Browse API; chaves que o CÓDIGO lê = `EBAY_CLIENT_ID`/`EBAY_CLIENT_SECRET` (`src/ebay_api.py`; marketplace `EBAY_US` e scope OAuth são hardcoded). `EBAY_DEV_ID`/`EBAY_ENV`/`EBAY_MARKETPLACE_ID`/`EBAY_SCOPE` existem como secrets do repo (Actions+Codespaces) mas não são consumidas por nenhum arquivo. CI é offline e não usa secret.
 
 > **Reconciliação NM × graded-only (não há contradição):** o invariante "Só Near
 > Mint" da frota vale para o caminho **RAW** deste scanner — que está **fora do
@@ -101,8 +101,10 @@ cd C:\Users\mathe\ebay-arbitrage-scanner
 Na nuvem/Linux, os mesmos comandos com `python`/`.venv/bin/python`.
 
 O scan grava um **artefato JSON** (`--out`, default `results/last_scan.json`,
-gitignored) com TODAS as linhas avaliadas (inclusive REJEITADO). A **entrega**
-sai dele:
+gitignored) com TODAS as linhas avaliadas (inclusive REJEITADO). ⚠️ **Run
+degradado não grava artefato** (PR #19): se as chaves eBay faltarem, o scan
+vira pricing-only, avisa alto e **preserva** o `last_scan.json` do último scan
+real — nunca sobrescreve com um relatório vazio "verde". A **entrega** sai dele:
 
 ```powershell
 .venv\Scripts\python ebay_summary.py results\last_scan.json -o results\ebay-<AAAA-MM-DD>.md
@@ -177,7 +179,9 @@ são classificação técnica; **nunca recomendar compra**.
   `src/tcg_reference.py` com cache 24h em `data/cache/tcgcsv/`. Mesma fonte
   que o MYP scanner usa no CI (v5.15+). Só `marketPrice` conta (subtype
   Normal→Holofoil→Reverse Holofoil); sem marketPrice/sem match = None e o
-  raw cai no fallback PriceCharting ROTULADO. Set resolvido por match exato
+  raw cai no fallback PriceCharting ROTULADO. **Carta não-EN = sempre None**
+  (catálogo tcgcsv é inglês; carta JP casaria com o produto EN homônimo —
+  guard do PR #19). Set resolvido por match exato
   do nome (`tcg_set:` na watchlist quando o nome não bate). ⚠️ User-Agent é
   obrigatório (sem ele = 401). **TCGplayer não tem preço graded** — por isso
   graded segue PriceCharting.
