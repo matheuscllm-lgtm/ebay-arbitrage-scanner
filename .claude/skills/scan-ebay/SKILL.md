@@ -62,7 +62,7 @@ $env:PYTHONIOENCODING="utf-8"
 3. Toda linha tem os **DOIS links**: `[oferta]` (anúncio eBay) e
    `[TCG]`/`[ref]` (referência de preço). URLs vêm do JSON — nunca inventar.
 4. Reportar a linha "Cobertura de referência" (graded PC · raw TCG real ·
-   raw só PC).
+   raw só PC · sem referência).
 5. **Sem recomendação de compra** — vereditos são classificação técnica;
    capital é decisão do operador.
 

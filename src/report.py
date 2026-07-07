@@ -62,9 +62,12 @@ def reference_link(o):
     """(url, label) do link de REFERENCIA da linha -- a fonte usada na margem.
 
     ref_kind=tcgplayer -> URL do produto TCGplayer (tcg_url, vinda do tcgcsv);
-    senao -> URL do PriceCharting (fair_value_source). Nunca inventa URL: se a
-    fonte nao trouxe link, retorna vazio e a celula omite/traceja aquele lado."""
-    if o.ref_kind == "tcgplayer" and o.tcg_url:
+    senao -> URL do PriceCharting (fair_value_source). Nunca inventa URL nem
+    troca de fonte no link: se a margem veio do TCGplayer mas o tcgcsv nao
+    trouxe URL, o lado da referencia fica VAZIO (a celula omite/traceja) --
+    mostrar o link do PriceCharting rotulado de 'referência' seria apontar
+    pra fonte que NAO foi usada na margem (fix do review do PR #18)."""
+    if o.ref_kind == "tcgplayer":
         return o.tcg_url, "TCG"
     return o.fair_value_source, "referência"
 

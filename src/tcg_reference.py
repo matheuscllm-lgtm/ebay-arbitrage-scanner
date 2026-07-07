@@ -142,11 +142,32 @@ def _product_number(product):
 
 
 def _numerator(number_text):
-    """'004/102' -> '4'; 'TG12/TG30' -> '' (nao-numerico fica de fora)."""
+    """'004/102' -> '4'; 'TG12/TG30' -> '' (nao-numerico: sem normalizacao)."""
     numerator = str(number_text or "").split("/")[0].strip()
     if not numerator.isdigit():
         return ""
     return numerator.lstrip("0") or "0"
+
+
+def _number_matches(want_raw, product_number):
+    """True se o numero da watchlist casa o numero do produto.
+
+    - Numerador NUMERICO: compara numeradores normalizados (zero-padding
+      tolerado: '4' casa '004/102').
+    - Numerador NAO-numerico (TG04, GG12, SV107...): match EXATO
+      case-insensitive do texto cru contra o numero do produto OU contra a
+      parte antes do '/' ('TG04' casa 'TG04' e 'TG04/TG30'; NAO casa
+      '4/102'). A restricao de numero NUNCA e dropada: degradar pra match
+      so-por-nome ja devolveu a carta ERRADA como referencia (review PR #18
+      -- watchlist 'Charizard TG04' casava o Charizard base 4/102).
+    """
+    want_raw = str(want_raw or "").strip()
+    want_num = _numerator(want_raw)
+    if want_num:
+        return _numerator(product_number) == want_num
+    have_raw = str(product_number or "").strip().lower()
+    have_prefix = have_raw.split("/")[0].strip()
+    return bool(have_raw) and want_raw.lower() in (have_raw, have_prefix)
 
 
 def find_product(card, products):
@@ -156,10 +177,10 @@ def find_product(card, products):
     presente; senao numero embutido no nome) + CONFIRMACAO pelo nome
     normalizado (todas as palavras do nome da carta presentes no nome do
     produto). Numero sozinho nao basta (sets com variantes repetem numeros);
-    nome sozinho tambem nao (Charizard aparece N vezes). Sem match confiavel
-    -> None.
+    nome sozinho tambem nao (Charizard aparece N vezes). Se mais de UM
+    candidato sobrevive a numero+nome, e ambiguo -> None (conservador:
+    perder deal > inventar deal). Sem match confiavel -> None.
     """
-    want_num = _numerator(card.number)
     want_words = _norm(card.name)
     if not want_words:
         return None
@@ -168,11 +189,12 @@ def find_product(card, products):
         have = _norm(product.get("name"))
         return all(w in have for w in want_words)
 
-    if want_num:
+    number = str(card.number or "").strip()
+    if number:
         by_number = [p for p in products
-                     if _numerator(_product_number(p)) == want_num]
+                     if _number_matches(number, _product_number(p))]
         confirmed = [p for p in by_number if name_matches(p)]
-        return confirmed[0] if confirmed else None
+        return confirmed[0] if len(confirmed) == 1 else None
 
     # Watchlist sem numero: so aceita se o match por nome for UNICO.
     by_name = [p for p in products if name_matches(p)]

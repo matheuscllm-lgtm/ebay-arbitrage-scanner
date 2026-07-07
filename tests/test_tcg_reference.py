@@ -152,10 +152,57 @@ def test_leading_zeros_in_numbers(monkeypatch):
 
 
 def test_non_numeric_collector_number_skipped(monkeypatch):
-    # TG12/promo etc: numerador nao-numerico nao casa nada (sem chute).
+    # Watchlist numerica ("4") nao casa produto TG04/TG30 (sem chute).
     patch_fetch(monkeypatch, products={"results": [
         {"productId": 500, "name": "Charizard",
          "url": "https://www.tcgplayer.com/product/500",
          "extendedData": [{"name": "Number", "value": "TG04/TG30"}]},
+    ]})
+    assert tcg_reference.get_tcg_reference(card(number="4")) is None
+
+
+def test_non_numeric_watchlist_number_matches_exact(monkeypatch):
+    # Watchlist "TG04" casa o produto TG04/TG30 (match exato case-insensitive
+    # do texto cru, inclusive contra a parte antes do '/').
+    patch_fetch(monkeypatch, products={"results": [
+        {"productId": 600, "name": "Charizard",
+         "url": "https://www.tcgplayer.com/product/600",
+         "extendedData": [{"name": "Number", "value": "TG04/TG30"}]},
+    ]}, prices={"results": [
+        {"productId": 600, "subTypeName": "Holofoil", "marketPrice": 55.0},
+    ]})
+    ref = tcg_reference.get_tcg_reference(card(number="TG04"))
+    assert ref is not None and ref.market_usd == 55.0
+    ref2 = tcg_reference.get_tcg_reference(card(number="tg04"))
+    assert ref2 is not None  # case-insensitive
+
+
+def test_non_numeric_number_never_degrades_to_name_only(monkeypatch):
+    # MAJOR do review PR #18: watchlist "Charizard TG04" num set cujo unico
+    # Charizard e o base 4/102 NAO pode devolver o base como referencia.
+    # A restricao de numero nunca e dropada: sem match exato -> None.
+    patch_fetch(monkeypatch, products={"results": [
+        {"productId": 100, "name": "Charizard",
+         "url": "https://www.tcgplayer.com/product/100",
+         "extendedData": [{"name": "Number", "value": "4/102"}]},
+    ]}, prices={"results": [
+        {"productId": 100, "subTypeName": "Holofoil", "marketPrice": 412.5},
+    ]})
+    assert tcg_reference.get_tcg_reference(card(number="TG04")) is None
+
+
+def test_ambiguous_confirmed_match_returns_none(monkeypatch):
+    # MINOR do review PR #18: 2 produtos com o mesmo numerador e nomes
+    # compativeis = ambiguo -> None (perder deal > inventar deal).
+    patch_fetch(monkeypatch, products={"results": [
+        {"productId": 700, "name": "Charizard (Cosmos Holo)",
+         "url": "https://www.tcgplayer.com/product/700",
+         "extendedData": [{"name": "Number", "value": "4/102"}]},
+        {"productId": 701, "name": "Charizard (Shadowless)",
+         "url": "https://www.tcgplayer.com/product/701",
+         "extendedData": [{"name": "Number", "value": "4/102"}]},
+    ]}, prices={"results": [
+        {"productId": 700, "subTypeName": "Holofoil", "marketPrice": 300.0},
+        {"productId": 701, "subTypeName": "Holofoil", "marketPrice": 900.0},
     ]})
     assert tcg_reference.get_tcg_reference(card(number="4")) is None

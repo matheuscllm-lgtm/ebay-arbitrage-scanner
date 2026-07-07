@@ -96,7 +96,8 @@ O que a ferramenta gera (e você entrega assim, sem mexer):
 
 - Cabeçalho com data, nº de cartas, contagem por veredito e a linha
   **"Cobertura de referência"** (X graded PriceCharting · Y raw c/ TCGplayer
-  real · Z raw só PriceCharting — honestidade de fonte, sempre reportar).
+  real · Z raw só PriceCharting · N sem referência — honestidade de fonte,
+  sempre reportar; só conta linhas cuja margem USOU uma referência).
 - **4 seções, SEMPRE todas as linhas**, ordenadas por score:
   🟢 OPORTUNIDADE · ⚠️ REVISAR (validar manualmente) · 🚨 SUSPEITO (margem
   alta demais — validar) · ⛔ REJEITADO (com motivo).

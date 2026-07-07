@@ -40,7 +40,10 @@ def payload():
             score=55.0, verdict="SUSPEITO",
             flags=["MARGEM: 140% acima do normal"],
             url="https://www.ebay.com/itm/333", item_id="333"),
+        # Rejeitado fora-de-escopo SEM referencia usada (fair_value/ref_url
+        # ausentes) -- nao pode inflar a contagem "graded (PriceCharting)".
         row(card="Blastoise", number="2", grade="FORA DO ESCOPO", price=500.0,
+            fair_value=None, ref_url="", margin_pct=0.0,
             score=0.0, verdict="REJEITADO",
             flags=["GRADE: empresa/nota fora do escopo"],
             url="https://www.ebay.com/itm/444", item_id="444"),
@@ -104,15 +107,41 @@ def test_flagged_sections_have_separate_flags_column():
     assert "Links Flags" not in md
 
 
+def test_opportunity_section_shows_flags_column():
+    # Fix do review PR #18: flag honesta (ex.: raw sem TCG) precisa aparecer
+    # tambem no bucket 🟢 -- a secao OPORTUNIDADE tem coluna Flags.
+    p = payload()
+    p["rows"] = [row(grade="RAW", ref_kind="pricecharting",
+                     flags=["REF: PriceCharting (sem TCG) -- fallback"],
+                     verdict="OPORTUNIDADE")]
+    md = ebay_summary.build_markdown(p)
+    opp_section = md.split("## 🟢 OPORTUNIDADE")[1].split("## ")[0]
+    assert "| Flags |" in opp_section
+    assert "REF: PriceCharting (sem TCG)" in opp_section
+
+
 def test_pipe_escaped_in_cells():
     md = ebay_summary.build_markdown(payload())
     assert "subir \\| ate o fim" in md
 
 
 def test_coverage_line():
+    # Fix do review PR #18: rows SEM referencia usada (rejeitado fora-de-
+    # escopo, fair_value/ref_url ausentes) nao contam como "graded
+    # (PriceCharting)" -- entram na categoria propria "sem referência".
     md = ebay_summary.build_markdown(payload())
-    assert ("Cobertura de referência: 2 graded (PriceCharting) · "
-            "1 raw c/ TCGplayer real · 1 raw só PriceCharting") in md
+    assert ("Cobertura de referência: 1 graded (PriceCharting) · "
+            "1 raw c/ TCGplayer real · 1 raw só PriceCharting · "
+            "1 sem referência") in md
+
+
+def test_coverage_line_zero_no_ref():
+    p = payload()
+    p["rows"] = [row()]  # so a linha graded com referencia
+    md = ebay_summary.build_markdown(p)
+    assert ("Cobertura de referência: 1 graded (PriceCharting) · "
+            "0 raw c/ TCGplayer real · 0 raw só PriceCharting · "
+            "0 sem referência") in md
 
 
 def test_header_meta_and_verdict_counts():
@@ -159,3 +188,30 @@ def test_report_to_markdown_uses_same_links_helper():
                              keep_placeholders=False) == "[oferta](u) · [TCG](r)"
     assert report.links_cell("", "", keep_placeholders=True) == "— · —"
     assert report.links_cell("u", "", keep_placeholders=False) == "[oferta](u)"
+
+
+def test_console_reference_link_honest_when_tcg_url_missing():
+    # Fix do review PR #18 (NIT): margem veio do TCGplayer mas sem tcg_url ->
+    # o lado da referencia fica vazio; NUNCA mostrar o link do PriceCharting
+    # rotulado como se fosse a fonte usada na margem.
+    from src.models import WatchCard, Listing, Opportunity
+    card = WatchCard(name="Umbreon VMAX", set_name="Evolving Skies",
+                     number="215", language="EN", pc_url="")
+    listing = Listing(item_id="x", title="t", price=300.0, shipping=0.0,
+                      currency="USD", buying_option="FIXED_PRICE",
+                      condition="", seller_feedback_pct=99.9,
+                      seller_feedback_score=900,
+                      url="https://www.ebay.com/itm/9")
+    opp = Opportunity(card=card, listing=listing, grade="RAW",
+                      fair_value=450.0, gross_margin_pct=50.0,
+                      liquidity_per_month=30.0, liquidity_tier="A",
+                      trend_delta=0.0, spread_psa9_pct=0, spread_psa10_pct=0,
+                      verdict="OPORTUNIDADE",
+                      fair_value_source="https://www.pricecharting.com/g/p/x",
+                      ref_kind="tcgplayer", tcg_market=450.0, tcg_url="")
+    url, label = report.reference_link(opp)
+    assert (url, label) == ("", "TCG")
+    md = report.to_markdown([opp])
+    assert "[referência](" not in md
+    assert "pricecharting.com" not in md  # fonte nao usada nao vira link
+    assert "[oferta](https://www.ebay.com/itm/9) · —" in md

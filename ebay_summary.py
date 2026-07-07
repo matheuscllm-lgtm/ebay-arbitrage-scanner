@@ -32,11 +32,12 @@ SECTION_TITLES = {
     "REJEITADO": "## ⛔ REJEITADO",
 }
 
+# Coluna Flags em TODAS as secoes nao-rejeitadas -- inclusive a 🟢: flags
+# honestas (ex.: `REF: PriceCharting (sem TCG)`) precisam aparecer na entrega
+# mesmo quando o veredito e OPORTUNIDADE (fix do review do PR #18).
 MAIN_HEADER = ("| # | Margem % | Preço US$ | Ref US$ | Dif US$ | Carta | Grade "
-               "| Liq/mês | Tend | Score | Conf | Links |")
-MAIN_SEP = "|---|---|---|---|---|---|---|---|---|---|---|---|"
-FLAGGED_HEADER = MAIN_HEADER + " Flags |"
-FLAGGED_SEP = MAIN_SEP + "---|"
+               "| Liq/mês | Tend | Score | Conf | Links | Flags |")
+MAIN_SEP = "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
 REJECTED_HEADER = "| # | Carta | Grade | Preço US$ | Motivo | Links |"
 REJECTED_SEP = "|---|---|---|---|---|---|"
 
@@ -86,15 +87,28 @@ def _flags_cell(row):
     return escape_md("; ".join(flags)) if flags else "-"
 
 
+def _has_reference(row):
+    """True se a linha USOU uma referencia de preco na margem (fair_value ou
+    link de referencia presente). Rejeitados fora-de-escopo sem referencia
+    nao podem ser contados como 'graded (PriceCharting)' -- fix do review."""
+    return row.get("fair_value") is not None or bool(row.get("ref_url"))
+
+
 def coverage_line(rows):
-    """Cobertura de referencia: honestidade sobre a fonte de cada linha."""
-    graded = sum(1 for r in rows if r.get("grade") != "RAW")
-    raw_tcg = sum(1 for r in rows
+    """Cobertura de referencia: honestidade sobre a fonte de cada linha.
+
+    Conta APENAS rows com referencia usada; o resto vira a categoria propria
+    `N sem referência` (sempre exibida, mesmo com 0)."""
+    refd = [r for r in rows if _has_reference(r)]
+    graded = sum(1 for r in refd if r.get("grade") != "RAW")
+    raw_tcg = sum(1 for r in refd
                   if r.get("grade") == "RAW" and r.get("ref_kind") == "tcgplayer")
-    raw_pc = sum(1 for r in rows
+    raw_pc = sum(1 for r in refd
                  if r.get("grade") == "RAW" and r.get("ref_kind") != "tcgplayer")
+    no_ref = len(rows) - len(refd)
     return (f"Cobertura de referência: {graded} graded (PriceCharting) · "
-            f"{raw_tcg} raw c/ TCGplayer real · {raw_pc} raw só PriceCharting")
+            f"{raw_tcg} raw c/ TCGplayer real · {raw_pc} raw só PriceCharting · "
+            f"{no_ref} sem referência")
 
 
 def build_markdown(payload):
@@ -147,13 +161,10 @@ def build_markdown(payload):
                          _row_links(row)]
                 lines.append("| " + " | ".join(cells) + " |")
         else:
-            flagged = verdict in ("REVISAR", "SUSPEITO")
-            lines.append(FLAGGED_HEADER if flagged else MAIN_HEADER)
-            lines.append(FLAGGED_SEP if flagged else MAIN_SEP)
+            lines.append(MAIN_HEADER)
+            lines.append(MAIN_SEP)
             for i, row in enumerate(bucket, 1):
-                cells = _main_cells(i, row)
-                if flagged:
-                    cells.append(_flags_cell(row))
+                cells = _main_cells(i, row) + [_flags_cell(row)]
                 lines.append("| " + " | ".join(cells) + " |")
         lines.append("")
 
