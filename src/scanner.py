@@ -104,9 +104,13 @@ def scan_card(card, ebay, config, log=print):
         )
         for listing in listings:
             fingerprint = (listing.title.strip().lower(), listing.price)
-            if listing.item_id in seen_ids or fingerprint in seen_ids:
+            # item_id vazio nao identifica nada: se entrasse no set, o 1o
+            # anuncio sem id faria TODOS os seguintes sem id sumirem do scan.
+            if (listing.item_id and listing.item_id in seen_ids) \
+                    or fingerprint in seen_ids:
                 continue
-            seen_ids.add(listing.item_id)
+            if listing.item_id:
+                seen_ids.add(listing.item_id)
             seen_ids.add(fingerprint)
             unique_listings.append(listing)
 
