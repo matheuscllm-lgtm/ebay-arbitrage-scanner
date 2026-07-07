@@ -45,6 +45,11 @@ DEFAULT_CONFIG = {
     "trusted_min_feedback_pct": 98.0, # e >= 98% de feedback positivo
 }
 
+# Cross-check RAW (2026-07): se PriceCharting Ungraded e TCGplayer market
+# divergem mais que isto (fracao do TCG market), a referencia raw esta em
+# duvida -> flag + veredito no maximo REVISAR.
+RAW_REF_DIVERGENCE = 0.40
+
 
 def trust_score(listing):
     """Confiabilidade do anuncio (0-100), SEPARADA da margem.
@@ -103,10 +108,18 @@ def _trend_points(delta):
     return 60.0
 
 
-def evaluate(card, listing, fair, config=None):
+def evaluate(card, listing, fair, config=None, tcg_ref=None):
     """Avalia um anuncio contra o preco justo. Retorna Opportunity ou None.
 
     None = nem vale linha na tabela (carta nao casa, abaixo do piso, etc).
+
+    `tcg_ref` (src.tcg_reference.TcgReference | None): market TCGplayer da
+    carta RAW via tcgcsv. Quando presente:
+    - listing RAW -> TCGplayer market e a referencia PRINCIPAL da margem
+      (PriceCharting Ungraded vira cross-check de divergencia);
+    - listing GRADED -> referencia segue PriceCharting por grade (TCGplayer
+      nao tem preco graded); o market raw serve de sanity check contra
+      referencia graded stale.
     """
     cfg = dict(DEFAULT_CONFIG, **(config or {}))
     threshold = float(cfg["min_gross_margin_percent"])
@@ -172,6 +185,43 @@ def evaluate(card, listing, fair, config=None):
     GENERIC_95 = ("BGS 9.5", "CGC 9.5")
     lookup_grade = "GRADE 9.5" if grade in GENERIC_95 else grade
     fair_price = fair.price(lookup_grade)
+
+    # Referencia por tipo de anuncio (padrao da frota, 2026-07):
+    # - RAW: TCGplayer market (tcgcsv) e a referencia PRINCIPAL quando existe;
+    #   o Ungraded do PriceCharting vira cross-check. Sem TCG -> fallback
+    #   honesto e ROTULADO no PriceCharting (nunca fallback disfarcado de real).
+    # - GRADED: TCGplayer nao tem preco graded -> referencia segue
+    #   PriceCharting por grade; o market raw do TCG e so sanity check.
+    # As flags de referencia sao INFORMATIVAS: entram na coluna Flags mas nao
+    # no score de risco (senao todo raw-sem-TCG despencaria de score); o
+    # rebaixamento de veredito, quando devido, e explicito via `ref_demote`.
+    ref_kind = "pricecharting"
+    ref_flags = []
+    ref_demote = False
+    tcg_market = tcg_ref.market_usd if tcg_ref else None
+    if grade == "RAW":
+        if tcg_market:
+            pc_raw = fair_price  # Ungraded do PriceCharting (cross-check)
+            fair_price = tcg_market
+            ref_kind = "tcgplayer"
+            if pc_raw and abs(pc_raw - tcg_market) / tcg_market > RAW_REF_DIVERGENCE:
+                ref_flags.append(
+                    f"REF RAW DIVERGENTE (PC vs TCG): PriceCharting "
+                    f"${pc_raw:,.2f} vs TCGplayer ${tcg_market:,.2f} "
+                    f"(> {RAW_REF_DIVERGENCE:.0%}) -- validar a referencia "
+                    "antes de confiar na margem")
+                ref_demote = True
+        else:
+            ref_flags.append(
+                "REF: PriceCharting (sem TCG) -- sem market TCGplayer para "
+                "esta carta; referencia raw e o Ungraded do PriceCharting")
+    elif tcg_market and fair_price and fair_price < tcg_market:
+        ref_flags.append(
+            f"REF GRADED < RAW TCG (defasada?): justo {grade} "
+            f"${fair_price:,.2f} abaixo do market raw TCGplayer "
+            f"${tcg_market:,.2f} -- referencia graded provavelmente stale")
+        ref_demote = True
+
     if not fair_price:
         return None  # sem preco justo para essa grade, nao da pra avaliar
     if grade in GENERIC_95:
@@ -243,6 +293,13 @@ def evaluate(card, listing, fair, config=None):
     else:
         verdict = "OPORTUNIDADE"
 
+    # Flags de referencia entram DEPOIS do calculo de score/veredito base
+    # (informativas, nao penalizam risco); rebaixamento explicito quando a
+    # referencia esta em duvida (divergencia PC x TCG / graded stale).
+    flags.extend(ref_flags)
+    if ref_demote and verdict == "OPORTUNIDADE":
+        verdict = "REVISAR"
+
     return Opportunity(
         card=card, listing=listing, grade=grade, fair_value=fair_price,
         gross_margin_pct=round(margin_pct, 1), liquidity_per_month=sales,
@@ -250,4 +307,7 @@ def evaluate(card, listing, fair, config=None):
         spread_psa9_pct=round(spread9, 0), spread_psa10_pct=round(spread10, 0),
         risk_flags=flags, score=round(score, 1), verdict=verdict,
         trust_score=round(trust_score(listing), 0),
+        tcg_market=tcg_market,
+        tcg_url=(tcg_ref.product_url if tcg_ref else ""),
+        ref_kind=ref_kind,
     )

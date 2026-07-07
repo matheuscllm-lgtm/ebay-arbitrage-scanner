@@ -27,7 +27,21 @@ Copy `watchlist.example.yaml` to `watchlist.yaml` and add your own items.
 ```bash
 python main.py --pricing-only   # reference prices only (no credentials needed)
 python main.py                  # full run (needs the API credentials above)
+python main.py --list-groups    # list watchlist groups (no credentials needed)
+python main.py --group <name>   # scan only the items in one watchlist group
+python main.py --include-raw    # also evaluate ungraded (raw) items this run
 ```
+
+A full run writes a JSON artifact with every evaluated row (default
+`results/last_scan.json`, kept out of the repo). The report table is then
+generated from that artifact by the summary tool:
+
+```bash
+python ebay_summary.py results/last_scan.json -o results/report-<date>.md
+```
+
+It prints the markdown report (all rows, grouped by verdict, each row with
+the listing link and the price-reference link) and saves it to `-o`.
 
 Run `python main.py --help` for all options.
 
