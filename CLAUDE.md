@@ -80,7 +80,7 @@ cp watchlist.example.yaml watchlist.yaml   # e preencher com os itens reais
 
 ```powershell
 cd C:\Users\mathe\ebay-arbitrage-scanner
-.venv\Scripts\python -m pytest tests/ -q        # 75 testes, offline
+.venv\Scripts\python -m pytest tests/ -q        # 76 testes, offline
 .venv\Scripts\python main.py --pricing-only     # sem credenciais (PriceCharting apenas)
 .venv\Scripts\python main.py                    # scan completo (exige EBAY_CLIENT_ID/SECRET)
 .venv\Scripts\python main.py --confiavel        # so vendedores >=50 avals/98%+, margem 30-60%
@@ -135,7 +135,7 @@ operador o invoca.
 python -m pytest -q          # canônico (pytest.ini já escopa testpaths=tests)
 ```
 
-No PC do operador: `.venv\Scripts\python -m pytest tests/ -q`. São 75 testes,
+No PC do operador: `.venv\Scripts\python -m pytest tests/ -q`. São 76 testes,
 todos offline (sem rede, sem credenciais).
 
 CI: `.github/workflows/tests.yml` — job `pytest` em `ubuntu-latest`,
@@ -178,7 +178,7 @@ src/scorer.py          avaliacao -> Opportunity: margem bruta, score 0-100 (marg
                        margem, vereditos OPORTUNIDADE/REVISAR/SUSPEITO/REJEITADO
 src/report.py          ENTREGA canonica (to_markdown / fair_value_markdown) + to_csv (registro)
 src/models.py          dataclasses (WatchCard, Listing, FairValue, Opportunity)
-tests/                 75 testes offline (pricecharting parse, report, scanner ref, scorer,
+tests/                 76 testes offline (pricecharting parse, report, scanner ref, scorer,
                        sanitizacao de segredo, title parser) + fixture real
 ```
 
