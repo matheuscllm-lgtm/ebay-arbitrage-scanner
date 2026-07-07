@@ -87,8 +87,50 @@ def test_run_scan_pricing_only_respects_group(tmp_path, monkeypatch):
         return scanner.pricecharting.parse_product_page("", source_url=url)
 
     monkeypatch.setattr(scanner.pricecharting, "get_fair_value", fake_fair_value)
-    fair_values, opps = scanner.run_scan(watchlist_path=path, pricing_only=True,
-                                         log=lambda *a, **k: None,
-                                         group="vintage-jp")
+    fair_values, opps, effective_pricing_only = scanner.run_scan(
+        watchlist_path=path, pricing_only=True,
+        log=lambda *a, **k: None, group="vintage-jp")
     assert asked == ["https://example.com/pikachu"]
     assert opps == []
+    assert effective_pricing_only is True
+
+
+class _UnconfiguredEbay:
+    configured = False
+
+
+def test_run_scan_reports_degraded_mode(tmp_path, monkeypatch):
+    # Sem EBAY_CLIENT_ID/SECRET o run degrada para pricing-only e o retorno
+    # DIZ isso (3o elemento True) -- o caller nao pode tratar como scan real.
+    path = write_watchlist(tmp_path)
+    monkeypatch.setattr(scanner, "EbayClient", _UnconfiguredEbay)
+    monkeypatch.setattr(
+        scanner.pricecharting, "get_fair_value",
+        lambda url, cache_dir="data/cache":
+            scanner.pricecharting.parse_product_page("", source_url=url))
+    _, opps, effective_pricing_only = scanner.run_scan(
+        watchlist_path=path, pricing_only=False, log=lambda *a, **k: None)
+    assert opps == []
+    assert effective_pricing_only is True
+
+
+def test_degraded_scan_never_overwrites_artifact(tmp_path, monkeypatch, capsys):
+    # Guarda anti "verde mas vazio": run degradado (sem chaves) NAO pode
+    # sobrescrever o artefato JSON do ultimo scan real com 0 rows.
+    path = write_watchlist(tmp_path)
+    out = tmp_path / "last_scan.json"
+    out.write_text('{"meta": {"real": true}, "rows": [{"x": 1}]}',
+                   encoding="utf-8")
+    monkeypatch.delenv("EBAY_CLIENT_ID", raising=False)
+    monkeypatch.delenv("EBAY_CLIENT_SECRET", raising=False)
+    monkeypatch.setattr(
+        scanner.pricecharting, "get_fair_value",
+        lambda url, cache_dir="data/cache":
+            scanner.pricecharting.parse_product_page("", source_url=url))
+    monkeypatch.setattr(sys, "argv",
+                        ["main.py", "--watchlist", path, "--out", str(out)])
+    main_mod.main()
+    console = capsys.readouterr().out
+    assert "NAO gravado" in console
+    # O artefato anterior segue intacto.
+    assert '"real": true' in out.read_text(encoding="utf-8")

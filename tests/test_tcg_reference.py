@@ -206,3 +206,18 @@ def test_ambiguous_confirmed_match_returns_none(monkeypatch):
         {"productId": 701, "subTypeName": "Holofoil", "marketPrice": 900.0},
     ]})
     assert tcg_reference.get_tcg_reference(card(number="4")) is None
+
+
+def test_non_english_card_gets_no_tcg_reference(monkeypatch):
+    # MAJOR do review PR #18: a categoria 3 do tcgcsv e o catalogo INGLES do
+    # TCGplayer -- carta JP casaria com o produto EN homonimo e a margem
+    # sairia do produto errado rotulada como "TCG real". JP => None (cai no
+    # fallback PriceCharting ROTULADO), sem sequer tocar a rede/fixtures.
+    def explode(url, cache_dir=None):
+        raise AssertionError(f"carta nao-EN nao pode consultar o tcgcsv: {url}")
+    monkeypatch.setattr(tcg_reference, "_fetch_json", explode)
+    assert tcg_reference.get_tcg_reference(card(language="JP")) is None
+    assert tcg_reference.get_tcg_reference(card(language="jp")) is None
+    # EN continua passando pelo caminho normal (fixtures reais).
+    patch_fetch(monkeypatch)
+    assert tcg_reference.get_tcg_reference(card(language="EN")) is not None
