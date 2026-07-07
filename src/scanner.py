@@ -104,9 +104,13 @@ def scan_card(card, ebay, config, log=print):
         )
         for listing in listings:
             fingerprint = (listing.title.strip().lower(), listing.price)
-            if listing.item_id in seen_ids or fingerprint in seen_ids:
+            # item_id vazio nao identifica nada: se entrasse no set, o 1o
+            # anuncio sem id faria TODOS os seguintes sem id sumirem do scan.
+            if (listing.item_id and listing.item_id in seen_ids) \
+                    or fingerprint in seen_ids:
                 continue
-            seen_ids.add(listing.item_id)
+            if listing.item_id:
+                seen_ids.add(listing.item_id)
             seen_ids.add(fingerprint)
             unique_listings.append(listing)
 
@@ -147,12 +151,12 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
     for card in cards:
         try:
             if pricing_only:
-                fair_values[card.name + card.number] = (
+                fair_values[(card.name, card.number)] = (
                     card, pricecharting.get_fair_value(card.pc_url))
                 log(f"  preco justo OK: {card.name} #{card.number}")
             else:
                 fair, opps = scan_card(card, ebay, config, log=log)
-                fair_values[card.name + card.number] = (card, fair)
+                fair_values[(card.name, card.number)] = (card, fair)
                 all_opportunities.extend(opps)
         except EbayAuthError as e:
             log(f"ERRO de autenticacao eBay: {e}")
