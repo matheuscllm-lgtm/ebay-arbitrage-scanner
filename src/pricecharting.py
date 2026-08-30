@@ -167,16 +167,43 @@ def get_fair_value(pc_url, cache_dir="data/cache"):
     return parse_product_page(body, source_url=pc_url)
 
 
-def search_product(query, cache_dir="data/cache"):
-    """Busca uma carta no PriceCharting e retorna a URL do primeiro resultado.
+def product_url_from_search(body):
+    """URL do produto a partir do corpo de uma pagina de busca (funcao pura).
 
-    Util quando a watchlist nao traz pc_url explicita (mas URL explicita e
-    sempre mais precisa).
+    Dois casos reais do PriceCharting (verificados 2026-08-30):
+
+    1. Busca ESPECIFICA (set + nome + numero) -> o site REDIRECIONA direto pra
+       pagina do produto. Nao existe link de resultado no HTML; a identidade da
+       pagina vem do <link rel="canonical">, que ja aponta pra /game/<set>/<carta>.
+    2. Busca AMBIGUA -> fica na pagina de busca e o canonical aponta de volta pra
+       propria /search-products. A tabela de resultados (#games_table) chega com
+       tbody VAZIO (preenchida por JS), entao nao ha link pra extrair sem browser.
+
+    Retorna a URL do produto so no caso 1 (identidade certa). No caso 2 devolve
+    None em vez de chutar um resultado — precisao acima de cobertura, como manda
+    o desenho list-driven da watchlist.
     """
-    q = urllib.parse.quote(query)
-    url = f"https://www.pricecharting.com/search-products?q={q}&type=prices"
-    body = fetch_page(url, cache_dir=cache_dir)
+    m = re.search(r'<link[^>]+rel="canonical"[^>]+href="([^"]+)"', body, re.I)
+    if m and "/game/" in m.group(1):
+        # O href vem HTML-escapado; set com "&" (ex.: Scarlet & Violet) chega
+        # como "&amp;" e uma URL assim NAO baixa. Desescapar e obrigatorio.
+        return html_mod.unescape(m.group(1))
+    # Fallback: markup com link de resultado direto (nao observado hoje, mas
+    # barato de manter e cobre uma volta atras do site).
     m = re.search(r'href="(/game/[^"]+)"', body)
     if m:
         return "https://www.pricecharting.com" + m.group(1)
     return None
+
+
+def search_product(query, cache_dir="data/cache"):
+    """Busca uma carta no PriceCharting e retorna a URL do produto, ou None.
+
+    Util quando a watchlist nao traz pc_url explicita (mas URL explicita e
+    sempre mais precisa). Ver product_url_from_search para os dois casos que o
+    site apresenta e por que busca ambigua devolve None.
+    """
+    q = urllib.parse.quote(query)
+    url = f"https://www.pricecharting.com/search-products?q={q}&type=prices"
+    body = fetch_page(url, cache_dir=cache_dir)
+    return product_url_from_search(body)
