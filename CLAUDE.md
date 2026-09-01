@@ -118,6 +118,13 @@ real — nunca sobrescreve com um relatório vazio "verde". A **entrega** sai de
 - `--group <nome>` — roda só as cartas do grupo nomeado (ex.: `chase-en`).
 - `--include-raw` — inclui o funil raw NM NESTE run (referência = TCGplayer via
   tcgcsv); sem a flag, raw fica fora (`graded_only: true`).
+- `--grades "PSA 10"` — restringe o funil DESTE run a grades específicas
+  (separadas por vírgula; aceita grafia informal: `psa10` = `PSA 10`). Só as
+  empresas pedidas são buscadas (PSA-10-only não gasta query com bgs/cgc);
+  grade conhecida fora da lista sai do funil em silêncio (escopo, não
+  rejeição); grade desconhecida no argumento erra ALTO (typo não vira scan
+  vazio). O cabeçalho da entrega declara o funil restrito. RAW na lista só
+  tem efeito junto com `--include-raw`.
 - `--pricing-only` — só preço justo da watchlist (PriceCharting); não consulta
   o eBay, não precisa de credencial. Sem credenciais configuradas, o scan
   completo cai neste modo sozinho, com aviso.
@@ -187,7 +194,10 @@ são classificação técnica; **nunca recomendar compra**.
   graded segue PriceCharting.
 - **PriceCharting** (preço justo/tendência/liquidez): scrape público com
   urllib + cache 24h em `data/cache/` (`src/pricecharting.py`). Validado
-  2026-06-09 (HTTP 200). A tabela principal usa ids herdados de video game:
+  2026-06-09 (HTTP 200). Erro transitório de rede (timeout de handshake TLS,
+  reset, 429/5xx) tem **retry automático** (3 tentativas, backoff 2s/4s —
+  caso real 2026-09-01: um handshake pendurado derrubou uma carta do run);
+  4xx definitivo não repete. A tabela principal usa ids herdados de video game:
   `used_price`=RAW, `complete_price`=Grade 7, `new_price`=Grade 8,
   `graded_price`=PSA 9, `box_only_price`=Grade 9.5, `manual_only_price`=PSA 10.
   BGS/CGC/SGC vêm da seção `#full-prices`.

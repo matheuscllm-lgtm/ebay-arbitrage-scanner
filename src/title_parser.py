@@ -22,6 +22,9 @@ _GRADE_PATTERNS = [
     (r"\bCGC[\s:-]*9\.5\b", "CGC 9.5"),
 ]
 
+# Grades graduadas que o funil reconhece (fonte unica p/ validacao do --grades).
+KNOWN_GRADES = tuple(g for _, g in _GRADE_PATTERNS)
+
 # Grades graduadas FORA do escopo (presenca = rejeitar, nao e raw nem aceita).
 _OUT_OF_SCOPE_GRADE = re.compile(
     r"\b(PSA|BGS|CGC|SGC|ACE|TAG|AGS|GMA|HGA)[\s:-]*(\d+(?:\.\d+)?)\b", re.I

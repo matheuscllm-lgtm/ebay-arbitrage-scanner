@@ -50,6 +50,12 @@ def main():
                          "TCGplayer market via tcgcsv; PriceCharting vira "
                          "cross-check). Nao altera o default graded-only do "
                          "config -- e uma reversao sancionada por-run")
+    ap.add_argument("--grades", default="",
+                    help='restringe o funil DESTE run a grades especificas, '
+                         'separadas por virgula (ex.: --grades "PSA 10"). '
+                         'Aceitas: PSA 10, PSA 9, BGS 10, BGS 9.5, CGC 10, '
+                         'CGC 9.5, RAW (RAW so tem efeito com --include-raw). '
+                         'Vazio = escopo padrao do config')
     ap.add_argument("--group", default="",
                     help="escaneia so as cartas do grupo indicado "
                          "(campo `group:` da watchlist); vazio = todas")
@@ -77,6 +83,11 @@ def main():
         # Habilita raw NM SO neste run (o default `graded_only: true` do
         # config e decisao de escopo do operador e continua intacto).
         config["graded_only"] = False
+    if args.grades:
+        try:
+            config["allowed_grades"] = scanner.parse_grades_arg(args.grades)
+        except ValueError as e:
+            sys.exit(f"ERRO: {e}")
 
     cards_in_scope = scanner.filter_group(
         scanner.load_watchlist(args.watchlist), args.group)

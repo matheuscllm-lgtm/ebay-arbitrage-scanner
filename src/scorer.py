@@ -137,6 +137,14 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None):
     grade = title_parser.detect_grade(listing.title)
     if cfg.get("graded_only") and grade == "RAW":
         return None  # escopo atual: so graded (PSA 9/10, BGS 9.5/10, CGC 9.5/10)
+    # Funil restrito por run (--grades, ex. so "PSA 10"): grade conhecida fora
+    # da lista sai do funil em silencio, igual ao RAW no graded-only -- nao e
+    # linha rejeitada, e escopo que o operador pediu. Grade None (empresa/nota
+    # desconhecida) segue o caminho normal de rejeicao visivel, que e sinal de
+    # risco, nao de escopo.
+    allowed = cfg.get("allowed_grades") or []
+    if allowed and grade is not None and grade not in allowed:
+        return None
 
     flags = title_parser.risk_flags(listing.title, listing)
     rejected = False
