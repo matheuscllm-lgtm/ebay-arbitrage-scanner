@@ -1,4 +1,5 @@
 """Orquestracao: watchlist -> preco justo -> anuncios -> avaliacao."""
+import re
 import statistics
 import sys
 
@@ -18,6 +19,48 @@ GRADE_QUERY_SUFFIXES = ["", " psa", " bgs", " cgc"]
 # Em modo graded-only a query generica so traria raw (descartado) -- buscar
 # direto por empresa de grading rende mais slabs por pagina.
 GRADED_ONLY_SUFFIXES = [" psa", " bgs", " cgc"]
+_COMPANY_SUFFIX = {"PSA": " psa", "BGS": " bgs", "CGC": " cgc"}
+
+
+def parse_grades_arg(text):
+    """'psa10, cgc 10' -> ['PSA 10', 'CGC 10']. ValueError em grade desconhecida.
+
+    Tolerante a grafia informal (maiuscula/minuscula, com/sem espaco), mas
+    NUNCA aceita grade fora do funil em silencio -- typo tem que errar alto,
+    senao o run viraria um scan vazio "verde"."""
+    valid = set(title_parser.KNOWN_GRADES) | {"RAW"}
+    out = []
+    for tok in text.split(","):
+        tok = tok.strip().upper()
+        if not tok:
+            continue
+        m = re.match(r"^(PSA|BGS|CGC)\s*[-:]?\s*([\d.]+)$", tok)
+        if m:
+            tok = f"{m.group(1)} {m.group(2)}"
+        if tok not in valid:
+            raise ValueError(
+                f"grade desconhecida em --grades: {tok!r} "
+                f"(aceitas: {', '.join(sorted(valid))})")
+        if tok not in out:
+            out.append(tok)
+    return out
+
+
+def query_suffixes(config):
+    """Sufixos de busca do run, derivados do funil configurado.
+
+    Com `allowed_grades` (--grades), so as empresas pedidas sao buscadas --
+    um run PSA-10-only nao gasta requisicoes com " bgs"/" cgc"."""
+    allowed = config.get("allowed_grades") or []
+    if allowed:
+        companies = {g.split()[0] for g in allowed}
+        sfx = [_COMPANY_SUFFIX[c] for c in ("PSA", "BGS", "CGC")
+               if c in companies]
+        if not config.get("graded_only", True):
+            sfx = [""] + sfx
+        return sfx or ([""] if not config.get("graded_only", True) else [])
+    return (GRADED_ONLY_SUFFIXES if config.get("graded_only", True)
+            else GRADE_QUERY_SUFFIXES)
 
 
 def load_watchlist(path="watchlist.yaml"):
@@ -123,9 +166,7 @@ def scan_card(card, ebay, config, log=print):
     seen_ids = set()
     unique_listings = []
     base_query = card.default_query()
-    suffixes = (GRADED_ONLY_SUFFIXES if config.get("graded_only", True)
-                else GRADE_QUERY_SUFFIXES)
-    for suffix in suffixes:
+    for suffix in query_suffixes(config):
         listings = ebay.search(
             base_query + suffix,
             min_price=float(config.get("min_price_usd", 10.0)),

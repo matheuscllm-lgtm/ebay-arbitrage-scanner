@@ -15,6 +15,7 @@ import json
 import os
 import re
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -28,6 +29,13 @@ HEADERS = {
 
 CACHE_TTL_SECONDS = 24 * 3600
 REQUEST_GAP_SECONDS = 2.0  # pausa entre requisicoes (educacao com o site)
+# Erro transitorio de rede (handshake TLS pendurado, conexao resetada, 5xx)
+# nao pode derrubar a carta do run -- caso real 2026-09-01: um unico handshake
+# timeout tirou o Machamp V do scan inteiro. Tenta de novo com backoff curto;
+# so depois de esgotar as tentativas o erro sobe (e o scanner pula a carta
+# com aviso, como antes).
+FETCH_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2.0
 
 # A tabela principal (#price_data) usa ids herdados de video game; em cartas
 # eles significam grades:
@@ -78,14 +86,31 @@ def fetch_page(url, cache_dir="data/cache"):
             with open(cache_path, encoding="utf-8") as f:
                 return f.read()
 
-    wait = REQUEST_GAP_SECONDS - (time.time() - _last_request_at[0])
-    if wait > 0:
-        time.sleep(wait)
-    req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        data = r.read()
-        if r.headers.get("Content-Encoding") == "gzip":
-            data = gzip.decompress(data)
+    last_err = None
+    for attempt in range(FETCH_ATTEMPTS):
+        if attempt:
+            time.sleep(RETRY_BACKOFF_SECONDS * attempt)
+        wait = REQUEST_GAP_SECONDS - (time.time() - _last_request_at[0])
+        if wait > 0:
+            time.sleep(wait)
+        req = urllib.request.Request(url, headers=HEADERS)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = r.read()
+                if r.headers.get("Content-Encoding") == "gzip":
+                    data = gzip.decompress(data)
+            break
+        except urllib.error.HTTPError as e:
+            _last_request_at[0] = time.time()
+            if e.code == 429 or e.code >= 500:
+                last_err = e
+                continue
+            raise  # 4xx (URL errada, bloqueio) nao e transitorio: falha ja
+        except OSError as e:  # URLError, TimeoutError, reset -- transitorios
+            _last_request_at[0] = time.time()
+            last_err = e
+    else:
+        raise last_err
     _last_request_at[0] = time.time()
     body = data.decode("utf-8", errors="replace")
     with open(cache_path, "w", encoding="utf-8") as f:

@@ -127,6 +127,9 @@ def build_markdown(payload):
     date = (meta.get("timestamp") or "")[:10] or "?"
     scope = f" · grupo `{meta['group']}`" if meta.get("group") else ""
     modes = []
+    allowed = (meta.get("config") or {}).get("allowed_grades") or []
+    if allowed:
+        modes.append(f"funil restrito a {' + '.join(allowed)} (--grades)")
     if meta.get("include_raw"):
         modes.append("raw NM incluído (--include-raw)")
     if meta.get("trusted_mode"):

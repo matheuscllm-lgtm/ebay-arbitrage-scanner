@@ -192,6 +192,7 @@ def scan_payload(opportunities, watchlist_count, config, include_raw=False,
             "min_price_usd": config.get("min_price_usd", 10.0),
             "suspicious_margin_percent": config.get("suspicious_margin_percent", 60),
             "graded_only": config.get("graded_only", True),
+            "allowed_grades": list(config.get("allowed_grades") or []),
             "required_location_country": config.get("required_location_country", "US"),
         },
     }
