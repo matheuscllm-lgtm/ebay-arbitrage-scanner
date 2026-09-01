@@ -61,6 +61,26 @@ _OTHER_LANG = re.compile(
     r"deutsch|coreana?|kor)\b", re.I
 )
 
+# Nomenclatura de raridade/set JAPONESA sem a palavra "japanese" no titulo.
+# Caso real 2026-09-01: "Alakazam ex 201/165 ... Holo SAR PSA 10" a $175 era a
+# versao JAPONESA (SAR = Special Art Rare, codigo do mercado JP; em EN a
+# raridade e SIR) -- detect_language dizia EN e a margem de 81% saia comparando
+# a carta JP com a referencia EN ($317), ou seja, produto errado. SAR/CHR/CSR
+# sao codigos de raridade exclusivos do mercado JP; sv2a/s4a/sm12a etc. sao
+# codigos de SET japoneses (numero + letra minuscula no fim).
+_JP_NOMENCLATURE = re.compile(
+    r"\b(SAR|CHR|CSR)\b|\b(?:s|sv|sm)\d{1,2}[ab]\b", re.I)
+_EN_EXPLICIT = re.compile(r"\benglish\b", re.I)
+
+
+def jp_nomenclature_hint(title):
+    """True se o titulo usa nomenclatura do mercado JP sem dizer 'English'.
+
+    Nao e prova de carta japonesa -- e indicio forte o bastante para, numa
+    watchlist EN, rejeitar com motivo visivel (precisao > cobertura: margem
+    contra referencia do produto errado custa dinheiro real)."""
+    return bool(_JP_NOMENCLATURE.search(title)) and not _EN_EXPLICIT.search(title)
+
 
 def detect_grade(title):
     """Retorna a grade detectada ('RAW' se nenhuma) ou None se fora do escopo.

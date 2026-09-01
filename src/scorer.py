@@ -164,6 +164,15 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None):
         rejected = True
     elif lang != card.language:
         flags.append(f"IDIOMA: anuncio parece {lang}, watchlist espera {card.language}")
+    elif card.language == "EN" and title_parser.jp_nomenclature_hint(listing.title):
+        # Caso real 2026-09-01 (Alakazam ex 201 "SAR"): carta JP sem a palavra
+        # "japanese" no titulo casava com a referencia EN e saia como margem
+        # de 81%. Prefixo REJEITAR tambem tira a linha da mediana de mercado.
+        flags.append("REJEITAR IDIOMA: nomenclatura japonesa no titulo "
+                     "(SAR/CHR/CSR ou codigo de set JP) sem 'English' -- "
+                     "provavel versao JP; a referencia e da carta EN, a "
+                     "margem sairia de produto errado")
+        rejected = True
 
     if grade == "RAW" and not title_parser.is_nm_acceptable(listing.title, listing.condition):
         flags.append("CONDICAO: raw sem NM confirmado (invariante: raw so Near Mint)")

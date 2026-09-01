@@ -149,3 +149,54 @@ def test_fetch_page_nao_repete_erro_definitivo(tmp_path, monkeypatch):
         pricecharting.fetch_page("https://example.test/z",
                                  cache_dir=str(tmp_path))
     assert calls["n"] == 1
+
+
+# ── nomenclatura japonesa sem "japanese" no titulo (caso Alakazam SAR) ───────
+
+ALAKAZAM = WatchCard(name="Alakazam ex", set_name="Scarlet & Violet 151",
+                     number="201", language="EN", pc_url="")
+FAIR_ALAKAZAM = FairValue(prices={"PSA 10": 317.0},
+                          sales_per_month={"PSA 10": 30.0})
+
+
+def test_titulo_com_sar_e_rejeitado_na_watchlist_en():
+    # Titulo REAL do scan de 2026-09-01: carta JAPONESA (SAR) sem a palavra
+    # "japanese" -- saia como SUSPEITO com margem falsa de 81% contra a
+    # referencia EN. Tem que ser REJEITADO com motivo de idioma.
+    o = scorer.evaluate(
+        ALAKAZAM,
+        L("2023 Pokemon Alakazam ex 201/165 Sv: Scarlet & Violet 151 Holo "
+          "SAR PSA 10", 175.0),
+        FAIR_ALAKAZAM)
+    assert o is not None
+    assert o.verdict == "REJEITADO"
+    assert any("IDIOMA" in f and f.startswith("REJEITAR") for f in o.risk_flags)
+
+
+def test_sir_em_ingles_nao_dispara_o_guard():
+    o = scorer.evaluate(
+        ALAKAZAM,
+        L("Alakazam ex 201/165 Scarlet & Violet 151 SIR PSA 10", 220.0),
+        FAIR_ALAKAZAM)
+    assert o is not None
+    assert not any(f.startswith("REJEITAR IDIOMA") for f in o.risk_flags)
+
+
+def test_english_explicito_desarma_o_indicio():
+    from src import title_parser
+    assert title_parser.jp_nomenclature_hint("Alakazam SAR PSA 10")
+    assert not title_parser.jp_nomenclature_hint("Alakazam SAR English PSA 10")
+    assert title_parser.jp_nomenclature_hint("Charizard sv2a 201/165 PSA 10")
+    assert not title_parser.jp_nomenclature_hint("Charizard ex Obsidian Flames 223 PSA 10")
+
+
+def test_sar_sai_da_mediana_de_mercado():
+    # O prefixo REJEITAR tambem exclui a linha da mediana usada no sanity
+    # check da referencia (senao preco JP poluiria a mediana EN).
+    from src import scanner as scn
+    listings = [
+        L("Alakazam ex 201/165 SAR PSA 10", 175.0),
+        L("Alakazam ex 201/165 SIR PSA 10", 300.0, item_id="2"),
+    ]
+    asks = scn._clean_ask_prices(ALAKAZAM, listings)
+    assert asks.get("PSA 10") == [300.0]
