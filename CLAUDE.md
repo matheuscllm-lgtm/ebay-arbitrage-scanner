@@ -74,10 +74,12 @@ Erros recorrentes (3 famílias — detalhe no manual):
 ## Como rodar
 
 > 🎯 **Skill `scan-ebay`** (`.claude/skills/scan-ebay/SKILL.md`): quando o
-> operador pedir pra "rodar o eBay", o agente **pergunta o escopo** (qual
-> grupo da watchlist via `--list-groups` + qual funil: graded-only default /
-> `--include-raw` / `--confiavel`), roda o scan com `--out` e entrega SEMPRE
-> via `ebay_summary.py` — verbatim.
+> operador pedir pra "rodar o eBay", vale o **padrão de entrega (operador,
+> 2026-09-01)**: grupo `longterm` = top **100** do ranking GRADED do
+> `pokemon-longterm-outlook`, funil `--grades "PSA 10"`, threshold 15%.
+> Perguntar o escopo (grupo via `--list-groups` + funil: graded-only /
+> `--include-raw` / `--confiavel`) só quando o pedido fugir do padrão.
+> Entrega SEMPRE via `ebay_summary.py` — verbatim.
 
 **Setup (1ª vez, qualquer ambiente):** o run exige uma watchlist, que é
 local-only (gitignored) e NÃO vem num clone limpo:

@@ -17,9 +17,27 @@ O scanner compara anúncios ativos do eBay (Browse API) com o preço justo:
 **raw NM** (opt-in por run) contra o **market do TCGplayer** (via tcgcsv.com),
 com PriceCharting como cross-check rotulado.
 
-## Passo 1 — SEMPRE perguntar o escopo (AskUserQuestion)
+## Padrão de entrega do operador (2026-09-01) — o run default
 
-Ao ser invocado, **pergunte ao operador** — nunca assuma:
+Quando o operador pedir "roda o eBay" **sem especificar escopo**, o padrão é:
+
+- **grupo `longterm`** = top **100** do ranking GRADED do
+  `pokemon-longterm-outlook` (`run_outlook.py --graded`), com `pc_url`
+  resolvido pelo `outlook/psa10.py` (a watchlist é local-only/gitignored —
+  num clone limpo, regenerar a partir do ranking antes do scan);
+- **funil só PSA 10**: `--grades "PSA 10"`;
+- **threshold 15%** (já é o default do `config.yaml` desde 2026-09-01).
+
+```bash
+python main.py --group longterm --grades "PSA 10" --out results/last_scan.json
+```
+
+Pergunte o escopo (Passo 1) só quando o pedido fugir desse padrão ou o
+operador sinalizar outro grupo/funil.
+
+## Passo 1 — perguntar o escopo quando fugir do padrão (AskUserQuestion)
+
+Fora do padrão acima, **pergunte ao operador** — nunca assuma:
 
 1. **Qual grupo da watchlist rodar?** Obtenha as opções DINAMICAMENTE (não
    precisa de chaves eBay):
@@ -47,7 +65,10 @@ $env:PYTHONIOENCODING="utf-8"
   terminal antiga pode não herdar → passar inline se "ausentes").
 - Sem `--group` = watchlist inteira. `--pricing-only` não gera artefato JSON
   (não há anúncios avaliados).
-- Threshold do repo é percentual INTEIRO (`min_gross_margin_percent: 30`).
+- Threshold do repo é percentual INTEIRO (`min_gross_margin_percent: 15`
+  desde 2026-09-01; era 30).
+- `--grades "PSA 10"` restringe o funil do run a grades específicas (ver
+  CLAUDE.md, flags do CLI).
 
 ## Passo 3 — entregar (ritual FIXO, contrato do repo, não negociável)
 
