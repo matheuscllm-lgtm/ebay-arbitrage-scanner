@@ -43,10 +43,13 @@ Erros recorrentes (3 famílias — detalhe no manual):
 1. **Nunca recomendar compra.** O agente é técnico (código/auditoria/dados);
    capital é decisão do operador. Vereditos são classificação técnica
    (OPORTUNIDADE / REVISAR / SUSPEITO / REJEITADO — ver `src/scorer.py`).
-2. **Margem bruta pura, threshold 30%.** `(justo − preço)/preço`, ZERO taxa
-   embutida. Mesma base da fórmula da frota `(revenda − compra)/compra` — aqui
-   "justo" é a revenda esperada e "preço" é a compra (o preço do anúncio);
-   implementação em `src/scorer.py`. Piso USD 10 (`min_price_usd: 10.0`).
+2. **Margem bruta pura, threshold 15% NESTE scanner** (decisão do operador,
+   2026-09-01: 30 → 15 — slab graded raramente dá 30%; divergência declarada
+   vs o mínimo 30% da frota, que segue valendo nos demais scanners).
+   `(justo − preço)/preço`, ZERO taxa embutida. Mesma base da fórmula da
+   frota `(revenda − compra)/compra` — aqui "justo" é a revenda esperada e
+   "preço" é a compra (o preço do anúncio); implementação em `src/scorer.py`.
+   Piso USD 10 (`min_price_usd: 10.0`).
 3. **Só graded por default (2026-06-10):** PSA 9/10, BGS 9.5/10, CGC 9.5/10.
    Raw está fora do funil default (`graded_only: true` no config — decisão de
    escopo do operador, não mexer). O caminho SANCIONADO de reversão é
@@ -58,9 +61,10 @@ Erros recorrentes (3 famílias — detalhe no manual):
    inclusive REJEITADO com motivo), flag por linha, **gerada pelo
    `ebay_summary.py`** e colada VERBATIM (ver seção 📤 abaixo). Nunca
    arquivo/planilha por padrão (só se o operador pedir).
-5. **Threshold deste repo é percentual INTEIRO** (`min_gross_margin_percent: 30`
-   em `config.yaml`). Atenção: CT usa fração (0.30), MYP/Liga usam inteiro —
-   aqui é inteiro, nomeado explicitamente para não haver pegadinha.
+5. **Threshold deste repo é percentual INTEIRO** (`min_gross_margin_percent: 15`
+   em `config.yaml`, desde 2026-09-01). Atenção: CT usa fração (0.30),
+   MYP/Liga usam inteiro — aqui é inteiro, nomeado explicitamente para não
+   haver pegadinha.
 6. **Só vendedor com item nos EUA.** A entrega é na COMC (Algona, WA
    98001-7409, EUA — mailbox de armazenamento). Filtro `itemLocationCountry:US`
    na API + checagem-cinto-de-segurança no scorer
