@@ -115,6 +115,11 @@ def _clean_ask_prices(card, listings):
         tf = title_parser.risk_flags(listing.title)
         if any(f.startswith(("REJEITAR", "LOTE")) for f in tf):
             continue
+        # Provavel carta JP (nomenclatura SAR/CHR/CSR sem "English") numa
+        # watchlist EN: preco de outro produto nao entra na mediana EN.
+        if (card.language == "EN"
+                and title_parser.jp_nomenclature_hint(listing.title)):
+            continue
         if grade == "RAW" and not title_parser.is_nm_acceptable(
                 listing.title, listing.condition):
             continue
