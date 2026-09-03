@@ -1,54 +1,85 @@
-"""O metodo de avaliacao -- transforma (anuncio + preco justo) em veredito.
+"""O metodo de avaliacao -- transforma (anuncio + referencia) em veredito.
 
-Regras canonicas do operador (cross-scanner):
-- Margem BRUTA pura: (preco_justo - preco_do_anuncio) / preco_do_anuncio.
-  ZERO taxas embutidas (sem fee, frete, cartao, IOF, FX) -- operador calcula
-  taxas por fora. Frete aparece em coluna separada, informativo.
-- Threshold de margem: 30% (inteiro percentual no config, sem pegadinha de fracao).
-- Piso de preco: USD 10 (~R$50) -- carta abaixo disso nao vale o esforco.
-- O scanner NUNCA recomenda compra. Veredito e classificacao tecnica;
-  decisao de capital e do operador.
+Padrao COMC (operador, 2026-09-03), regras canonicas:
+- Tres metricas, nomeadas assim e so assim (nunca "lucro"):
+    Desconto%  = (ref - preco) / ref   -> GATE ajustavel (`min_discount_percent`,
+                                          inteiro; `--min-discount` por run)
+    Spread$    = ref - preco           -> bruto, sem taxa nenhuma (frete a parte)
+    ROI bruto% = (ref - preco) / preco -> `gross_margin_pct` (coluna; SUSPEITO acima
+                                          de `suspicious_margin_percent`)
+- Referencia de SLAB = mediana de vendas concluidas da MESMA carta, variante,
+  certificadora, nota e subcategoria (PriceCharting, `src/pc_sales.py`):
+  >=3 vendas em 180 d = OK; >=3 so em 365 d = OK + nota baixa-liquidez; 1-2 =
+  REVISAR `vendas<3(n=…)`; 0 = sem referencia (nao vira linha; conta no funil).
+  Coluna do PriceCharting e bucket generico ("Grade 9", "Grade 9.5") NUNCA sao
+  referencia -- a coluna exata e so sanidade (`coluna÷vendas`).
+- Raw NM (opt-in --include-raw) = TCGplayer market (tcgcsv); PriceCharting
+  Ungraded e cross-check/fallback ROTULADO. Raw LP = so com LP EXPLICITO no
+  titulo/condicao, pre-filtro `preco <= ref NM x (1 - desconto minimo)` e depois
+  a SUA referencia (mediana de >=3 vendas LP). Nunca LP vs NM.
+- Piso de preco, so item nos EUA, so PRECO FIXO (leilao nao entra).
+- O scanner NUNCA recomenda compra. Veredito e classificacao tecnica.
 
-Componentes do score (0-100):
-- Margem (peso 45): 30% de margem = 50 pts; 100%+ = 100 pts (linear no meio).
-- Liquidez (peso 25): vendas/mes da grade no PriceCharting.
-    Tier A >= 10/mes (100 pts) | B >= 3 (75) | C >= 1 (45) | D < 1 (15).
-- Tendencia (peso 15): variacao recente do preco justo (delta PriceCharting).
-    Subindo = 100, estavel = 60, caindo = 20.
-- Risco (peso 15): comeca em 100, cada flag tira 35 pts (minimo 0).
+Score (0-100, so ordenacao secundaria/auditoria): margem 45 / liquidez 25 /
+tendencia 15 / risco 15. Ranking da entrega = ROI bruto -> desconto -> spread ->
+popularidade do Pokemon (`src/report.py`).
 
 Vereditos:
-- REJEITADO: flag de rejeicao (proxy/replica/lote), grade fora do escopo,
-  raw sem NM confirmado, ou idioma fora do escopo.
-- SUSPEITO: margem > 60% (bom demais costuma ser scam/carta errada) ou
-  vendedor de risco alto. Validar manualmente antes de qualquer acao.
-- OPORTUNIDADE: margem >= threshold, liquidez tier A-C, sem flag grave.
-- REVISAR: o resto que passou do threshold mas tem alguma ressalva.
+- REJEITADO: flag de rejeicao (proxy/replica/lote), fraude grade x condicao,
+  idioma fora do escopo / nomenclatura JP numa watchlist EN.
+- SUSPEITO: ROI bruto > `suspicious_margin_percent` (bom demais = golpe/carta
+  errada) -- validar manualmente antes de qualquer acao.
+- REVISAR: passou o gate mas tem ressalva (vendas<3, coluna÷vendas, referencia
+  desalinhada/divergente, vendedor fraco, liquidez D...).
+- OPORTUNIDADE: passou em tudo.
+
+`stats` (Counter opcional) recebe o MOTIVO de cada anuncio que NAO vira linha
+(funil da entrega): nada some em silencio.
 """
+from . import grading, pc_sales, title_parser
 from .models import Opportunity
-from . import title_parser
+from .report import compute_metrics
 
 DEFAULT_CONFIG = {
-    "min_gross_margin_percent": 30,   # percentual INTEIRO (30 = 30%)
+    # Gate: Desconto% minimo, percentual INTEIRO (20 = 20%). Diagnostico do
+    # operador: --min-discount 10 e depois ebay_summary.py --sensitivity 10,15,20.
+    "min_discount_percent": 20,
     "min_price_usd": 10.0,
-    "suspicious_margin_percent": 60,
+    "suspicious_margin_percent": 60,   # ROI bruto acima disto = SUSPEITO
     "weights": {"margin": 0.45, "liquidity": 0.25, "trend": 0.15, "risk": 0.15},
     # Entrega na COMC (Algona, WA, EUA): so item localizado nos EUA.
     "required_location_country": "US",
-    # Decisao do operador 2026-06-10: scanner e SO para graded cards
-    # (PSA 9/10, BGS 9.5/10, CGC 9.5/10). Raw fica fora do funil -- a nota
-    # de terceiro e verificavel (cert lookup); condicao de raw nao e.
+    # Decisao do operador 2026-09-03: so preco fixo (lance de leilao nao e preco).
+    "fixed_price_only": True,
+    # Decisao do operador 2026-06-10: so graded por default; raw entra por run
+    # (--include-raw): NM = TCG market; LP = mediana de vendas LP.
     "graded_only": True,
+    "lp_with_reference": True,
+    # Allowlist de notas (chaves do grading.py); editavel no config.yaml.
+    "graded_allow": grading.DEFAULT_GRADED_ALLOW,
     # Modo confiavel (--confiavel): so anuncios "compraveis de verdade".
     "trusted_mode": False,
-    "trusted_min_feedback": 50,       # vendedor com >= 50 transacoes
-    "trusted_min_feedback_pct": 98.0, # e >= 98% de feedback positivo
+    "trusted_min_feedback": 50,
+    "trusted_min_feedback_pct": 98.0,
 }
 
-# Cross-check RAW (2026-07): se PriceCharting Ungraded e TCGplayer market
-# divergem mais que isto (fracao do TCG market), a referencia raw esta em
-# duvida -> flag + veredito no maximo REVISAR.
+# Cross-check RAW: PriceCharting Ungraded vs TCGplayer market divergindo mais que
+# isto (fracao do TCG market) -> referencia em duvida -> flag + no maximo REVISAR.
 RAW_REF_DIVERGENCE = 0.40
+# Coluna exata do PriceCharting (informativa) mais longe que isto da mediana de
+# vendas -> sanidade falhou -> REVISAR `coluna÷vendas`.
+COLUMN_DEVIATION_MAX = 0.30
+MIN_COMPARABLE_SALES = pc_sales.MIN_COMPARABLE_SALES
+
+_VERDICT_STAT = {"OPORTUNIDADE": "rows_opportunity", "REVISAR": "rows_review",
+                 "SUSPEITO": "rows_suspect", "REJEITADO": "rows_rejected"}
+
+
+def _skip(stats, key):
+    """Registra no funil por que o anuncio NAO virou linha; devolve None."""
+    if stats is not None:
+        stats[key] += 1
+    return None
 
 
 def trust_score(listing):
@@ -93,10 +124,20 @@ def liquidity_tier(sales_per_month):
     return "D"
 
 
+def _tier_from_ref(ref):
+    """Liquidez de uma referencia por vendas: 'ok' com >=10 vendas na janela = A,
+    'ok' = B, 'low' (>=3 so em 365 d) = C, 'thin' (1-2) = D."""
+    if ref.liquidity == "ok":
+        return "A" if (ref.n_sales or 0) >= 10 else "B"
+    if ref.liquidity == "low":
+        return "C"
+    return "D"
+
+
 def _margin_points(margin_pct, threshold):
     if margin_pct <= threshold:
-        return max(0.0, margin_pct / threshold * 50.0)
-    # 30% -> 50 pts ... 100% -> 100 pts
+        return max(0.0, margin_pct / threshold * 50.0) if threshold else 50.0
+    # threshold -> 50 pts ... 100% -> 100 pts
     return min(100.0, 50.0 + (margin_pct - threshold) / (100.0 - threshold) * 50.0)
 
 
@@ -108,55 +149,63 @@ def _trend_points(delta):
     return 60.0
 
 
-def evaluate(card, listing, fair, config=None, tcg_ref=None):
-    """Avalia um anuncio contra o preco justo. Retorna Opportunity ou None.
+def _grade_gate(cfg, listing, allow, stats):
+    """Classifica a nota do titulo. Devolve (grade_key, grade_obj) ou None (ja
+    contado no funil)."""
+    gr = grading.grade_from_title(listing.title, allow)
+    allowed = cfg.get("allowed_grades") or []
+    if gr.status == "raw":
+        if cfg.get("graded_only"):
+            return _skip(stats, "skip_raw")
+        if allowed and "RAW" not in allowed:
+            return _skip(stats, "skip_grade_filtered")
+        return "RAW", None
+    if gr.status == "graded":
+        # Funil restrito por run (--grades): nota conhecida fora da lista sai em
+        # silencio -- e escopo pedido, nao rejeicao.
+        if allowed and gr.grade.key not in allowed:
+            return _skip(stats, "skip_grade_filtered")
+        return gr.grade.key, gr.grade
+    if gr.status == "ambiguous":
+        # Titulo cita mais de uma nota ("BGS 8.5 ... PSA 9" = hype): sem nota
+        # unica nao ha referencia comparavel -> fora, contado.
+        return _skip(stats, "skip_grade_ambiguous")
+    return _skip(stats, "skip_grade_out_of_scope")
 
-    None = nem vale linha na tabela (carta nao casa, abaixo do piso, etc).
 
-    `tcg_ref` (src.tcg_reference.TcgReference | None): market TCGplayer da
-    carta RAW via tcgcsv. Quando presente:
-    - listing RAW -> TCGplayer market e a referencia PRINCIPAL da margem
-      (PriceCharting Ungraded vira cross-check de divergencia);
-    - listing GRADED -> referencia segue PriceCharting por grade (TCGplayer
-      nao tem preco graded); o market raw serve de sanity check contra
-      referencia graded stale.
+def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=None):
+    """Avalia um anuncio. Retorna Opportunity ou None (motivo em `stats`).
+
+    `fair` (models.FairValue | None): colunas/tendencia/volume da pagina do
+    PriceCharting -- so INFORMACAO e fallback raw rotulado; nunca referencia de
+    slab. `tcg_ref` (TcgReference | None): market TCGplayer da carta raw EN.
+    `refs` (scanner.CardRefs | None): mediana de vendas comparaveis da pagina
+    (`refs.slab(grade, variants)` / `refs.lp(variants)`), `refs.available`
+    False quando a fonte PriceCharting falhou para a carta.
     """
     cfg = dict(DEFAULT_CONFIG, **(config or {}))
-    threshold = float(cfg["min_gross_margin_percent"])
+    min_discount = float(cfg.get("min_discount_percent") or 0.0)
+    suspicious = float(cfg["suspicious_margin_percent"])
+    allow = frozenset(cfg.get("graded_allow") or grading.DEFAULT_GRADED_ALLOW)
 
+    if cfg.get("fixed_price_only", True) and listing.buying_option != "FIXED_PRICE":
+        return _skip(stats, "skip_not_fixed_price")
     if listing.price < float(cfg["min_price_usd"]):
-        return None
-    # Localizacao: entrega e na COMC (EUA) -- item fora dos EUA nao serve
-    # (a API ja filtra server-side; isto e o cinto de seguranca).
+        return _skip(stats, "skip_price_floor")
     required_country = cfg.get("required_location_country")
     if required_country and listing.country and listing.country != required_country:
-        return None
+        return _skip(stats, "skip_country")
     if not title_parser.card_matches_title(card, listing.title):
-        return None
+        return _skip(stats, "skip_no_match")
 
-    grade = title_parser.detect_grade(listing.title)
-    if cfg.get("graded_only") and grade == "RAW":
-        return None  # escopo atual: so graded (PSA 9/10, BGS 9.5/10, CGC 9.5/10)
-    # Funil restrito por run (--grades, ex. so "PSA 10"): grade conhecida fora
-    # da lista sai do funil em silencio, igual ao RAW no graded-only -- nao e
-    # linha rejeitada, e escopo que o operador pediu. Grade None (empresa/nota
-    # desconhecida) segue o caminho normal de rejeicao visivel, que e sinal de
-    # risco, nao de escopo.
-    allowed = cfg.get("allowed_grades") or []
-    if allowed and grade is not None and grade not in allowed:
+    gate = _grade_gate(cfg, listing, allow, stats)
+    if gate is None:
         return None
+    grade, grade_obj = gate
 
     flags = title_parser.risk_flags(listing.title, listing)
+    reasons = []
     rejected = False
-
-    if grade is None:
-        grade = "FORA DO ESCOPO"
-        flags.append("GRADE: empresa/nota fora do escopo (so PSA 9/10, BGS 9.5/10, CGC 9.5/10)")
-        rejected = True
-    elif title_parser.grade_is_ambiguous(listing.title, grade):
-        flags.append("GRADE AMBIGUA: titulo menciona mais de uma nota -- "
-                     "provavel hype do vendedor, conferir foto do slab")
-        rejected = True
 
     lang = title_parser.detect_language(listing.title)
     if lang == "OTHER":
@@ -166,61 +215,90 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None):
         flags.append(f"IDIOMA: anuncio parece {lang}, watchlist espera {card.language}")
     elif card.language == "EN" and title_parser.jp_nomenclature_hint(listing.title):
         # Caso real 2026-09-01 (Alakazam ex 201 "SAR"): carta JP sem a palavra
-        # "japanese" no titulo casava com a referencia EN e saia como margem
-        # de 81%. Prefixo REJEITAR tambem tira a linha da mediana de mercado.
+        # "japanese" casava com a referencia EN. Prefixo REJEITAR tambem tira a
+        # linha da mediana de mercado.
         flags.append("REJEITAR IDIOMA: nomenclatura japonesa no titulo "
                      "(SAR/CHR/CSR ou codigo de set JP) sem 'English' -- "
                      "provavel versao JP; a referencia e da carta EN, a "
                      "margem sairia de produto errado")
         rejected = True
 
-    if grade == "RAW" and not title_parser.is_nm_acceptable(listing.title, listing.condition):
-        flags.append("CONDICAO: raw sem NM confirmado (invariante: raw so Near Mint)")
-        rejected = True
-
-    # Fraude classica do eBay: titulo anuncia "PSA 10" mas o campo de condicao
-    # do proprio eBay diz "Ungraded" (carta crua). Caso real: Moonbreon "PSA 10"
-    # a $1.800, vendedor 0 feedback, Estado = "Nao classificado" (2026-06-10).
     cond = (listing.condition or "").lower()
-    if grade != "RAW" and "ungraded" in cond:
-        flags.append(f"FRAUDE PROVAVEL: titulo anuncia {grade} mas o campo "
+    condition = ""
+    if grade == "RAW":
+        if title_parser.is_nm_acceptable(listing.title, listing.condition):
+            condition = "NM"
+        elif cfg.get("lp_with_reference", True) and \
+                title_parser.is_lp(listing.title, listing.condition):
+            condition = "LP"
+        else:
+            # Raw sem NM explicito (e sem LP explicito): fora, contado. Nunca
+            # "NM/LP", nunca condicao ausente.
+            return _skip(stats, "skip_condition")
+        if "graded" in cond and "ungraded" not in cond:
+            flags.append("CONDICAO: campo eBay diz 'Graded' mas o titulo nao traz "
+                         "nota -- identidade da carta incerta")
+            rejected = True
+    elif "ungraded" in cond:
+        # Fraude classica do eBay: titulo anuncia "PSA 10" mas o campo de condicao
+        # do proprio eBay diz "Ungraded" (carta crua). Caso real 2026-06-10.
+        flags.append(f"FRAUDE PROVAVEL: titulo anuncia {grade_obj.label} mas o campo "
                      "condicao do eBay diz UNGRADED (carta crua)")
-        rejected = True
-    elif grade == "RAW" and "graded" in cond and "ungraded" not in cond:
-        flags.append("CONDICAO: campo eBay diz 'Graded' mas o titulo nao traz "
-                     "nota -- identidade da carta incerta")
         rejected = True
 
     if any(f.startswith("REJEITAR") or f.startswith("LOTE") for f in flags):
         rejected = True
 
-    # Lookup do preco justo. O PriceCharting NAO tem coluna separada para
-    # BGS 9.5 / CGC 9.5 -- ele agrega tudo num rotulo generico "Grade 9.5"
-    # (chave "GRADE 9.5"). Sem este mapeamento, BGS/CGC 9.5 cairiam aqui com
-    # fair_price=None e a oferta sumiria silenciosamente de todo scan.
-    # A grade REAL (BGS 9.5 / CGC 9.5) continua exibida; so o lookup usa o bucket.
-    GENERIC_95 = ("BGS 9.5", "CGC 9.5")
-    lookup_grade = "GRADE 9.5" if grade in GENERIC_95 else grade
-    fair_price = fair.price(lookup_grade)
-
-    # Referencia por tipo de anuncio (padrao da frota, 2026-07):
-    # - RAW: TCGplayer market (tcgcsv) e a referencia PRINCIPAL quando existe;
-    #   o Ungraded do PriceCharting vira cross-check. Sem TCG -> fallback
-    #   honesto e ROTULADO no PriceCharting (nunca fallback disfarcado de real).
-    # - GRADED: TCGplayer nao tem preco graded -> referencia segue
-    #   PriceCharting por grade; o market raw do TCG e so sanity check.
-    # As flags de referencia sao INFORMATIVAS: entram na coluna Flags mas nao
-    # no score de risco (senao todo raw-sem-TCG despencaria de score); o
-    # rebaixamento de veredito, quando devido, e explicito via `ref_demote`.
-    ref_kind = "pricecharting"
+    # ------------------------------------------------------------------ referencia
+    variants = pc_sales.variant_tokens(listing.title)
+    tcg_market = tcg_ref.market_usd if tcg_ref else None
+    prices = fair.prices if fair is not None else {}
+    deltas = fair.deltas if fair is not None else {}
+    volume = fair.sales_per_month if fair is not None else {}
     ref_flags = []
     ref_demote = False
-    tcg_market = tcg_ref.market_usd if tcg_ref else None
-    if grade == "RAW":
+    ref_source = ""
+    ref_label = ""
+    ref_n = None
+    ref_liq = ""
+    ref_window = None
+    ref_column = None
+    delta = 0.0
+    liquidity_sales = 0.0
+
+    if grade != "RAW":
+        if refs is None or not refs.available:
+            return _skip(stats, "ref_unavailable")
+        ref = refs.slab(grade_obj, variants)
+        if ref is None:
+            return _skip(stats, "slab_no_reference")
+        fair_price = ref.price
+        ref_source = "pricecharting-sales"
+        ref_label = ref.label
+        ref_n, ref_liq, ref_window, ref_column = (ref.n_sales, ref.liquidity,
+                                                  ref.window_days, ref.column_price)
+        if ref_n is not None and ref_n < MIN_COMPARABLE_SALES:
+            reasons.append(f"vendas<{MIN_COMPARABLE_SALES}(n={ref_n})")
+        if ref_column and fair_price > 0 and \
+                abs(ref_column - fair_price) / fair_price > COLUMN_DEVIATION_MAX:
+            reasons.append(f"coluna÷vendas({ref_column:.2f})")
+        if tcg_market and fair_price < tcg_market:
+            ref_flags.append(
+                f"REF GRADED < RAW TCG (defasada?): mediana {grade_obj.label} "
+                f"${fair_price:,.2f} abaixo do market raw TCGplayer "
+                f"${tcg_market:,.2f} -- referencia graded provavelmente stale")
+            ref_demote = True
+        column_key = grading.pc_price_key(grade_obj)
+        if column_key:
+            delta = deltas.get(column_key, 0.0)
+            liquidity_sales = volume.get(column_key, 0.0)
+        tier = _tier_from_ref(ref)
+    elif condition == "NM":
+        pc_raw = prices.get("RAW")
         if tcg_market:
-            pc_raw = fair_price  # Ungraded do PriceCharting (cross-check)
             fair_price = tcg_market
-            ref_kind = "tcgplayer"
+            ref_source = "tcgplayer"
+            ref_label = "TCG market"
             if pc_raw and abs(pc_raw - tcg_market) / tcg_market > RAW_REF_DIVERGENCE:
                 ref_flags.append(
                     f"REF RAW DIVERGENTE (PC vs TCG): PriceCharting "
@@ -228,58 +306,56 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None):
                     f"(> {RAW_REF_DIVERGENCE:.0%}) -- validar a referencia "
                     "antes de confiar na margem")
                 ref_demote = True
-        else:
+        elif pc_raw:
+            fair_price = pc_raw
+            ref_source = "pricecharting"
+            ref_label = "PC Ungraded (sem TCG)"
             ref_flags.append(
                 "REF: PriceCharting (sem TCG) -- sem market TCGplayer para "
                 "esta carta; referencia raw e o Ungraded do PriceCharting")
-    elif tcg_market and fair_price and fair_price < tcg_market:
-        ref_flags.append(
-            f"REF GRADED < RAW TCG (defasada?): justo {grade} "
-            f"${fair_price:,.2f} abaixo do market raw TCGplayer "
-            f"${tcg_market:,.2f} -- referencia graded provavelmente stale")
-        ref_demote = True
+        else:
+            return _skip(stats, "raw_no_reference")
+        liquidity_sales = volume.get("RAW", 0.0)
+        delta = deltas.get("RAW", 0.0)
+        tier = liquidity_tier(liquidity_sales)
+    else:  # raw LP: pre-filtro pela referencia NM, depois a SUA referencia (vendas LP)
+        nm_ref = tcg_market or prices.get("RAW")
+        if not nm_ref:
+            return _skip(stats, "lp_no_nm_reference")
+        cap = nm_ref * (1.0 - min_discount / 100.0)
+        if listing.price > cap:
+            return _skip(stats, "lp_prefilter")
+        if refs is None or not refs.available:
+            return _skip(stats, "ref_unavailable")
+        ref = refs.lp(variants)
+        if ref is None:
+            return _skip(stats, "lp_no_reference")
+        fair_price = ref.price
+        ref_source = "pricecharting-sales-lp"
+        ref_label = ref.label
+        ref_n, ref_liq, ref_window = ref.n_sales, ref.liquidity, ref.window_days
+        tier = _tier_from_ref(ref)
 
-    if not fair_price:
-        return None  # sem preco justo para essa grade, nao da pra avaliar
-    if grade in GENERIC_95:
-        # Honestidade da frota: o bucket "GRADE 9.5" mistura PSA/BGS/CGC, entao
-        # o preco de referencia 9.5 e uma APROXIMACAO, nao o valor da empresa
-        # especifica. Sinalizar para o operador conferir antes de agir.
-        flags.append(
-            f"REF 9.5: preco justo de {grade} usa o bucket generico "
-            "'GRADE 9.5' do PriceCharting (agrega PSA/BGS/CGC -- aproximacao)"
-        )
-
-    margin_pct = (fair_price - listing.price) / listing.price * 100.0
-    if margin_pct < threshold:
-        # Abaixo do threshold nao interessa -- nem como linha rejeitada
-        # (senao a tabela afoga em rejeitados de margem negativa).
-        return None
+    discount_pct, roi_pct, spread_usd = compute_metrics(fair_price, listing.price)
+    if discount_pct < min_discount:
+        # Abaixo do gate nao interessa -- nem como linha rejeitada (senao a tabela
+        # afoga em rejeitados de desconto negativo).
+        return _skip(stats, "below_discount")
 
     if cfg.get("trusted_mode"):
         # Modo confiavel: so o que e compravel de verdade.
-        # 1) Vendedor com historico real (golpista nao tem 50 avaliacoes a 98%).
         if (listing.seller_feedback_score < int(cfg["trusted_min_feedback"])
                 or listing.seller_feedback_pct < float(cfg["trusted_min_feedback_pct"])):
-            return None
-        # 2) Faixa de margem saudavel: desconto acima do limite de suspeita e
-        #    quase sempre golpe/carta errada -- fora do modo confiavel.
-        if margin_pct > float(cfg["suspicious_margin_percent"]):
-            return None
-        # 3) Nada de linha rejeitada: a tabela confiavel e 100% acionavel.
+            return _skip(stats, "trusted_filtered")
+        if roi_pct > suspicious:
+            return _skip(stats, "trusted_filtered")
         if rejected:
-            return None
+            return _skip(stats, "trusted_filtered")
 
-    # Liquidez/tendencia tambem saem do bucket usado no preco (lookup_grade):
-    # para BGS/CGC 9.5 isso e o generico "GRADE 9.5" do PriceCharting.
-    sales = fair.sales_per_month.get(lookup_grade, 0.0)
-    tier = liquidity_tier(sales)
-    delta = fair.deltas.get(lookup_grade, 0.0)
-
-    raw_price = fair.price("RAW") or 0.0
+    raw_price = prices.get("RAW") or 0.0
     spread9 = spread10 = 0.0
     if grade == "RAW" and raw_price:
-        psa9, psa10 = fair.price("PSA 9"), fair.price("PSA 10")
+        psa9, psa10 = prices.get("PSA 9"), prices.get("PSA 10")
         spread9 = ((psa9 - raw_price) / raw_price * 100.0) if psa9 else 0.0
         spread10 = ((psa10 - raw_price) / raw_price * 100.0) if psa10 else 0.0
 
@@ -287,7 +363,7 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None):
     risk_points = max(0.0, 100.0 - 35.0 * len(flags))
     liq_points = {"A": 100.0, "B": 75.0, "C": 45.0, "D": 15.0}[tier]
     score = (
-        w["margin"] * _margin_points(margin_pct, threshold)
+        w["margin"] * _margin_points(roi_pct, max(min_discount, 1.0))
         + w["liquidity"] * liq_points
         + w["trend"] * _trend_points(delta)
         + w["risk"] * risk_points
@@ -295,36 +371,49 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None):
 
     if rejected:
         verdict = "REJEITADO"
-        score = 0.0  # rejeitado nao compete no ranking; fica no fim da tabela
-    elif margin_pct > float(cfg["suspicious_margin_percent"]):
+        score = 0.0  # rejeitado nao compete no ranking; fica na tabela propria
+    elif roi_pct > suspicious:
         verdict = "SUSPEITO"
         flags.append(
-            f"MARGEM: {margin_pct:.0f}% acima do normal -- conferir se a carta/grade "
-            "e mesmo a esperada antes de qualquer acao"
-        )
-    elif tier == "D":
+            f"MARGEM: ROI bruto {roi_pct:.0f}% acima do normal -- conferir se a "
+            "carta/nota e mesmo a esperada antes de qualquer acao")
+    elif tier == "D" and grade == "RAW":
         verdict = "REVISAR"
-        flags.append("LIQUIDEZ: menos de 1 venda/mes nessa grade (dificil revender)")
-    elif flags:
+        flags.append("LIQUIDEZ: menos de 1 venda/mes nessa condicao (dificil revender)")
+    elif flags or reasons:
         verdict = "REVISAR"
     else:
         verdict = "OPORTUNIDADE"
 
-    # Flags de referencia entram DEPOIS do calculo de score/veredito base
-    # (informativas, nao penalizam risco); rebaixamento explicito quando a
-    # referencia esta em duvida (divergencia PC x TCG / graded stale).
+    # Flags de referencia entram DEPOIS do score (informativas, nao penalizam
+    # risco); rebaixamento explicito quando a referencia esta em duvida.
     flags.extend(ref_flags)
-    if ref_demote and verdict == "OPORTUNIDADE":
-        verdict = "REVISAR"
+    if ref_demote:
+        reasons.append("ref-divergente")
+        if verdict == "OPORTUNIDADE":
+            verdict = "REVISAR"
 
+    if stats is not None:
+        stats[_VERDICT_STAT[verdict]] += 1
+
+    grade_label = grade_obj.label if grade_obj else "RAW"
+    pc_url = (refs.pc_url if refs is not None and getattr(refs, "pc_url", "") else "") \
+        or card.pc_url
     return Opportunity(
         card=card, listing=listing, grade=grade, fair_value=fair_price,
-        gross_margin_pct=round(margin_pct, 1), liquidity_per_month=sales,
+        gross_margin_pct=roi_pct, liquidity_per_month=liquidity_sales,
         liquidity_tier=tier, trend_delta=delta,
         spread_psa9_pct=round(spread9, 0), spread_psa10_pct=round(spread10, 0),
         risk_flags=flags, score=round(score, 1), verdict=verdict,
+        fair_value_source=card.pc_url,
         trust_score=round(trust_score(listing), 0),
         tcg_market=tcg_market,
         tcg_url=(tcg_ref.product_url if tcg_ref else ""),
-        ref_kind=ref_kind,
+        ref_kind=("tcgplayer" if ref_source == "tcgplayer" else "pricecharting"),
+        discount_pct=discount_pct, spread_usd=spread_usd,
+        ref_source=ref_source, ref_label=ref_label, ref_n_sales=ref_n,
+        ref_liquidity=ref_liq, ref_window_days=ref_window, ref_column_price=ref_column,
+        condition=condition, grade_label=grade_label,
+        listing_type=(f"Raw {condition}" if grade == "RAW" else grade_label),
+        pc_url=pc_url, reasons=reasons,
     )

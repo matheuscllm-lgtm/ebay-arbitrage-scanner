@@ -10,7 +10,7 @@ def L(title, **kw):
     return Listing(**defaults)
 
 
-# --- grade ------------------------------------------------------------------
+# --- grade (leitura em src/grading.py; aqui so a ponte) -----------------------
 
 def test_psa10():
     assert tp.detect_grade("Charizard Base Set 4/102 PSA 10 GEM MINT") == "PSA 10"
@@ -19,23 +19,34 @@ def test_psa9_not_95():
     assert tp.detect_grade("Umbreon VMAX PSA 9 Alt Art") == "PSA 9"
 
 def test_psa_9_5_rejected_as_out_of_scope():
-    # PSA 9.5 nao existe no escopo; nao pode casar como PSA 9
+    # PSA 9.5 nao existe; nao pode casar como PSA 9
     assert tp.detect_grade("Card PSA 9.5") is None
 
 def test_bgs_95():
     assert tp.detect_grade("Lugia BGS 9.5 Quad+") == "BGS 9.5"
 
-def test_cgc10():
-    assert tp.detect_grade("Pikachu CGC 10 Pristine") == "CGC 10"
+def test_cgc10_pristine_vs_gem():
+    assert tp.detect_grade("Pikachu CGC 10 Pristine") == "CGC 10 PRISTINE"
+    assert tp.detect_grade("Pikachu CGC 10") == "CGC 10 GEM"
 
-def test_psa8_out_of_scope():
-    assert tp.detect_grade("Charizard PSA 8") is None
+def test_bgs10_black_label():
+    assert tp.detect_grade("Charizard BGS 10 Black Label") == "BGS 10 BLACK"
+    assert tp.detect_grade("Black Kyurem BGS 10") == "BGS 10"
 
-def test_sgc_out_of_scope():
-    assert tp.detect_grade("Charizard SGC 10") is None
+def test_psa8_sgc_tag_now_in_scope():
+    assert tp.detect_grade("Charizard PSA 8") == "PSA 8"
+    assert tp.detect_grade("Charizard SGC 10") == "SGC 10"
+    assert tp.detect_grade("Charizard TAG 9.5") == "TAG 9.5"
+
+def test_out_of_allowlist_is_none():
+    assert tp.detect_grade("Charizard PSA 7") is None
+    assert tp.detect_grade("Charizard ACE 10") is None
 
 def test_no_grade_is_raw():
     assert tp.detect_grade("Charizard 4/102 Base Set Holo NM") == "RAW"
+
+def test_known_grades_is_the_allowlist():
+    assert "PSA 8" in tp.KNOWN_GRADES and "TAG 10" in tp.KNOWN_GRADES
 
 
 # --- condicao NM (invariante dura) -------------------------------------------
@@ -58,6 +69,27 @@ def test_no_condition_rejected():
 
 def test_condition_from_ebay_field():
     assert tp.is_nm_acceptable("Charizard 4/102", "Near Mint or Better")
+
+
+# --- condicao LP explicita (so entao busca a referencia LP) -------------------
+
+def test_lp_explicit_in_title():
+    assert tp.is_lp("Charizard 4/102 Base Set Holo LP")
+    assert tp.is_lp("Charizard 4/102 Lightly Played")
+
+def test_lp_from_ebay_condition_field():
+    assert tp.is_lp("Charizard 4/102 Base Set Holo", "Ungraded - Lightly Played (Excellent)")
+
+def test_nm_lp_combo_is_not_lp():
+    assert not tp.is_lp("Charizard NM/LP Base Set")
+    assert not tp.is_lp("Charizard Near Mint LP")
+
+def test_lp_with_worse_condition_is_not_lp():
+    assert not tp.is_lp("Charizard LP/MP Base Set")
+    assert not tp.is_lp("Charizard Lightly Played crease")
+
+def test_no_condition_is_not_lp():
+    assert not tp.is_lp("Charizard 4/102 Base Set Holo")
 
 
 # --- idioma ------------------------------------------------------------------
@@ -138,3 +170,12 @@ def test_ambiguous_grade_detected():
 
 def test_clean_grade_not_ambiguous():
     assert not tp.grade_is_ambiguous("Charizard 4/102 Holo PSA 9", "PSA 9")
+
+
+def test_gold_foil_and_plated_fakes_rejected():
+    # Caso REAL (smoke 2026-09-03): "Charizard 120HP Gold Foil card 4/102 Near
+    # Mint" a US$65 saia como raw NM com ROI 463% -- e carta de metal/falsa.
+    for title in ("Pokemon Charizard 120HP Gold Foil card 4/102 Near Mint",
+                  "Charizard 4/102 24k gold plated card", "Charizard gold foil NM"):
+        assert any(f.startswith("REJEITAR") for f in tp.risk_flags(title)), title
+    assert tp.risk_flags("Charizard 4/102 Base Set Holo NM") == []

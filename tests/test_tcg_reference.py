@@ -221,3 +221,24 @@ def test_non_english_card_gets_no_tcg_reference(monkeypatch):
     # EN continua passando pelo caminho normal (fixtures reais).
     patch_fetch(monkeypatch)
     assert tcg_reference.get_tcg_reference(card(language="EN")) is not None
+
+
+def test_exact_name_wins_over_error_variant_with_same_number(monkeypatch):
+    # Caso REAL (smoke 2026-09-03): Base Set do tcgcsv tem "Charizard" e
+    # "Charizard (Black Dot Error)" ambos 004/102 -> o match caia como ambiguo e
+    # o raw NM perdia a referencia TCG. Nome EXATO desempata; sem nome exato
+    # (Cosmos Holo vs Shadowless) continua ambiguo -> None.
+    patch_fetch(monkeypatch, products={"results": [
+        {"productId": 800, "name": "Charizard (Black Dot Error)",
+         "url": "https://www.tcgplayer.com/product/800",
+         "extendedData": [{"name": "Number", "value": "004/102"}]},
+        {"productId": 801, "name": "Charizard",
+         "url": "https://www.tcgplayer.com/product/801",
+         "extendedData": [{"name": "Number", "value": "004/102"}]},
+    ]}, prices={"results": [
+        {"productId": 800, "subTypeName": "Holofoil", "marketPrice": 900.0},
+        {"productId": 801, "subTypeName": "Holofoil", "marketPrice": 400.0},
+    ]})
+    ref = tcg_reference.get_tcg_reference(card(number="4"))
+    assert ref is not None and ref.market_usd == 400.0
+    assert ref.product_url.endswith("/801")

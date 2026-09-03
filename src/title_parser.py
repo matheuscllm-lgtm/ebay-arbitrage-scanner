@@ -11,24 +11,13 @@ falso positivo custa dinheiro real, falso negativo custa so uma oportunidade.
 """
 import re
 
+from . import grading
+
 # --- Grades ---------------------------------------------------------------
-# Ordem importa: padroes mais especificos primeiro (9.5 antes de 9).
-_GRADE_PATTERNS = [
-    (r"\bPSA[\s:-]*10\b", "PSA 10"),
-    (r"\bPSA[\s:-]*9(?![\d.])", "PSA 9"),
-    (r"\bBGS[\s:-]*10\b", "BGS 10"),
-    (r"\bBGS[\s:-]*9\.5\b", "BGS 9.5"),
-    (r"\bCGC[\s:-]*10\b", "CGC 10"),
-    (r"\bCGC[\s:-]*9\.5\b", "CGC 9.5"),
-]
-
-# Grades graduadas que o funil reconhece (fonte unica p/ validacao do --grades).
-KNOWN_GRADES = tuple(g for _, g in _GRADE_PATTERNS)
-
-# Grades graduadas FORA do escopo (presenca = rejeitar, nao e raw nem aceita).
-_OUT_OF_SCOPE_GRADE = re.compile(
-    r"\b(PSA|BGS|CGC|SGC|ACE|TAG|AGS|GMA|HGA)[\s:-]*(\d+(?:\.\d+)?)\b", re.I
-)
+# A leitura da nota vive em src/grading.py (PSA 8-10, CGC 9-10 Gem/Pristine,
+# BGS 9-10 (+Black Label), SGC 9-10, TAG 9.5/10; ambiguidade; fora do escopo).
+# Fonte unica das notas aceitas (validacao do --grades):
+KNOWN_GRADES = tuple(sorted(grading.DEFAULT_GRADED_ALLOW))
 
 # --- Condicao de carta raw ------------------------------------------------
 _NM_POSITIVE = re.compile(
@@ -43,7 +32,8 @@ _CONDITION_BAD = re.compile(
 # --- Risco / lixo ----------------------------------------------------------
 _REJECT_KEYWORDS = re.compile(
     r"\b(proxy|proxies|replica|reprint|custom|fake|orica|altered|art\s*card|"
-    r"goldcard|gold\s+card|metal\s+card|sticker|digital|online\s+code|"
+    r"goldcard|gold\s+card|gold\s+foil|gold\s+plated|24k|metal\s+card|"
+    r"sticker|digital|online\s+code|"
     r"code\s+card|empty|box\s+only|case\s+only|slab\s+only|toploader|"
     r"poker|playing\s+card|acrylic|case\s+card|magnetic\s+case|alloy|"
     r"display|binder|blanket|mystery\s+pack|chase\s+pack|fan\s+art|"
@@ -82,36 +72,34 @@ def jp_nomenclature_hint(title):
     return bool(_JP_NOMENCLATURE.search(title)) and not _EN_EXPLICIT.search(title)
 
 
-def detect_grade(title):
-    """Retorna a grade detectada ('RAW' se nenhuma) ou None se fora do escopo.
+def classify_grade(title, allow=None):
+    """grading.GradeResult do titulo: status graded / raw / ambiguous / out_of_scope."""
+    return grading.grade_from_title(title or "", allow or grading.DEFAULT_GRADED_ALLOW)
 
-    Exemplos: 'PSA 10' -> PSA 10; 'PSA 8' -> None (fora do escopo);
-    sem mencao de grading -> RAW.
+
+def detect_grade(title, allow=None):
+    """Chave da nota detectada ('PSA 10', 'CGC 10 GEM', 'BGS 10 BLACK'...), 'RAW'
+    se nenhuma certificadora e citada, ou None se ambiguo / fora do escopo.
+
+    Exemplos: 'PSA 10' -> 'PSA 10'; 'PSA 7' -> None (fora da allowlist);
+    'CGC 10 Pristine' -> 'CGC 10 PRISTINE'; sem mencao de grading -> 'RAW'.
     """
-    for pattern, grade in _GRADE_PATTERNS:
-        if re.search(pattern, title, re.I):
-            return grade
-    m = _OUT_OF_SCOPE_GRADE.search(title)
-    if m:
-        return None  # graduada, mas numa grade/empresa fora do escopo
-    return "RAW"
+    r = classify_grade(title, allow)
+    if r.status == "raw":
+        return "RAW"
+    if r.status == "graded":
+        return r.grade.key
+    return None
 
 
-def grade_is_ambiguous(title, detected_grade):
-    """True se o titulo menciona OUTRA nota alem da detectada.
+def grade_is_ambiguous(title, detected_grade=None):
+    """True se o titulo menciona mais de uma nota distinta.
 
     Caso real do 1o scan: 'Charizard BGS 8.5 NM-MINT FRESH GRADE PSA 9' --
-    a carta E BGS 8.5; o 'PSA 9' e expectativa do vendedor. Qualquer mencao
-    de nota diferente da detectada = ambiguo = fora.
+    a carta E BGS 8.5; o 'PSA 9' e expectativa do vendedor. Mais de uma nota
+    = ambiguo = fora (sem nota unica nao ha venda comparavel).
     """
-    if detected_grade in (None, "RAW"):
-        return False
-    expected = detected_grade.replace(" ", "").upper()
-    for m in _OUT_OF_SCOPE_GRADE.finditer(title):
-        mention = (m.group(1) + m.group(2)).upper()
-        if mention != expected:
-            return True
-    return False
+    return classify_grade(title).status == "ambiguous"
 
 
 def detect_language(title):
@@ -134,6 +122,30 @@ def is_nm_acceptable(title, ebay_condition=""):
     if _CONDITION_BAD.search(text):
         return False
     return bool(_NM_POSITIVE.search(text))
+
+
+# LP EXPLICITO (titulo ou campo de condicao do eBay: "Lightly Played (Excellent)").
+_LP_POSITIVE = re.compile(
+    r"\bLP\b|\blightly[\s-]+played\b|\blight(?:ly)?[\s-]+play\b", re.I)
+# Qualquer sinal de condicao PIOR que LP desqualifica (nunca "LP/MP").
+_WORSE_THAN_LP = re.compile(
+    r"\b(MP|HP|DMG|moderately\s+played|heavily\s+played|heavy\s+play|damaged|"
+    r"poor|creas\w+|crease|scratch\w+|whitening|bend|bent|water\s*damage|swirl)\b", re.I)
+
+
+def is_lp(title, ebay_condition=""):
+    """Para cartas RAW: True somente se a condicao LP e EXPLICITA (titulo ou
+    campo do eBay diz LP / Lightly Played), sem sinal de NM ("NM/LP" e ambiguo
+    -> nao) e sem condicao pior. So entao a carta procura a SUA referencia
+    (mediana de >=3 vendas LP) -- nunca e comparada com o preco NM."""
+    text = f"{title} {ebay_condition or ''}"
+    if not _LP_POSITIVE.search(text):
+        return False
+    if _NM_POSITIVE.search(text):
+        return False
+    if _WORSE_THAN_LP.search(text):
+        return False
+    return True
 
 
 def risk_flags(title, listing=None):

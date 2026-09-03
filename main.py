@@ -1,28 +1,33 @@
-"""eBay Pokemon TCG Arbitrage Scanner -- CLI.
+"""eBay Pokemon TCG Arbitrage Scanner -- CLI (padrao COMC, metricas ajustaveis).
 
 Uso:
-  python main.py                      # scan completo (precisa das chaves eBay)
-  python main.py --pricing-only       # so preco justo da watchlist (sem chaves)
-  python main.py --watchlist w.yaml   # watchlist alternativa
-  python main.py --group chase-en     # so as cartas do grupo `chase-en`
-  python main.py --list-groups        # lista os grupos da watchlist e sai
-  python main.py --include-raw        # inclui o funil raw NM neste run
-  python main.py --csv out.csv        # tambem grava CSV local
-  python main.py --out results/last_scan.json   # artefato JSON (default)
+  python main.py                              # scan completo (precisa das chaves eBay)
+  python main.py --group 3 --min-price 5 --min-discount 10   # diagnostico (grupo 3)
+  python main.py --pricing-only               # so referencias da watchlist (sem chaves)
+  python main.py --watchlist w.yaml           # watchlist alternativa
+  python main.py --list-groups                # lista os grupos da watchlist e sai
+  python main.py --include-raw                # inclui raw (NM = TCG market; LP = vendas LP)
+  python main.py --grades "PSA 10, CGC 10 Pristine"   # funil restrito a notas
+  python main.py --out results/last_scan.json # artefato JSON (default)
 
 Depois do scan, a ENTREGA canonica sai de:
-  python ebay_summary.py results/last_scan.json -o results/ebay-<data>.md
+  python ebay_summary.py results/last_scan.json -o results/ebay-<data>.md \
+      [--sensitivity 10,15,20]
 
-Convencao de threshold deste repo: min_gross_margin_percent e percentual
-INTEIRO (30 = 30%). Sem fracao, sem pegadinha.
+Convencao de threshold deste repo: percentuais INTEIROS (20 = 20%).
+`--min-discount` = Desconto% minimo = (ref - preco) / ref (gate do scan);
+ROI bruto% = (ref - preco) / preco segue como coluna. Nunca "lucro".
 """
 import argparse
 import io
+import os
 import sys
 
 import yaml
 
 from src import report, scanner
+
+EXIT_ABORTED = 1
 
 
 def _print_groups(cards):
@@ -32,7 +37,22 @@ def _print_groups(cards):
         print(f"  {name}: {n} carta(s)")
 
 
-def main():
+def _load_config(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        config = {}
+    if "min_discount_percent" not in config and "min_gross_margin_percent" in config:
+        # Config antigo (gate por ROI bruto): o gate agora e Desconto% (padrao
+        # COMC). Nao converter em silencio -- avisar alto e usar o default.
+        print("AVISO: config.yaml usa `min_gross_margin_percent` (ROI bruto), que "
+              "deixou de ser o gate; use `min_discount_percent` (Desconto%). "
+              f"Usando o default {scanner.scorer.DEFAULT_CONFIG['min_discount_percent']}%.")
+    return config
+
+
+def main(argv=None):
     if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
@@ -40,22 +60,27 @@ def main():
     ap.add_argument("--watchlist", default="watchlist.yaml")
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument("--pricing-only", action="store_true",
-                    help="so busca preco justo (PriceCharting); nao consulta eBay")
+                    help="so referencias da watchlist (PriceCharting); nao consulta eBay")
     ap.add_argument("--confiavel", action="store_true",
                     help="modo confiavel: so vendedores com historico (>=50 "
-                         "avaliacoes, >=98%%) e margem na faixa saudavel "
-                         "(30-60%%); tabela 100%% acionavel")
+                         "avaliacoes, >=98%%) e ROI abaixo do teto de suspeita; "
+                         "tabela 100%% acionavel")
     ap.add_argument("--include-raw", action="store_true",
-                    help="inclui o funil raw NM NESTE run (referencia raw = "
-                         "TCGplayer market via tcgcsv; PriceCharting vira "
-                         "cross-check). Nao altera o default graded-only do "
-                         "config -- e uma reversao sancionada por-run")
+                    help="inclui cartas soltas NESTE run: NM = TCGplayer market "
+                         "(tcgcsv); LP = mediana de >=3 vendas LP (PriceCharting), "
+                         "nunca LP vs NM. Nao altera o default graded-only do config")
     ap.add_argument("--grades", default="",
-                    help='restringe o funil DESTE run a grades especificas, '
-                         'separadas por virgula (ex.: --grades "PSA 10"). '
-                         'Aceitas: PSA 10, PSA 9, BGS 10, BGS 9.5, CGC 10, '
-                         'CGC 9.5, RAW (RAW so tem efeito com --include-raw). '
-                         'Vazio = escopo padrao do config')
+                    help='restringe o funil DESTE run a notas especificas, separadas '
+                         'por virgula (ex.: --grades "PSA 10, CGC 10 Pristine, BGS 10 '
+                         'Black"). RAW so tem efeito com --include-raw. Nota fora da '
+                         'allowlist erra ALTO')
+    ap.add_argument("--min-discount", type=int, default=None, metavar="N",
+                    help="Desconto%% minimo (INTEIRO) deste run; sobrescreve "
+                         "min_discount_percent do config (diagnostico: 10)")
+    ap.add_argument("--min-price", type=float, default=None, metavar="USD",
+                    help="piso de preco deste run; sobrescreve min_price_usd (diagnostico: 5)")
+    ap.add_argument("--max-pages", type=int, default=None, metavar="N",
+                    help="paginas de 200 anuncios por busca na Browse API (default 3)")
     ap.add_argument("--group", default="",
                     help="escaneia so as cartas do grupo indicado "
                          "(campo `group:` da watchlist); vazio = todas")
@@ -66,48 +91,54 @@ def main():
                     help="caminho do CSV de registro local")
     ap.add_argument("--out", default="results/last_scan.json",
                     help="artefato JSON do scan (insumo do ebay_summary.py)")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     if args.list_groups:
         _print_groups(scanner.load_watchlist(args.watchlist))
-        return
+        return 0
 
-    try:
-        with open(args.config, encoding="utf-8") as f:
-            config = yaml.safe_load(f) or {}
-    except FileNotFoundError:
-        config = {}
+    config = _load_config(args.config)
     if args.confiavel:
         config["trusted_mode"] = True
     if args.include_raw:
-        # Habilita raw NM SO neste run (o default `graded_only: true` do
-        # config e decisao de escopo do operador e continua intacto).
+        # Habilita raw SO neste run (o default `graded_only: true` do config e
+        # decisao de escopo do operador e continua intacto).
         config["graded_only"] = False
+    if args.min_discount is not None:
+        config["min_discount_percent"] = int(args.min_discount)
+    if args.min_price is not None:
+        config["min_price_usd"] = float(args.min_price)
+    if args.max_pages is not None:
+        config["max_pages"] = int(args.max_pages)
     if args.grades:
         try:
-            config["allowed_grades"] = scanner.parse_grades_arg(args.grades)
+            config["allowed_grades"] = scanner.parse_grades_arg(
+                args.grades, config.get("graded_allow"))
         except ValueError as e:
             sys.exit(f"ERRO: {e}")
+    if not config.get("graded_allow"):
+        config["graded_allow"] = sorted(scanner.grading.DEFAULT_GRADED_ALLOW)
 
     cards_in_scope = scanner.filter_group(
         scanner.load_watchlist(args.watchlist), args.group)
 
-    fair_values, opportunities, effective_pricing_only = scanner.run_scan(
+    fair_values, opportunities, effective_pricing_only, stats, aborted = scanner.run_scan(
         watchlist_path=args.watchlist, config=config,
         pricing_only=args.pricing_only, group=args.group,
     )
 
     print()
     if args.pricing_only or not opportunities:
-        print("## Preco justo por carta (PriceCharting)\n")
+        print("## Referencias por carta (PriceCharting -- colunas informativas)\n")
         for card, fair in fair_values.values():
             print(report.fair_value_markdown(card, fair))
             print()
     if opportunities:
-        print("## Oportunidades (todas as linhas, ordenadas por score)\n")
+        print("## Linhas acima do desconto minimo (ordem do ranking)\n")
         print(report.to_markdown(opportunities))
         path = report.to_csv(opportunities, args.csv)
         print(f"\nRegistro local: {path} ({len(opportunities)} linhas)")
+    print("Funil: " + " · ".join(report.funnel_lines(stats)))
 
     if effective_pricing_only and not args.pricing_only:
         # Scan degradou (EBAY_CLIENT_ID/SECRET ausentes): gravar um artefato
@@ -119,12 +150,26 @@ def main():
     if not effective_pricing_only:
         payload = report.scan_payload(
             opportunities, watchlist_count=len(cards_in_scope), config=config,
-            include_raw=args.include_raw, group=args.group,
+            include_raw=args.include_raw, group=args.group, funnel=stats,
+            aborted=aborted,
         )
-        out_path = report.write_json(payload, args.out)
+        out = args.out
+        if aborted:
+            # Scan parcial NUNCA sobrescreve o ultimo scan completo no path
+            # default (mesma protecao do run degradado): vai para um arquivo
+            # irmao, marcado aborted=true.
+            base, ext = os.path.splitext(args.out)
+            out = f"{base}.aborted{ext or '.json'}"
+        out_path = report.write_json(payload, out)
         print(f"Artefato JSON: {out_path} ({len(payload['rows'])} rows) -- "
               f"entrega: python ebay_summary.py {out_path} -o results/ebay-<data>.md")
+    if aborted:
+        print("RUN ABORTADO antes do fim -- as cartas restantes NAO foram varridas "
+              f"(artefato parcial gravado a parte, marcado aborted=true; {args.out} "
+              "preservado).")
+        return EXIT_ABORTED
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

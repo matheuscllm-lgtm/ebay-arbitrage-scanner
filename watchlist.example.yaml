@@ -21,6 +21,19 @@
 #                      tcgcsv group name exactly (case-insensitive exact match).
 #                      Example: set "151" is listed on tcgcsv as
 #                      "SV: Scarlet & Violet 151".
+#
+# Catalog fields (optional, added in 0.5.0). They are informational except for
+# `pokemon_rank`, which is the last tie-breaker of the report ranking. A later
+# change will generate this file from a catalog; until then fill them by hand
+# or leave them out.
+#   pokemon          - (optional) character/subject name shown in the report's
+#                      `Pokémon` column (e.g. "Charizard")
+#   pokemon_rank     - (optional) integer position in a popularity list
+#                      (1 = most popular). Used as the final ranking tie-break:
+#                      gross ROI -> discount -> spread -> pokemon_rank.
+#                      Missing/empty = 9999 (unranked, sorts last on ties).
+#   rarity           - (optional) rarity label from the catalog (informational)
+#   year             - (optional) release year, integer (informational)
 
 cards:
   - name: Example Item
@@ -31,3 +44,7 @@ cards:
     exclude_keywords: [reprint, replica]
     group: chase-en
     tcg_set: "Example Set (Full TCGCSV Name)"
+    pokemon: Example Subject
+    pokemon_rank: 1
+    rarity: Holo Rare
+    year: 1999

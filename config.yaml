@@ -1,25 +1,40 @@
-# Configuracao do scanner.
-# ATENCAO convencao: min_gross_margin_percent e percentual INTEIRO (30 = 30%).
+# Configuracao do scanner (padrao COMC, operador 2026-09-03).
+# Convencao deste repo: percentuais INTEIROS (20 = 20%).
+# Metricas AJUSTAVEIS por run, sem editar este arquivo:
+#   --min-discount N   sobrescreve min_discount_percent (diagnostico: 10)
+#   --min-price X      sobrescreve min_price_usd        (diagnostico: 5)
+#   --max-pages N      sobrescreve max_pages
 
-min_gross_margin_percent: 15   # margem bruta minima pra reportar (decisao do operador 2026-09-01:
-                               # 30 -> 15 NESTE scanner -- slab graded raramente da 30%;
-                               # demais scanners da frota seguem em 30)
+# GATE do scan: Desconto% = (referencia - preco eBay) / referencia.
+# 20 = candidato comercial. O antigo `min_gross_margin_percent` (ROI bruto =
+# (ref - preco)/preco) deixou de ser o gate; ROI bruto segue como coluna.
+min_discount_percent: 20
 min_price_usd: 10.0            # piso de preco (~R$50): abaixo disso, ignora
-suspicious_margin_percent: 60  # acima disso vira SUSPEITO (bom demais = conferir)
+suspicious_margin_percent: 60  # ROI bruto acima disto vira SUSPEITO (bom demais = conferir)
+
+# Decisao do operador 2026-09-03: SO preco fixo (lance atual de leilao nao e preco).
+fixed_price_only: true
+
+# Escopo (decisao 2026-06-10): SO graded por default. Raw entra por run
+# (--include-raw): NM = TCGplayer market; LP = mediana de >=3 vendas LP explicitas
+# (nunca LP vs NM). lp_with_reference: false desliga o caminho LP.
+graded_only: true
+lp_with_reference: true
+
+# Notas aceitas (chaves do src/grading.py). Descomente para restringir; default =
+# PSA 8/9/10, CGC 9/9.5/10 Gem/10 Pristine, BGS 9/9.5/10/10 Black, SGC 9/9.5/10,
+# TAG 9.5/10. A referencia de cada nota e SEMPRE a mediana de vendas da mesma
+# certificadora+nota+variante -- nota vizinha/coluna generica nunca.
+# graded_allow: ["PSA 10", "PSA 9", "CGC 10 GEM", "CGC 10 PRISTINE", "BGS 10", "BGS 10 BLACK", "TAG 10"]
+
+# Browse API: 1 busca generica por carta, paginas de 200 (cota gratis 5.000/dia).
+max_pages: 3
 
 # Modo confiavel (--confiavel). Decisao 2026-06-10: 50/98 em vez de 100/99
 # (abre funil p/ vendedor medio honesto; golpista tem 0-9 avals, nao 96-98%).
-# 96% foi avaliado e rejeitado: nivel de conta comprada/sequestrada.
 trusted_min_feedback: 50
 trusted_min_feedback_pct: 98.0
 
 # Entrega na COMC -- Algona, WA 98001-7409, EUA (mailbox de armazenamento).
-# Logo: SO vendedor com item localizado nos EUA (frete domestico, sem
-# importacao, elegivel ao Authenticity Guarantee). Filtro aplicado na API
-# (itemLocationCountry) + cinto de seguranca no scorer.
+# Logo: SO vendedor com item localizado nos EUA (filtro na API + cinto no scorer).
 required_location_country: US
-
-# Escopo (decisao 2026-06-10): SO graded cards -- PSA 9/10, BGS 9.5/10,
-# CGC 9.5/10. Raw fora do funil (nota de terceiro e verificavel por cert
-# lookup; condicao de raw nao e). Reverter = graded_only: false.
-graded_only: true
