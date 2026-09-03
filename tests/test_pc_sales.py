@@ -879,3 +879,18 @@ def test_foreign_grader_mention_makes_sale_ambiguous():
         {"date": "2026-08-03", "price": 210.0, "title": "Charizard 4/102 HGA 10 crossover PSA 10"},
     ]
     assert [s["price"] for s in pc.comparable_sales(sales, "PSA", 10.0)] == [900.0]
+
+
+def test_console_matches_tolerates_vs_ampersand_and_split_words():
+    # Casos REAIS do build_watchlist (2026-09-03): PC usa "team-magma-&-team-aqua"
+    # e "fire-red-&-leaf-green"; o set TCGCSV e "EX Team Magma vs Team Aqua" /
+    # "EX FireRed & LeafGreen". Sem tolerancia esses sets ficavam sem pagina.
+    assert pc.console_matches("/game/pokemon-team-magma-&-team-aqua/blaziken-ex-89",
+                              "EX Team Magma vs Team Aqua")
+    assert pc.console_matches("/game/pokemon-fire-red-&-leaf-green/charizard-ex-105",
+                              "EX FireRed & LeafGreen")
+    assert pc.console_matches("/game/pokemon-firered-&-leafgreen/charizard-ex-105",
+                              "EX FireRed & LeafGreen")
+    # continua rejeitando outro set / outro idioma
+    assert not pc.console_matches("/game/pokemon-japanese-base-set/charizard-4", "Base Set")
+    assert not pc.console_matches("/game/pokemon-base-set-2/charizard-4", "Base Set")

@@ -562,11 +562,20 @@ def console_matches(path: str, set_label) -> bool:
     parts = path.strip("/").split("/")
     if len(parts) < 3:
         return False
-    console_tokens = {t for t in (re.sub(r"[^a-z0-9]", "", x)
-                                  for x in parts[1].lower().split("-")) if t} - {"pokemon"}
-    set_tokens = {t for t in re.findall(r"[a-z0-9]+", clean_set_name(set_label).lower())
-                  if t != "ex"}
-    return bool(set_tokens) and console_tokens == set_tokens
+    noise = {"pokemon", "ex", "vs", "and", "the"}
+    console_list = [t for t in (re.sub(r"[^a-z0-9]", "", x)
+                                for x in parts[1].lower().split("-")) if t and t not in noise]
+    set_list = [t for t in re.findall(r"[a-z0-9]+", clean_set_name(set_label).lower())
+                if t not in noise]
+    if not set_list:
+        return False
+    if set(console_list) == set(set_list):
+        return True
+    # Tolerancia real (build_watchlist 2026-09-03): PC escreve "fire-red-&-leaf-green"
+    # e "team-magma-&-team-aqua" para "EX FireRed & LeafGreen" / "EX Team Magma vs
+    # Team Aqua" -- comparar o texto colado (sem separadores) resolve os dois sem
+    # afrouxar idioma/edicao ("japanese-base-set" e "base-set-2" seguem fora).
+    return "".join(console_list) == "".join(set_list)
 
 
 def choose_path(paths: list[str], card_name, number, set_label) -> str | None:
