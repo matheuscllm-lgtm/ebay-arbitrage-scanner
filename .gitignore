@@ -17,3 +17,6 @@ watchlist.yaml
 
 # Local-only credentials
 .env
+
+# fixtures reais de teste (JSON da Browse API) precisam entrar no repo
+!tests/fixtures/*.json

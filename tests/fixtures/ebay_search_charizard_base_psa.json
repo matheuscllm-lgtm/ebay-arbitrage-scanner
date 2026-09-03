@@ -1,0 +1,1928 @@
+{
+  "href": "https://api.ebay.com/buy/browse/v1/item_summary/search?q=pokemon+charizard+4%2F102+base+set+psa&limit=50&category_ids=183454&filter=price%3A%5B10..%5D%2CpriceCurrency%3AUSD%2CitemLocationCountry%3AUS%2CbuyingOptions%3A%7BFIXED_PRICE%7D&sort=price&offset=0",
+  "total": 349,
+  "next": "https://api.ebay.com/buy/browse/v1/item_summary/search?q=pokemon+charizard+4%2F102+base+set+psa&limit=50&category_ids=183454&filter=price%3A%5B10..%5D%2CpriceCurrency%3AUSD%2CitemLocationCountry%3AUS%2CbuyingOptions%3A%7BFIXED_PRICE%7D&sort=price&offset=50",
+  "limit": 50,
+  "offset": 0,
+  "itemSummaries": [
+    {
+      "itemId": "v1|257719387397|0",
+      "title": "Pokemon TCG Charizard 4/102 Classic Collection Celebrations Base Set PSA 9",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/AqIAAeSwGDJqmK3c/s-l225.jpg"
+      },
+      "price": {
+        "value": "195.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C257719387397%7C0",
+      "seller": {
+        "username": "seller_1",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 309
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/AqIAAeSwGDJqmK3c/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "6.99",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-08T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-15T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/257719387397?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item3c0145c505:g:AqIAAeSwGDJqmK3c",
+      "itemLocation": {
+        "postalCode": "786**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/Ey4AAeSwNXNqmK3c/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "257719387397",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-09-02T23:15:16.000Z",
+      "itemCreationDate": "2026-09-02T23:15:16.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|257606940182|0",
+      "title": "Charizard PSA 9 Celebrations Classic 4/102 Holo Base Set 2021 Pokemon Card",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/HjwAAeSww4BqSrIt/s-l225.jpg"
+      },
+      "price": {
+        "value": "205.99",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C257606940182%7C0",
+      "seller": {
+        "username": "seller_2",
+        "feedbackPercentage": "88.9",
+        "feedbackScore": 27
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/HjwAAeSww4BqSrIt/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "CALCULATED"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/257606940182?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item3bfa91f616:g:HjwAAeSww4BqSrIt",
+      "itemLocation": {
+        "postalCode": "926**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/BsoAAeSwNPJqSrIu/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "257606940182",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-07-05T19:39:59.000Z",
+      "itemCreationDate": "2026-07-05T19:39:59.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|377447334652|0",
+      "title": "Pokemon TCG Charizard 4/102 Classic Collection Celebrations Base Set PSA 9",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/86MAAeSwp05qjggB/s-l225.jpg"
+      },
+      "price": {
+        "value": "209.99",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C377447334652%7C0",
+      "seller": {
+        "username": "seller_3",
+        "feedbackPercentage": "99.7",
+        "feedbackScore": 22971
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/86MAAeSwp05qjggB/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "6.50",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-08T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-14T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/377447334652?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item57e19d42fc:g:86MAAeSwp05qjggB",
+      "itemLocation": {
+        "postalCode": "553**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/-l0AAeSwmX1qjggC/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "377447334652",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-25T21:19:11.000Z",
+      "itemCreationDate": "2026-08-25T21:19:11.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|167236883977|0",
+      "title": "Charizard PSA 9 Celebrations Classic 4/102 Holo Base Set 2021 Pokemon Card",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/Cu4AAeSwZoJqgTET/s-l225.jpg"
+      },
+      "price": {
+        "value": "219.99",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C167236883977%7C0",
+      "seller": {
+        "username": "seller_4",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 3378
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/Cu4AAeSwZoJqgTET/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-12T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/167236883977?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item26f0185609:g:Cu4AAeSwZoJqgTET",
+      "itemLocation": {
+        "postalCode": "660**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/b6oAAeSwsqlqgTES/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "167236883977",
+      "availableCoupons": false,
+      "itemOriginDate": "2025-01-07T05:00:07.000Z",
+      "itemCreationDate": "2025-01-07T05:00:07.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|366555002073|0",
+      "title": "Charizard PSA 9 Celebrations Classic 4/102 Holo Base Set 2021 Mint 9",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/n8IAAeSw-jdqXpnC/s-l225.jpg"
+      },
+      "price": {
+        "value": "215.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C366555002073%7C0",
+      "seller": {
+        "username": "seller_5",
+        "feedbackPercentage": "99.4",
+        "feedbackScore": 179
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/n8IAAeSw-jdqXpnC/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "CALCULATED"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/366555002073?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item55586174d9:g:n8IAAeSw-jdqXpnC",
+      "itemLocation": {
+        "postalCode": "287**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/zBIAAeSw7dlqXpnQ/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "366555002073",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-07-20T21:59:15.000Z",
+      "itemCreationDate": "2026-07-20T21:59:15.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|407139330842|0",
+      "title": "Pokemon 2021 Charizard 4/102 Holo Celebrations Classic Collection Base Set PSA 9",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/9-wAAeSwVNpqfJgk/s-l225.jpg"
+      },
+      "price": {
+        "value": "250.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C407139330842%7C0",
+      "seller": {
+        "username": "seller_6",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 18658
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/9-wAAeSwVNpqfJgk/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-10T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/407139330842?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item5ecb652b1a:g:9-wAAeSwVNpqfJgk",
+      "itemLocation": {
+        "postalCode": "860**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/G44AAeSwPoZqfJgk/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/c-cAAeSwIGNqfJgk/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "407139330842",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-12T15:54:24.000Z",
+      "itemCreationDate": "2026-08-12T15:54:24.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|407139331118|0",
+      "title": "Pokemon 2021 Charizard 4/102 Holo Celebrations Classic Collection Base Set PSA 9",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/E7cAAeSw2RBqfJfu/s-l225.jpg"
+      },
+      "price": {
+        "value": "250.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C407139331118%7C0",
+      "seller": {
+        "username": "seller_7",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 18658
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/E7cAAeSw2RBqfJfu/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-10T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/407139331118?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item5ecb652c2e:g:E7cAAeSw2RBqfJfu",
+      "itemLocation": {
+        "postalCode": "860**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/xJgAAeSw9jhqfJfu/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/FBkAAeSwGbJqfJfu/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "407139331118",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-12T15:54:28.000Z",
+      "itemCreationDate": "2026-08-12T15:54:28.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|407139331297|0",
+      "title": "Pokemon 2021 Charizard 4/102 Holo Celebrations Classic Collection PSA 9",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/ZxcAAeSw~bxqfJfH/s-l225.jpg"
+      },
+      "price": {
+        "value": "250.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C407139331297%7C0",
+      "seller": {
+        "username": "seller_8",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 18658
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/ZxcAAeSw~bxqfJfH/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-10T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/407139331297?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item5ecb652ce1:g:ZxcAAeSw~bxqfJfH",
+      "itemLocation": {
+        "postalCode": "860**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/uHkAAeSwkOdqfJfH/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/zFcAAeSwS4pqfJfH/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "407139331297",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-12T15:54:48.000Z",
+      "itemCreationDate": "2026-08-12T15:54:48.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|407139331312|0",
+      "title": "Pokemon 2021 Charizard 4/102 Holo Celebrations Classic Collection-Base Set PSA 9",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/8mYAAeSwU79qfJh4/s-l225.jpg"
+      },
+      "price": {
+        "value": "250.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C407139331312%7C0",
+      "seller": {
+        "username": "seller_9",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 18658
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/8mYAAeSwU79qfJh4/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-10T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/407139331312?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item5ecb652cf0:g:8mYAAeSwU79qfJh4",
+      "itemLocation": {
+        "postalCode": "860**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/p0AAAeSwrJFqfJh4/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/B3kAAeSwVjtqfJh4/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "407139331312",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-12T15:54:49.000Z",
+      "itemCreationDate": "2026-08-12T15:54:49.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|398199996929|0",
+      "title": "2021 Pokémon Charizard Celebrations Classic 4/102 Holo Base Set PSA Mint 9",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/jvAAAeSwimlqX6L9/s-l225.jpg"
+      },
+      "price": {
+        "value": "250.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C398199996929%7C0",
+      "seller": {
+        "username": "seller_10",
+        "feedbackPercentage": "97.7",
+        "feedbackScore": 833
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/jvAAAeSwimlqX6L9/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "5.99",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-08T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-14T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/398199996929?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item5cb691c201:g:jvAAAeSwimlqX6L9",
+      "itemLocation": {
+        "postalCode": "603**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/pacAAeSwe41qX6L8/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/QS0AAeSwNwVqX6L8/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/M3EAAeSwKzZqX6L8/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "398199996929",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-07-21T16:50:15.000Z",
+      "itemCreationDate": "2026-07-21T16:50:15.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|407139330748|0",
+      "title": "Pokemon 2021 Charizard 4/102 Holo Celebrations Classic Collection Base Set PSA 9",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/k3sAAeSwndBqfJhb/s-l225.jpg"
+      },
+      "price": {
+        "value": "250.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C407139330748%7C0",
+      "seller": {
+        "username": "seller_11",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 18658
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/k3sAAeSwndBqfJhb/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "6.99",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-12T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/407139330748?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item5ecb652abc:g:k3sAAeSwndBqfJhb",
+      "itemLocation": {
+        "postalCode": "860**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/wgcAAeSwQOlqfJhb/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/mioAAeSwy0VqfJhb/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "407139330748",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-12T15:54:19.000Z",
+      "itemCreationDate": "2026-08-12T15:54:19.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|227466470723|0",
+      "title": "Pokemon TCG 1999 Base Set Charizard Holo Rare PSA 2 English 4/102",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/Re0AAeSwOjlqdju9/s-l225.jpg"
+      },
+      "price": {
+        "value": "339.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C227466470723%7C0",
+      "seller": {
+        "username": "seller_12",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 3238
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/Re0AAeSwOjlqdju9/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "5.50",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-10T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "24043367933",
+      "itemWebUrl": "https://www.ebay.com/itm/227466470723?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item34f60ee543:g:Re0AAeSwOjlqdju9",
+      "itemLocation": {
+        "postalCode": "760**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/TyoAAeSwndBqdjvS/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "227466470723",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-07T20:15:47.000Z",
+      "itemCreationDate": "2026-08-07T20:15:47.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|267758415385|0",
+      "title": "1999 Pokemon Base Set Charizard #4/102 Holo Rare PSA 2 GOOD WOTC Unlimited",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/6uwAAeSwiiFqgOM2/s-l225.jpg"
+      },
+      "price": {
+        "value": "349.99",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C267758415385%7C0",
+      "seller": {
+        "username": "seller_13",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 3365
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/6uwAAeSwiiFqgOM2/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-10T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "24043367933",
+      "itemWebUrl": "https://www.ebay.com/itm/267758415385?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item3e57a52e19:g:6uwAAeSwiiFqgOM2",
+      "itemLocation": {
+        "postalCode": "945**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/XN4AAeSw-klqgOM2/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "267758415385",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-15T22:10:39.000Z",
+      "itemCreationDate": "2026-08-15T22:10:39.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|157735625719|0",
+      "title": "Charizard PSA 9 Celebrations Classic 4/102 Holo Base Set 2021 Pokemon Card",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/JTgAAeSwAKtphOL3/s-l225.jpg"
+      },
+      "price": {
+        "value": "350.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C157735625719%7C0",
+      "seller": {
+        "username": "seller_14",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 253
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/JTgAAeSwAKtphOL3/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "CALCULATED"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "19049841301",
+      "itemWebUrl": "https://www.ebay.com/itm/157735625719?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item24b9c6a3f7:g:JTgAAeSwAKtphOL3",
+      "itemLocation": {
+        "postalCode": "208**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/1voAAeSwedFphOL3/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/JdEAAeSw63JphOMF/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "157735625719",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-02-05T18:36:46.000Z",
+      "itemCreationDate": "2026-03-08T20:47:14.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|227475679970|0",
+      "title": "Pokemon TCG 1999 Base Set Charizard Holo Rare PSA 2 English 4/102",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/bP4AAeSwMyRqdSl4/s-l225.jpg"
+      },
+      "price": {
+        "value": "349.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C227475679970%7C0",
+      "seller": {
+        "username": "seller_15",
+        "feedbackPercentage": "99.7",
+        "feedbackScore": 5552
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/bP4AAeSwMyRqdSl4/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "9.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-12T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "24043367933",
+      "itemWebUrl": "https://www.ebay.com/itm/227475679970?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item34f69b6ae2:g:bP4AAeSwMyRqdSl4",
+      "itemLocation": {
+        "postalCode": "040**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/LlcAAeSwYTBqdSlt/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/T~oAAeSwsJVqdSlu/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/ZZoAAeSwdSZqdSlu/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/MmwAAeSwfDJqdSlv/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "227475679970",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-07T00:41:38.000Z",
+      "itemCreationDate": "2026-08-14T13:10:27.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|327329761607|0",
+      "title": "Charizard Holo 4/102 Pokemon Base Set PSA 3",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/kPAAAeSwicVqkNzK/s-l225.jpg"
+      },
+      "price": {
+        "value": "359.99",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C327329761607%7C0",
+      "seller": {
+        "username": "seller_16",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 3801
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/kPAAAeSwicVqkNzK/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-04T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-09T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "24043367933",
+      "itemWebUrl": "https://www.ebay.com/itm/327329761607?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item4c365fc947:g:kPAAAeSwicVqkNzK",
+      "itemLocation": {
+        "postalCode": "554**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/Z7sAAeSwR7pqkNzK/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "327329761607",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-28T00:51:41.000Z",
+      "itemCreationDate": "2026-08-28T00:51:41.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|407153786477|0",
+      "title": "PSA 1 Charizard 4/102 Base Set Holo Pokemon 1999 WOTC Vintage Graded with case",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/OYAAAeSwNXNqkZxb/s-l225.jpg"
+      },
+      "price": {
+        "value": "369.50",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C407153786477%7C0",
+      "seller": {
+        "username": "seller_17",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 15
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/OYAAAeSwNXNqkZxb/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-11T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "24043367933",
+      "itemWebUrl": "https://www.ebay.com/itm/407153786477?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item5ecc41be6d:g:OYAAAeSwNXNqkZxb",
+      "itemLocation": {
+        "postalCode": "851**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/4pcAAeSwJm1qg7SB/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/Q2cAAeSwXeFqg7SB/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/WOAAAeSwie9qg7SB/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/0E8AAeSwQUJqhHzy/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/6usAAeSw~vdqkZxc/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/cmoAAeSw2DJqkZxb/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "407153786477",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-18T15:40:52.000Z",
+      "itemCreationDate": "2026-08-18T15:40:52.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|137662405355|0",
+      "title": "1999 POKEMON BASE SET UNLIMITED #4/102 CHARIZARD HOLO RARE PSA 3",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/aOEAAeSwwtVqjoKk/s-l225.jpg"
+      },
+      "price": {
+        "value": "370.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C137662405355%7C0",
+      "seller": {
+        "username": "seller_18",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 112
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/aOEAAeSwwtVqjoKk/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "CALCULATED"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "24043367933",
+      "itemWebUrl": "https://www.ebay.com/itm/137662405355?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item200d519aeb:g:aOEAAeSwwtVqjoKk",
+      "itemLocation": {
+        "postalCode": "285**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/t-wAAeSwk1JqjoKl/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/u0wAAeSwl01qjoKm/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "137662405355",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-26T06:08:27.000Z",
+      "itemCreationDate": "2026-08-26T06:08:27.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|398226101636|0",
+      "title": "Pokemon Charizard 4/102 Base Set Holo 1999 PSA 3 ",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/UYkAAeSwFG1p-0ud/s-l225.jpg"
+      },
+      "price": {
+        "value": "385.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C398226101636%7C0",
+      "seller": {
+        "username": "seller_19",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 140
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/UYkAAeSwFG1p-0ud/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "CALCULATED"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "24043367933",
+      "itemWebUrl": "https://www.ebay.com/itm/398226101636?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item5cb8201584:g:UYkAAeSwFG1p-0ud",
+      "itemLocation": {
+        "postalCode": "173**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/vSgAAeSw0Plp-0ub/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "398226101636",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-05-06T14:17:35.000Z",
+      "itemCreationDate": "2026-07-29T04:36:58.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|188822001839|0",
+      "title": "PSA 4 1999 Pokémon TCG Base Set Charizard Holo Rare 4/102 English WOTC",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/DN4AAeSwmKhqhZTL/s-l225.jpg"
+      },
+      "price": {
+        "value": "395.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C188822001839%7C0",
+      "seller": {
+        "username": "seller_20",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 1010
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/DN4AAeSwmKhqhZTL/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-04T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-09T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "24043367933",
+      "itemWebUrl": "https://www.ebay.com/itm/188822001839?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item2bf6ab18af:g:DN4AAeSwmKhqhZTL",
+      "itemLocation": {
+        "postalCode": "290**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/KIQAAeSwWkZqhZTL/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/-28AAeSw2npqhZTM/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/AyoAAeSwtFxqhZTM/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/KUsAAeSwva1qhZTN/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/AssAAeSwALdqhZTN/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/BBkAAeSwHrZqhZTO/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "188822001839",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-20T12:19:30.000Z",
+      "itemCreationDate": "2026-08-20T12:19:30.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|366636788993|0",
+      "title": "Charizard 4/102 Base Set Holo PSA 4 Pokémon Trading Card Game",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/sDkAAeSw9KNqk1F2/s-l225.jpg"
+      },
+      "price": {
+        "value": "399.99",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C366636788993%7C0",
+      "seller": {
+        "username": "seller_21",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 312
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/sDkAAeSw9KNqk1F2/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-08T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-15T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "24043367933",
+      "itemWebUrl": "https://www.ebay.com/itm/366636788993?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item555d416d01:g:sDkAAeSw9KNqk1F2",
+      "itemLocation": {
+        "postalCode": "100**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/UAEAAeSwNhhqk1F2/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/c48AAeSwYtNqk1F1/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/fp8AAeSwiOxqk1F1/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/y9AAAeSwjFZqk1F2/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/4OcAAeSwl01qk1F2/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/rNMAAeSw2G9qk1F2/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/530AAeSwKX9qk1F2/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/wE8AAeSwCjpqk1F3/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/VYQAAeSwTgpqk1F3/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "366636788993",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-29T21:41:45.000Z",
+      "itemCreationDate": "2026-08-29T21:41:45.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|257718678279|0",
+      "title": "1999 Pokemon Spanish Charizard Holo #4/102 Base Set PSA 4 VG-EX",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/KnEAAeSwoVxqmETL/s-l225.jpg"
+      },
+      "price": {
+        "value": "399.99",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C257718678279%7C0",
+      "seller": {
+        "username": "seller_22",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 7
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/KnEAAeSwoVxqmETL/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          }
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "itemWebUrl": "https://www.ebay.com/itm/257718678279?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item3c013af307:g:KnEAAeSwoVxqmETL",
+      "itemLocation": {
+        "postalCode": "088**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/l2AAAeSwuxVqmETK/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/oeoAAeSwT-hqmETK/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "257718678279",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-09-02T15:50:58.000Z",
+      "itemCreationDate": "2026-09-02T15:50:58.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|227452459022|0",
+      "title": "Pokémon German Charizard Glurak Base Set Unlimited 4/102 PSA 5",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/OWgAAeSwXR5qQxuQ/s-l225.jpg"
+      },
+      "price": {
+        "value": "400.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C227452459022%7C0",
+      "seller": {
+        "username": "seller_23",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 262
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/OWgAAeSwXR5qQxuQ/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-05T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-11T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE",
+        "BEST_OFFER"
+      ],
+      "epid": "25097329908",
+      "itemWebUrl": "https://www.ebay.com/itm/227452459022?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item34f539180e:g:OWgAAeSwXR5qQxuQ",
+      "itemLocation": {
+        "postalCode": "983**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/bXMAAeSwHt1qQxuQ/s-l225.jpg"
+        },
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/RU0AAeSwltBqQxuR/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "227452459022",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-06-30T01:29:13.000Z",
+      "itemCreationDate": "2026-07-28T20:54:05.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|178454065470|0",
+      "title": "1999 Pokemon German Base Set Glurak (Charizard) Holo #4/102 PSA 5",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/WugAAeSwzadqlKbm/s-l225.jpg"
+      },
+      "price": {
+        "value": "400.00",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C178454065470%7C0",
+      "seller": {
+        "username": "seller_24",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 911
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/WugAAeSwzadqlKbm/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "FIXED",
+          "shippingCost": {
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "minEstimatedDeliveryDate": "2026-09-08T07:00:00.000Z",
+          "maxEstimatedDeliveryDate": "2026-09-15T07:00:00.000Z"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "25097329908",
+      "itemWebUrl": "https://www.ebay.com/itm/178454065470?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item298cb0f13e:g:WugAAeSwzadqlKbm",
+      "itemLocation": {
+        "postalCode": "370**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/fN4AAeSwrj5qlKbu/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "178454065470",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-30T21:57:03.000Z",
+      "itemCreationDate": "2026-08-30T21:57:03.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    },
+    {
+      "itemId": "v1|178404342624|0",
+      "title": "1999 Charizard 4/102 PSA 4 Base Set Holo Pokemon Rare (Fresh Grade)",
+      "leafCategoryIds": [
+        "183454"
+      ],
+      "categories": [
+        {
+          "categoryId": "183454",
+          "categoryName": "CCG Individual Cards"
+        },
+        {
+          "categoryId": "220",
+          "categoryName": "Toys & Hobbies"
+        },
+        {
+          "categoryId": "2536",
+          "categoryName": "Collectible Card Games"
+        }
+      ],
+      "image": {
+        "imageUrl": "https://i.ebayimg.com/images/g/390AAeSwY89qb5SP/s-l225.jpg"
+      },
+      "price": {
+        "value": "399.99",
+        "currency": "USD"
+      },
+      "itemHref": "https://api.ebay.com/buy/browse/v1/item/v1%7C178404342624%7C0",
+      "seller": {
+        "username": "seller_25",
+        "feedbackPercentage": "100.0",
+        "feedbackScore": 148
+      },
+      "condition": "Graded",
+      "conditionId": "2750",
+      "thumbnailImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/390AAeSwY89qb5SP/s-l1600.jpg"
+        }
+      ],
+      "shippingOptions": [
+        {
+          "shippingCostType": "CALCULATED"
+        }
+      ],
+      "buyingOptions": [
+        "FIXED_PRICE"
+      ],
+      "epid": "24043367933",
+      "itemWebUrl": "https://www.ebay.com/itm/178404342624?_skw=pokemon+charizard+4%2F102+base+set+psa&hash=item2989ba3b60:g:390AAeSwY89qb5SP",
+      "itemLocation": {
+        "postalCode": "933**",
+        "country": "US"
+      },
+      "additionalImages": [
+        {
+          "imageUrl": "https://i.ebayimg.com/images/g/WbIAAeSwz-Bqb5SP/s-l225.jpg"
+        }
+      ],
+      "adultOnly": false,
+      "legacyItemId": "178404342624",
+      "availableCoupons": false,
+      "itemOriginDate": "2026-08-13T22:47:00.000Z",
+      "itemCreationDate": "2026-08-13T22:47:00.000Z",
+      "topRatedBuyingExperience": false,
+      "priorityListing": false,
+      "listingMarketplaceId": "EBAY_US"
+    }
+  ]
+}
