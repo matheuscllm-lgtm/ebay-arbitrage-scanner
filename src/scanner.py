@@ -281,6 +281,10 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
             base_query + suffix,
             min_price=float(config.get("min_price_usd", 10.0)),
             max_pages=int(config.get("max_pages", 3) or 3),
+            # Filtros server-side seguem o config (so preco fixo; so EUA) -- o
+            # scorer repete a checagem como cinto de seguranca.
+            fixed_price_only=bool(config.get("fixed_price_only", True)),
+            location_country=str(config.get("required_location_country", "US") or ""),
         )
         for listing in listings:
             fingerprint = (listing.title.strip().lower(), listing.price)

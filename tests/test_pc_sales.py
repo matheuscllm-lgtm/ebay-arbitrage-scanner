@@ -832,3 +832,23 @@ def test_search_card_paths_unquotes_percent_encoded_slug():
     assert pc.slug_matches(paths[0], "Team Rocket's Mewtwo ex - 231/182", "231/182")
     assert pc.choose_path(paths, "Team Rocket's Mewtwo ex - 231/182", "231/182",
                                 "SV10: Destined Rivals") == paths[0]
+
+
+def test_black_label_sale_requires_label_context_in_both_word_orders():
+    # Review PR A (eBay): "BGS 10 Black Kyurem EX" (nota antes do nome) era lido
+    # como Black Label -- so "Black Label", ou "black" encerrando a mencao
+    # ("... BGS 10 Black" / "BGS 10 Black - ...") contam.
+    assert not pc._is_black_label_sale("BGS 10 Black Kyurem EX 154/160 Boundaries Crossed")
+    assert not pc._is_black_label_sale("Black Kyurem EX BGS 10 Boundaries Crossed")
+    assert pc._is_black_label_sale("Black Kyurem EX BGS 10 Black Label")
+    assert pc._is_black_label_sale("Charizard 4/102 BGS 10 Black")
+    assert pc._is_black_label_sale("Charizard BGS 10 Black - Base Set")
+    assert pc._is_black_label_sale("Charizard Black BGS 10 Base Set")
+    sales = [
+        {"date": "2026-08-01", "price": 500.0, "title": "BGS 10 Black Kyurem EX 154/160"},
+        {"date": "2026-08-02", "price": 520.0, "title": "BGS 10 Black Kyurem EX 154/160 mint"},
+        {"date": "2026-08-03", "price": 510.0, "title": "Black Kyurem EX 154 BGS 10"},
+        {"date": "2026-08-04", "price": 5000.0, "title": "Black Kyurem EX BGS 10 Black Label"},
+    ]
+    assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 10.0, "")] == [500.0, 520.0, 510.0]
+    assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 10.0, "BLACK")] == [5000.0]

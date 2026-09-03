@@ -20,6 +20,7 @@ ROI bruto% = (ref - preco) / preco segue como coluna. Nunca "lucro".
 """
 import argparse
 import io
+import os
 import sys
 
 import yaml
@@ -152,12 +153,20 @@ def main(argv=None):
             include_raw=args.include_raw, group=args.group, funnel=stats,
             aborted=aborted,
         )
-        out_path = report.write_json(payload, args.out)
+        out = args.out
+        if aborted:
+            # Scan parcial NUNCA sobrescreve o ultimo scan completo no path
+            # default (mesma protecao do run degradado): vai para um arquivo
+            # irmao, marcado aborted=true.
+            base, ext = os.path.splitext(args.out)
+            out = f"{base}.aborted{ext or '.json'}"
+        out_path = report.write_json(payload, out)
         print(f"Artefato JSON: {out_path} ({len(payload['rows'])} rows) -- "
               f"entrega: python ebay_summary.py {out_path} -o results/ebay-<data>.md")
     if aborted:
         print("RUN ABORTADO antes do fim -- as cartas restantes NAO foram varridas "
-              "(artefato marcado aborted=true).")
+              f"(artefato parcial gravado a parte, marcado aborted=true; {args.out} "
+              "preservado).")
         return EXIT_ABORTED
     return 0
 

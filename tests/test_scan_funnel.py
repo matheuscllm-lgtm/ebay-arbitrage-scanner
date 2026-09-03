@@ -238,7 +238,8 @@ def test_main_exit_code_1_and_artifact_marked_when_aborted(tmp_path, monkeypatch
                                       "--out", str(out), "--min-discount", "10",
                                       "--min-price", "5"])
     assert main_mod.main() == main_mod.EXIT_ABORTED
-    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert not out.exists()  # parcial vai para o arquivo irmao .aborted.json
+    payload = json.loads((tmp_path / "scan.aborted.json").read_text(encoding="utf-8"))
     assert payload["meta"]["aborted"] is True
     assert payload["meta"]["funnel"]["seen"] == 10
     assert payload["meta"]["config"]["min_discount_percent"] == 10
@@ -252,3 +253,47 @@ def test_main_grades_typo_errors_loud(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as exc:
         main_mod.main()
     assert "PSA 7" in str(exc.value)
+
+
+def test_scan_card_passes_fixed_price_and_country_from_config(no_tcg):
+    class RecordingEbay:
+        def __init__(self):
+            self.calls = 0
+            self.kwargs = []
+
+        def search(self, query, **kw):
+            self.calls += 1
+            self.kwargs.append(kw)
+            return []
+
+    refs = FakeRefs(slab={}, pc_url=PC_URL)
+    fair = FairValue()
+    ebay = RecordingEbay()
+    scanner.scan_card(CARD, ebay, {"graded_only": True, "fixed_price_only": False,
+                                   "required_location_country": "CA", "max_pages": 2,
+                                   "min_price_usd": 7.0},
+                      log=lambda *a: None, refs=refs, fair=fair)
+    kw = ebay.kwargs[0]
+    assert kw["fixed_price_only"] is False and kw["location_country"] == "CA"
+    assert kw["max_pages"] == 2 and kw["min_price"] == 7.0
+    ebay2 = RecordingEbay()
+    scanner.scan_card(CARD, ebay2, {"graded_only": True}, log=lambda *a: None,
+                      refs=refs, fair=fair)
+    assert ebay2.kwargs[0]["fixed_price_only"] is True
+    assert ebay2.kwargs[0]["location_country"] == "US"
+
+
+def test_aborted_run_never_overwrites_previous_complete_artifact(tmp_path, monkeypatch, capsys):
+    out = tmp_path / "last_scan.json"
+    out.write_text('{"meta": {"aborted": false, "complete": true}, "rows": [{"x": 1}]}',
+                   encoding="utf-8")
+    stats = Counter({"cards": 4, "seen": 10, "aborted": 1})
+    monkeypatch.setattr(scanner, "run_scan", lambda **kw: ({}, [], False, stats, True))
+    monkeypatch.setattr(sys, "argv", ["main.py", "--watchlist", _watchlist(tmp_path),
+                                      "--out", str(out)])
+    assert main_mod.main() == main_mod.EXIT_ABORTED
+    assert '"complete": true' in out.read_text(encoding="utf-8")  # preservado
+    aborted_path = tmp_path / "last_scan.aborted.json"
+    payload = json.loads(aborted_path.read_text(encoding="utf-8"))
+    assert payload["meta"]["aborted"] is True
+    assert "last_scan.aborted.json" in capsys.readouterr().out

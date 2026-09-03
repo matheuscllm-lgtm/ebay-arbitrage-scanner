@@ -331,8 +331,13 @@ _CGC_PRISTINE_RE = re.compile(r"\bCGC\s*-?\s*10\s*(?:Pristine)\b", re.I)
 # Etiqueta preta da BGS num TÍTULO de venda: só "Black Label" ou "black" colado em
 # "BGS 10" (antes ou depois). "Black Kyurem BGS 10" tem "black" no NOME da carta —
 # não é Black Label.
+# "BGS 10 Black" só conta quando "black" ENCERRA a menção (fim do título ou
+# pontuação): "BGS 10 Black Kyurem EX" (nota antes do nome) não é Black Label
+# (review PR A eBay, 2026-09-03 — a regex original só protegia a ordem inversa).
 _BLACK_LABEL_SALE_RE = re.compile(
-    r"\bblack[\s-]*label\b|\bBGS\s*-?\s*10\s+black\b|\bblack\s+BGS\s*-?\s*10\b", re.I)
+    r"\bblack[\s-]*label\b"
+    r"|\bBGS\s*-?\s*10\s+black\b(?!\s+[A-Za-z0-9])"
+    r"|\bblack\s+BGS\s*-?\s*10\b", re.I)
 
 
 def _is_black_label_sale(title: str) -> bool:
