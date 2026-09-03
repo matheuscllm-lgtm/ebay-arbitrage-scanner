@@ -112,8 +112,15 @@ def filter_group(cards, group):
         return cards
     if groups.is_group_spec(group):
         wanted = {str(n) for n in groups.parse_group_arg(group)}
-        return [c for c in cards if c.group in wanted]
-    return [c for c in cards if c.group == group]
+        picked = [c for c in cards if c.group in wanted]
+    else:
+        picked = [c for c in cards if c.group == group]
+    if not picked:
+        # typo/grupo ausente erra ALTO -- nunca vira um scan vazio "bem-sucedido"
+        present = sorted({c.group for c in cards if c.group}, key=lambda g: (len(g), g))
+        raise ValueError(f"grupo {group!r} sem cartas na watchlist "
+                         f"(grupos presentes: {', '.join(present) or 'nenhum'})")
+    return picked
 
 
 # --- referencias por vendas (pagina do PriceCharting, 1x por carta) ---------------

@@ -185,7 +185,7 @@ lista de cartas-alvo a partir do catálogo, sem nada digitado à mão:
 ```powershell
 cd C:\Users\mathe\ebay-arbitrage-scanner
 $env:PYTHONIOENCODING="utf-8"
-.venv\Scripts\python -m pytest tests/ -q        # 459 testes, offline
+.venv\Scripts\python -m pytest tests/ -q        # 462 testes, offline
 .venv\Scripts\python main.py --list-groups      # grupos c/ título e contagem (sem chaves)
 .venv\Scripts\python main.py --pricing-only     # sem credenciais (só PriceCharting)
 
@@ -258,9 +258,10 @@ passa por completo). A **entrega** sai do artefato:
   canônico, o título (`3 — WotC 1999-2000: <n> carta(s)`) e sai; sem chaves.
 - `--group <spec>` — roda só as cartas do(s) grupo(s). Aceita a spec numérica
   dos grupos canônicos `N` | `N-M` | `1,3,10-12` | `all`
-  (`src/groups.py` `parse_group_arg`; grupo fora de 1–12 erra ALTO — typo
-  nunca vira scan vazio) **ou** o nome literal do campo `group:` (watchlist
-  alternativa feita à mão).
+  (`src/groups.py` `parse_group_arg`) **ou** o nome literal do campo `group:`
+  (watchlist alternativa feita à mão). Grupo fora de 1–12, spec inválida ou
+  grupo/nome SEM cartas na watchlist erra ALTO (`ERRO: …`, exit ≠ 0) — typo
+  nunca vira scan vazio "bem-sucedido".
 - `--min-discount N` — Desconto% mínimo (INTEIRO) deste run; sobrescreve
   `min_discount_percent` (diagnóstico: 10).
 - `--min-price USD` — piso de preço deste run; sobrescreve `min_price_usd`
@@ -502,7 +503,7 @@ src/models.py          dataclasses (WatchCard c/ pokemon/pokemon_rank/rarity/yea
 ebay_summary.py        ENTREGA ao operador: JSON do scan -> markdown layout COMC (4 buckets ou
                        --sensitivity 10,15,20 com faixas + contagens por limiar); espelho do
                        comc_summary.py / myp_summary.py
-tests/                 459 testes offline + fixtures reais (ver Armadilhas)
+tests/                 462 testes offline + fixtures reais (ver Armadilhas)
 ```
 
 A watchlist é **list-driven de propósito**: casar item a partir de título

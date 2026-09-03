@@ -126,8 +126,11 @@ def main(argv=None):
     if not config.get("graded_allow"):
         config["graded_allow"] = sorted(scanner.grading.DEFAULT_GRADED_ALLOW)
 
-    cards_in_scope = scanner.filter_group(
-        scanner.load_watchlist(args.watchlist), args.group)
+    try:
+        cards_in_scope = scanner.filter_group(
+            scanner.load_watchlist(args.watchlist), args.group)
+    except ValueError as e:  # grupo fora de 1-12 / spec invalida: erro ALTO, nunca traceback
+        sys.exit(f"ERRO: {e}")
 
     fair_values, opportunities, effective_pricing_only, stats, aborted = scanner.run_scan(
         watchlist_path=args.watchlist, config=config,

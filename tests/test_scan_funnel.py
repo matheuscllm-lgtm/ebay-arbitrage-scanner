@@ -255,6 +255,17 @@ def test_main_grades_typo_errors_loud(tmp_path, monkeypatch):
     assert "PSA 7" in str(exc.value)
 
 
+def test_main_group_out_of_range_errors_loud_not_traceback(tmp_path, monkeypatch):
+    # typo no grupo (13, 0, 8-5, x) = erro ALTO com mensagem, nunca traceback nem scan vazio
+    for bad in ("13", "0", "8-5", "x"):
+        monkeypatch.setattr(sys, "argv", ["main.py", "--watchlist", _watchlist(tmp_path),
+                                          "--group", bad])
+        with pytest.raises(SystemExit) as exc:
+            main_mod.main()
+        assert str(exc.value).startswith("ERRO:"), bad
+        assert bad in str(exc.value), str(exc.value)  # a mensagem aponta o token errado
+
+
 def test_scan_card_passes_fixed_price_and_country_from_config(no_tcg):
     class RecordingEbay:
         def __init__(self):
