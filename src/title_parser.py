@@ -167,10 +167,18 @@ def risk_flags(title, listing=None):
     return flags
 
 
+# Mencao de nota ("PSA 10", "CGC 9.5 Pristine", "BGS gem mint 9.5") -- removida do
+# titulo antes de procurar o NUMERO da carta: carta nº 10 nao casa "Mewtwo VSTAR
+# PSA 10" (review Codex 2026-09-03).
+_GRADE_MENTION_STRIP = re.compile(
+    r"\b(psa|bgs|beckett|cgc|sgc|tag|ace|mnt|gma|hga|ags)\b[\s:\-]*"
+    r"(?:(?:gem\s*m(?:in)?t|mint|pristine|nm-?mt|black\s*label|graded)\s*)?\d{1,2}(?:\.5)?\b", re.I)
+
+
 def card_matches_title(card, title):
     """Checagem minima de identidade: nome da carta presente no titulo e,
     se houver numero, o numero tambem (evita casar 'Charizard ex' com
-    'Charizard VMAX')."""
+    'Charizard VMAX'). A nota do slab nunca conta como numero."""
     t = title.lower()
     if card.name.lower() not in t:
         return False
@@ -180,6 +188,6 @@ def card_matches_title(card, title):
     if card.number:
         num = card.number.lower().lstrip("0") or card.number.lower()
         pattern = r"(?:#|no\.?\s*|\b)0*%s\b" % re.escape(num)
-        if not re.search(pattern, t):
+        if not re.search(pattern, _GRADE_MENTION_STRIP.sub(" ", t)):
             return False
     return True

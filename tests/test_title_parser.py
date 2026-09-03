@@ -179,3 +179,15 @@ def test_gold_foil_and_plated_fakes_rejected():
                   "Charizard 4/102 24k gold plated card", "Charizard gold foil NM"):
         assert any(f.startswith("REJEITAR") for f in tp.risk_flags(title)), title
     assert tp.risk_flags("Charizard 4/102 Base Set Holo NM") == []
+
+
+def test_card_number_never_matches_the_grade():
+    # Review Codex 2026-09-03: carta nº 10 casava "Mewtwo VSTAR PSA 10".
+    mewtwo = WatchCard(name="Mewtwo VSTAR", set_name="Pokemon GO", number="10",
+                       language="EN", pc_url="")
+    assert not tp.card_matches_title(mewtwo, "Mewtwo VSTAR PSA 10 Pokemon GO")
+    assert not tp.card_matches_title(mewtwo, "Mewtwo VSTAR CGC 10 Pristine")
+    assert tp.card_matches_title(mewtwo, "Mewtwo VSTAR 010/078 Pokemon GO PSA 10")
+    assert tp.card_matches_title(mewtwo, "Mewtwo VSTAR #10 PSA 9")
+    nine = WatchCard(name="Blastoise", set_name="Base Set", number="9", language="EN", pc_url="")
+    assert not tp.card_matches_title(nine, "Blastoise 2/102 PSA 9")

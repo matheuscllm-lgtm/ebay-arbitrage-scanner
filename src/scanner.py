@@ -273,10 +273,12 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
             "PriceCharting rotulado)")
 
     calls_before = int(getattr(ebay, "calls", 0) or 0)
+    dups_before = int(getattr(ebay, "dedup_dropped", 0) or 0)
     seen_ids = set()
     unique_listings = []
     base_query = card.default_query()
-    for suffix in query_suffixes(config):
+    try:
+      for suffix in query_suffixes(config):
         listings = ebay.search(
             base_query + suffix,
             min_price=float(config.get("min_price_usd", 10.0)),
@@ -298,7 +300,10 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                 seen_ids.add(listing.item_id)
             seen_ids.add(fingerprint)
             unique_listings.append(listing)
-    stats["ebay_calls"] += max(0, int(getattr(ebay, "calls", 0) or 0) - calls_before)
+    finally:
+        # Cota e duplicados contam mesmo quando a busca estoura no meio.
+        stats["ebay_calls"] += max(0, int(getattr(ebay, "calls", 0) or 0) - calls_before)
+        stats["dedup_dropped"] += max(0, int(getattr(ebay, "dedup_dropped", 0) or 0) - dups_before)
     stats["seen"] += len(unique_listings)
 
     asks = _clean_ask_prices(card, unique_listings)
@@ -309,6 +314,9 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                               refs=refs, stats=stats)
         if opp is not None:
             _annotate_ref_alignment(opp, asks)
+            # Veredito FINAL (apos rebaixamento por referencia desalinhada) e o
+            # que conta no funil -- review Codex 2026-09-03.
+            stats[scorer.VERDICT_STAT.get(opp.verdict, "rows_review")] += 1
             opportunities.append(opp)
 
     log(f"  {card.name} #{card.number}: {len(unique_listings)} anuncios vistos, "

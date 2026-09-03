@@ -392,12 +392,20 @@ def test_lp_prefilter_uses_nm_reference_as_ceiling():
     assert ("LP", frozenset()) not in refs.calls
 
 
-def test_lp_without_nm_reference_counted():
+def test_lp_without_nm_reference_goes_straight_to_lp_sales():
+    # Sem referencia NM nao ha teto para o pre-filtro: a comparacao final continua
+    # sendo SO contra vendas LP (review Codex 2026-09-03).
     stats = Counter()
     fair = FairValue(prices={"PSA 9": 3175.04})
-    assert ev("Charizard 4/102 Base Set Holo LP", 150.0, cfg=CFG_LP, fair=fair,
-              stats=stats) is None
-    assert stats["lp_no_nm_reference"] == 1
+    o = ev("Charizard 4/102 Base Set Holo LP", 150.0, cfg=CFG_LP, fair=fair, stats=stats)
+    assert o is not None and o.fair_value == 250.0 and o.ref_source == "pricecharting-sales-lp"
+    assert stats["lp_no_nm_prefilter"] == 1
+
+
+def test_price_zero_never_evaluated_even_with_floor_zero():
+    stats = Counter()
+    assert ev("Charizard 4/102 Base Set PSA 9", 0.0, cfg={"min_price_usd": 0}, stats=stats) is None
+    assert stats["skip_price_floor"] == 1
 
 
 def test_lp_without_three_lp_sales_counted():
@@ -451,13 +459,3 @@ def test_trusted_mode_threshold_boundary():
     assert ev(title, 2200.0, cfg=cfg, seller_feedback_score=50, seller_feedback_pct=98.0) is not None
     assert ev(title, 2200.0, cfg=cfg, seller_feedback_score=49, seller_feedback_pct=98.0) is None
     assert ev(title, 2200.0, cfg=cfg, seller_feedback_score=50, seller_feedback_pct=97.9) is None
-
-
-def test_stats_count_rows_by_verdict():
-    stats = Counter()
-    ev("Charizard 4/102 Base Set PSA 9", 2200.0, stats=stats)
-    ev("Charizard 4 Base Set PSA 10", 5000.0, stats=stats)
-    ev("Charizard 4/102 Base Set Holo PSA 10", 1800.0, condition="Ungraded", stats=stats)
-    assert stats["rows_opportunity"] == 1
-    assert stats["rows_suspect"] == 1
-    assert stats["rows_rejected"] == 1

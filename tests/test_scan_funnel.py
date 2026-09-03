@@ -297,3 +297,44 @@ def test_aborted_run_never_overwrites_previous_complete_artifact(tmp_path, monke
     payload = json.loads(aborted_path.read_text(encoding="utf-8"))
     assert payload["meta"]["aborted"] is True
     assert "last_scan.aborted.json" in capsys.readouterr().out
+
+
+def test_rows_counted_by_final_verdict_after_alignment_downgrade(no_tcg):
+    # Review Codex 2026-09-03: OPORTUNIDADE rebaixada para REVISAR pela
+    # referencia desalinhada contava como opportunity no funil.
+    refs = FakeRefs(slab={"PSA 9": REF(3175.0)}, pc_url=PC_URL)  # 1.55x a mediana dos anuncios
+    fair = FairValue()
+    batch = [L("Charizard 4/102 Base Set PSA 9", 2000.0, "1"),
+             L("Charizard 4/102 Base Set PSA 9", 2100.0, "2"),
+             L("Charizard 4/102 Base Set PSA 9", 2050.0, "3")]
+    stats = Counter()
+    _, opps = scanner.scan_card(CARD, FakeEbay(batch), {"graded_only": True},
+                                log=lambda *a: None, stats=stats, refs=refs, fair=fair)
+    assert all(o.verdict == "REVISAR" for o in opps)
+    assert stats["rows_review"] == 3 and stats["rows_opportunity"] == 0
+
+
+def test_ebay_calls_counted_even_when_search_raises(no_tcg):
+    class ExplodingEbay:
+        calls = 0
+        dedup_dropped = 0
+
+        def search(self, query, **kw):
+            self.calls += 2
+            self.dedup_dropped += 1
+            raise EbayApiError("boom")
+
+    stats = Counter()
+    with pytest.raises(EbayApiError):
+        scanner.scan_card(CARD, ExplodingEbay(), {"graded_only": True}, log=lambda *a: None,
+                          stats=stats, refs=FakeRefs(slab={}, pc_url=PC_URL), fair=FairValue())
+    assert stats["ebay_calls"] == 2 and stats["dedup_dropped"] == 1
+
+
+def test_load_config_makes_discount_gate_explicit(tmp_path):
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("min_gross_margin_percent: 15\nmin_price_usd: 10.0\n", encoding="utf-8")
+    loaded = main_mod._load_config(str(cfg))
+    assert loaded["min_discount_percent"] == 20
+    cfg.write_text("min_discount_percent: 12\n", encoding="utf-8")
+    assert main_mod._load_config(str(cfg))["min_discount_percent"] == 12

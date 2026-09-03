@@ -148,7 +148,7 @@ FUNNEL_LABELS = [
     ("skip_condition", "Ignorados: raw sem NM explícito (e sem LP explícito)"),
     ("slab_no_reference", "Slabs sem vendas comparáveis (mesma certificadora+nota+variante) — sem referência"),
     ("lp_prefilter", "Raw LP acima do pré-filtro (preço > ref NM × (1 − desconto mín.))"),
-    ("lp_no_nm_reference", "Raw LP sem referência NM (TCGplayer) para o pré-filtro"),
+    ("lp_no_nm_prefilter", "Raw LP avaliadas sem pré-filtro (sem referência NM para o teto)"),
     ("lp_no_reference", "Raw LP sem ≥3 vendas LP comparáveis — sem referência"),
     ("raw_no_reference", "Raw NM sem referência (sem TCG market nem Ungraded do PC)"),
     ("pc_error", "Cartas com ERRO na fonte PriceCharting (rede/bloqueio/layout)"),

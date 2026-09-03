@@ -405,3 +405,25 @@ def test_calls_counter_accumulates_across_searches(client, monkeypatch):
     client.search("b")
     assert client.calls == 2
     assert client.last_total == 1
+
+
+def test_search_401_raises_auth_error(client, monkeypatch):
+    # Review Codex 2026-09-03: 401/403 na BUSCA e credencial invalida -> aborta,
+    # nao "1 erro transitorio de 3".
+    def handler(offset, url):
+        raise urllib.error.HTTPError(url, 401, "Unauthorized", {}, None)
+    _install(monkeypatch, handler)
+    with pytest.raises(ebay_api.EbayAuthError):
+        client.search("q")
+    assert client.calls == 1
+
+
+def test_search_counts_cross_page_duplicates(client, monkeypatch):
+    def handler(offset, url):
+        if offset == 0:
+            return _page([_item(str(i)) for i in range(200)], 400, offset=0)
+        return _page([_item("199")] + [_item(str(i)) for i in range(200, 299)], 400, offset=200)
+    _install(monkeypatch, handler)
+    out = client.search("q", limit=200, max_pages=3)
+    assert len(out) == 299
+    assert client.dedup_dropped == 1
