@@ -530,9 +530,21 @@ def _name_tokens(card_name) -> list[str]:
     return [t for t in (_norm_token(x) for x in re.findall(r"[a-z0-9']+", name.lower())) if t]
 
 
+# Sets cujo nome TCGCSV nao bate com o console do PriceCharting nem por tokens.
+PC_CONSOLE_ALIASES = {
+    "SM Base Set": "Sun & Moon",
+    "XY Base Set": "XY",
+    "SWSH01: Sword & Shield Base Set": "Sword & Shield",
+    "SV01: Scarlet & Violet Base Set": "Scarlet & Violet",
+}
+# Prefixo de serie com hifen ("SM - Unbroken Bonds", "XY - Evolutions") -- sem ':'.
+_SERIES_PREFIX = re.compile(r"^(?:SM|XY|SWSH|SV|BW|DP|HGSS)\s+-\s+", re.I)
+
+
 def clean_set_name(set_label) -> str:
-    """'SV: Scarlet & Violet 151' → 'Scarlet & Violet 151'; 'EX Emerald (em)' → 'EX Emerald'."""
-    s = _CODE_PREFIX.sub("", str(set_label or "").strip())
+    """'SV: Scarlet & Violet 151' → 'Scarlet & Violet 151'; 'EX Emerald (em)' → 'EX Emerald';
+    'SM - Unbroken Bonds' → 'Unbroken Bonds'."""
+    s = _SERIES_PREFIX.sub("", _CODE_PREFIX.sub("", str(set_label or "").strip()))
     return s.rsplit(" (", 1)[0].strip() if " (" in s else s
 
 
@@ -565,7 +577,9 @@ def console_matches(path: str, set_label) -> bool:
     noise = {"pokemon", "ex", "vs", "and", "the"}
     console_list = [t for t in (re.sub(r"[^a-z0-9]", "", x)
                                 for x in parts[1].lower().split("-")) if t and t not in noise]
-    set_list = [t for t in re.findall(r"[a-z0-9]+", clean_set_name(set_label).lower())
+    # "Base Set" de serie: o console do PC e o nome da serie (build_watchlist 2026-09-03).
+    label = PC_CONSOLE_ALIASES.get(str(set_label or "").strip(), set_label)
+    set_list = [t for t in re.findall(r"[a-z0-9]+", clean_set_name(label).lower())
                 if t not in noise]
     if not set_list:
         return False

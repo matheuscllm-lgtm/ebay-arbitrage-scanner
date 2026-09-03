@@ -894,3 +894,18 @@ def test_console_matches_tolerates_vs_ampersand_and_split_words():
     # continua rejeitando outro set / outro idioma
     assert not pc.console_matches("/game/pokemon-japanese-base-set/charizard-4", "Base Set")
     assert not pc.console_matches("/game/pokemon-base-set-2/charizard-4", "Base Set")
+
+
+def test_console_matches_series_prefix_and_series_base_sets():
+    # build_watchlist 2026-09-03: "SM - Unbroken Bonds" (prefixo com hifen, sem ':')
+    # e os "Base Set" de serie, cujo console no PC e o nome da serie.
+    assert pc.console_matches("/game/pokemon-unbroken-bonds/reshiram-charizard-gx-20", "SM - Unbroken Bonds")
+    assert pc.console_matches("/game/pokemon-evolutions/charizard-11", "XY - Evolutions")
+    assert pc.console_matches("/game/pokemon-sun-&-moon/lapras-gx-35", "SM Base Set")
+    assert pc.console_matches("/game/pokemon-xy/xerneas-ex-97", "XY Base Set")
+    assert pc.console_matches("/game/pokemon-sword-&-shield/zacian-v-138", "SWSH01: Sword & Shield Base Set")
+    assert pc.console_matches("/game/pokemon-scarlet-&-violet/koraidon-ex-125", "SV01: Scarlet & Violet Base Set")
+    assert pc.console_matches("/game/pokemon-heartgold-&-soulsilver/ninetales-7", "HeartGold SoulSilver")
+    assert not pc.console_matches("/game/pokemon-sun-&-moon/lapras-gx-35", "SM - Unbroken Bonds")
+    assert not pc.console_matches("/game/pokemon-base-set/charizard-4", "SM Base Set")
+    assert pc.clean_set_name("SM - Unbroken Bonds") == "Unbroken Bonds"
