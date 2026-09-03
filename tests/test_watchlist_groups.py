@@ -1,4 +1,4 @@
-"""Testes de grupos na watchlist (--group / --list-groups)."""
+"""Testes de grupos na watchlist (--group / --list-groups) e run degradado."""
 import sys
 
 import main as main_mod
@@ -13,6 +13,10 @@ cards:
     pc_url: https://example.com/charizard
     group: chase-en
     tcg_set: "Base Set"
+    pokemon: Charizard
+    pokemon_rank: 1
+    rarity: Holo Rare
+    year: 1999
   - name: Umbreon VMAX
     set: Evolving Skies
     number: 215
@@ -39,21 +43,27 @@ def write_watchlist(tmp_path):
     return str(path)
 
 
-def test_load_watchlist_reads_group_and_tcg_set(tmp_path):
+def _no_pc(monkeypatch):
+    """PriceCharting offline nos testes: pagina vazia (sem rede)."""
+    monkeypatch.setattr(scanner.pc_sales, "fetch_page", lambda url, cache_dir=None: "")
+
+
+def test_load_watchlist_reads_group_tcg_set_and_comc_fields(tmp_path):
     cards = scanner.load_watchlist(write_watchlist(tmp_path))
     assert [c.group for c in cards] == ["chase-en", "chase-en", "vintage-jp", ""]
     assert cards[0].tcg_set == "Base Set"
     assert cards[1].tcg_set == ""  # opcional: ausente = vazio
+    assert cards[0].pokemon == "Charizard" and cards[0].pokemon_rank == 1
+    assert cards[0].rarity == "Holo Rare" and cards[0].year == 1999
+    assert cards[1].pokemon == "" and cards[1].pokemon_rank == 9999 and cards[1].year is None
 
 
 def test_filter_group(tmp_path):
     cards = scanner.load_watchlist(write_watchlist(tmp_path))
     chase = scanner.filter_group(cards, "chase-en")
     assert [c.name for c in chase] == ["Charizard", "Umbreon VMAX"]
-    # Sem grupo = todas as cartas (backward compat).
     assert scanner.filter_group(cards, "") == cards
     assert scanner.filter_group(cards, None) == cards
-    # Grupo inexistente = lista vazia (nunca cai pra "todas" silenciosamente).
     assert scanner.filter_group(cards, "nope") == []
 
 
@@ -64,12 +74,10 @@ def test_group_counts_includes_ungrouped(tmp_path):
 
 
 def test_list_groups_cli_no_keys_needed(tmp_path, monkeypatch, capsys):
-    # --list-groups nao pode exigir chave eBay nem tocar rede.
     path = write_watchlist(tmp_path)
     monkeypatch.delenv("EBAY_CLIENT_ID", raising=False)
     monkeypatch.delenv("EBAY_CLIENT_SECRET", raising=False)
-    monkeypatch.setattr(sys, "argv",
-                        ["main.py", "--watchlist", path, "--list-groups"])
+    monkeypatch.setattr(sys, "argv", ["main.py", "--watchlist", path, "--list-groups"])
     main_mod.main()
     out = capsys.readouterr().out
     assert "chase-en: 2" in out
@@ -78,21 +86,20 @@ def test_list_groups_cli_no_keys_needed(tmp_path, monkeypatch, capsys):
 
 
 def test_run_scan_pricing_only_respects_group(tmp_path, monkeypatch):
-    # pricing-only + group: so as cartas do grupo sao consultadas.
     path = write_watchlist(tmp_path)
     asked = []
 
-    def fake_fair_value(url, cache_dir="data/cache"):
+    def fake_fetch(url, cache_dir=None):
         asked.append(url)
-        return scanner.pricecharting.parse_product_page("", source_url=url)
+        return ""
 
-    monkeypatch.setattr(scanner.pricecharting, "get_fair_value", fake_fair_value)
-    fair_values, opps, effective_pricing_only = scanner.run_scan(
-        watchlist_path=path, pricing_only=True,
-        log=lambda *a, **k: None, group="vintage-jp")
+    monkeypatch.setattr(scanner.pc_sales, "fetch_page", fake_fetch)
+    fair_values, opps, effective_pricing_only, stats, aborted = scanner.run_scan(
+        watchlist_path=path, pricing_only=True, log=lambda *a, **k: None,
+        group="vintage-jp")
     assert asked == ["https://example.com/pikachu"]
-    assert opps == []
-    assert effective_pricing_only is True
+    assert opps == [] and effective_pricing_only is True and aborted is False
+    assert stats["cards"] == 1
 
 
 class _UnconfiguredEbay:
@@ -100,37 +107,24 @@ class _UnconfiguredEbay:
 
 
 def test_run_scan_reports_degraded_mode(tmp_path, monkeypatch):
-    # Sem EBAY_CLIENT_ID/SECRET o run degrada para pricing-only e o retorno
-    # DIZ isso (3o elemento True) -- o caller nao pode tratar como scan real.
     path = write_watchlist(tmp_path)
     monkeypatch.setattr(scanner, "EbayClient", _UnconfiguredEbay)
-    monkeypatch.setattr(
-        scanner.pricecharting, "get_fair_value",
-        lambda url, cache_dir="data/cache":
-            scanner.pricecharting.parse_product_page("", source_url=url))
-    _, opps, effective_pricing_only = scanner.run_scan(
+    _no_pc(monkeypatch)
+    _, opps, effective_pricing_only, _, _ = scanner.run_scan(
         watchlist_path=path, pricing_only=False, log=lambda *a, **k: None)
     assert opps == []
     assert effective_pricing_only is True
 
 
 def test_degraded_scan_never_overwrites_artifact(tmp_path, monkeypatch, capsys):
-    # Guarda anti "verde mas vazio": run degradado (sem chaves) NAO pode
-    # sobrescrever o artefato JSON do ultimo scan real com 0 rows.
     path = write_watchlist(tmp_path)
     out = tmp_path / "last_scan.json"
-    out.write_text('{"meta": {"real": true}, "rows": [{"x": 1}]}',
-                   encoding="utf-8")
+    out.write_text('{"meta": {"real": true}, "rows": [{"x": 1}]}', encoding="utf-8")
     monkeypatch.delenv("EBAY_CLIENT_ID", raising=False)
     monkeypatch.delenv("EBAY_CLIENT_SECRET", raising=False)
-    monkeypatch.setattr(
-        scanner.pricecharting, "get_fair_value",
-        lambda url, cache_dir="data/cache":
-            scanner.pricecharting.parse_product_page("", source_url=url))
-    monkeypatch.setattr(sys, "argv",
-                        ["main.py", "--watchlist", path, "--out", str(out)])
-    main_mod.main()
+    _no_pc(monkeypatch)
+    monkeypatch.setattr(sys, "argv", ["main.py", "--watchlist", path, "--out", str(out)])
+    assert main_mod.main() == 0
     console = capsys.readouterr().out
     assert "NAO gravado" in console
-    # O artefato anterior segue intacto.
     assert '"real": true' in out.read_text(encoding="utf-8")

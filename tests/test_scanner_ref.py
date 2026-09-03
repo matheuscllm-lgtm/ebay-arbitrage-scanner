@@ -1,5 +1,8 @@
+from collections import Counter
+
 from src import scanner
 from src.models import WatchCard, Listing, Opportunity, FairValue
+from tests.test_scorer import REF, FakeRefs
 
 
 CARD = WatchCard(name="Umbreon VMAX", set_name="Evolving Skies", number="215",
@@ -33,11 +36,24 @@ def test_clean_asks_exclude_accessories_and_non_nm():
     assert asks["RAW"] == [2000.0, 2100.0]
 
 
+def test_clean_asks_group_by_exact_grade_key():
+    listings = [
+        L("Umbreon VMAX 215/203 CGC 10", 900.0, condition="Graded"),
+        L("Umbreon VMAX 215/203 CGC 10 Pristine", 2500.0, condition="Graded"),
+        L("Umbreon VMAX 215/203 PSA 8", 300.0, condition="Graded"),
+    ]
+    asks = scanner._clean_ask_prices(CARD, listings)
+    assert asks["CGC 10 GEM"] == [900.0]
+    assert asks["CGC 10 PRISTINE"] == [2500.0]
+    assert asks["PSA 8"] == [300.0]
+
+
 def test_ref_inflated_flag_and_downgrade():
     opp = O("RAW", fair=4000.0)
     scanner._annotate_ref_alignment(opp, {"RAW": [2000.0, 2100.0, 2050.0]})
     assert any("REF DESALINHADA" in f for f in opp.risk_flags)
     assert opp.verdict == "REVISAR"
+    assert opp.reasons == ["ref-desalinhada(2.0x)"]
     assert opp.median_ask == 2050.0
 
 
@@ -59,40 +75,39 @@ def test_ref_needs_min_samples():
 # todos os seguintes sem id (conteudo distinto) sumirem silenciosamente do scan.
 
 CARD_CHZ = WatchCard(name="Charizard", set_name="Base Set", number="4",
-                     language="EN", pc_url="")
+                     language="EN",
+                     pc_url="https://www.pricecharting.com/game/pokemon-base-set/charizard-4")
 
 
 class _FakeEbay:
-    """Devolve o lote so na 1a chamada (as demais queries por sufixo vem vazias)."""
+    """Devolve o lote so na 1a chamada (as demais queries vem vazias)."""
     def __init__(self, batch):
         self.batch = batch
         self.calls = 0
 
-    def search(self, query, min_price=10.0):
+    def search(self, query, min_price=10.0, **kw):
         self.calls += 1
         return self.batch if self.calls == 1 else []
 
 
 def test_scan_card_dedupe_ignores_empty_item_id(monkeypatch):
-    fair = FairValue(prices={"PSA 9": 3175.0}, deltas={},
-                     sales_per_month={"PSA 9": 30.0})
-    monkeypatch.setattr(scanner.pricecharting, "get_fair_value",
-                        lambda url, cache_dir="data/cache": fair)
+    monkeypatch.setattr(scanner.tcg_reference, "get_tcg_reference", lambda card: None)
+    fair = FairValue(prices={"PSA 9": 3175.0}, deltas={}, sales_per_month={"PSA 9": 30.0})
+    refs = FakeRefs(slab={"PSA 9": REF(3175.0)}, pc_url=CARD_CHZ.pc_url)
     batch = [
-        L("Charizard 4/102 Base Set PSA 9", 2000.0,
-          condition="Graded", item_id="1"),
+        L("Charizard 4/102 Base Set PSA 9", 2000.0, condition="Graded", item_id="1"),
         # id duplicado -> dropado
-        L("Charizard 4/102 Base Set PSA 9 mint", 1990.0,
-          condition="Graded", item_id="1"),
+        L("Charizard 4/102 Base Set PSA 9 mint", 1990.0, condition="Graded", item_id="1"),
         # fingerprint (titulo+preco) duplicado -> dropado
-        L("Charizard 4/102 Base Set PSA 9", 2000.0,
-          condition="Graded", item_id="2"),
+        L("Charizard 4/102 Base Set PSA 9", 2000.0, condition="Graded", item_id="2"),
         # sem item_id, conteudos DISTINTOS -> ambos devem sobreviver
-        L("Charizard #4 Base Set PSA 9 slabbed", 2100.0,
-          condition="Graded", item_id=""),
-        L("Charizard 4/102 Base PSA 9 gem", 2050.0,
-          condition="Graded", item_id=""),
+        L("Charizard #4 Base Set PSA 9 slabbed", 2100.0, condition="Graded", item_id=""),
+        L("Charizard 4/102 Base PSA 9 gem", 2050.0, condition="Graded", item_id=""),
     ]
-    _, opps = scanner.scan_card(CARD_CHZ, _FakeEbay(batch),
-                                {"graded_only": True}, log=lambda *a: None)
+    stats = Counter()
+    _, opps = scanner.scan_card(CARD_CHZ, _FakeEbay(batch), {"graded_only": True},
+                                log=lambda *a: None, stats=stats, refs=refs, fair=fair)
     assert sorted(o.listing.price for o in opps) == [2000.0, 2050.0, 2100.0]
+    assert stats["dedup_dropped"] == 2
+    assert stats["seen"] == 3
+    assert stats["ebay_calls"] == 1

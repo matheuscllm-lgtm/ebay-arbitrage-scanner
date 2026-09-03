@@ -143,6 +143,8 @@ FUNNEL_LABELS = [
     ("skip_raw", "Ignorados: carta solta (graded-only; use --include-raw)"),
     ("skip_grade_filtered", "Ignorados: nota fora do funil pedido (--grades)"),
     ("skip_grade_out_of_scope", "Ignorados: certificadora/nota fora do escopo"),
+    ("skip_grade_ambiguous", "Ignorados: título cita mais de uma nota (ambíguo)"),
+    ("ref_unavailable", "Slabs/LP pulados por fonte PriceCharting indisponível na carta"),
     ("skip_condition", "Ignorados: raw sem NM explícito (e sem LP explícito)"),
     ("slab_no_reference", "Slabs sem vendas comparáveis (mesma certificadora+nota+variante) — sem referência"),
     ("lp_prefilter", "Raw LP acima do pré-filtro (preço > ref NM × (1 − desconto mín.))"),
