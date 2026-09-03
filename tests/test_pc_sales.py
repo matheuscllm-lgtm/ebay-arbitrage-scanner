@@ -819,3 +819,16 @@ def test_product_page_url_tolerates_page_without_tables(monkeypatch, tmp_path):
     assert pc.product_page_url("Charizard ex", "006/165", SET_151, cache_dir=str(tmp_path)) == \
         "https://www.pricecharting.com/game/pokemon-scarlet-&-violet-151/charizard-ex-6"
     assert len(calls) == 1
+
+
+def test_search_card_paths_unquotes_percent_encoded_slug():
+    # Caso REAL (PR B, 2026-09-03): "Team Rocket's Mewtwo ex 231/182" (Destined
+    # Rivals) vem como /game/pokemon-destined-rivals/team-rocket%27s-mewtwo-ex-231
+    # -- o %27 impedia o match do slug e a carta ficava sem pagina.
+    body = ('<a href="https://www.pricecharting.com/game/pokemon-destined-rivals/'
+            'team-rocket%27s-mewtwo-ex-231">x</a>')
+    paths = pc.search_card_paths(body)
+    assert paths == ["/game/pokemon-destined-rivals/team-rocket's-mewtwo-ex-231"]
+    assert pc.slug_matches(paths[0], "Team Rocket's Mewtwo ex - 231/182", "231/182")
+    assert pc.choose_path(paths, "Team Rocket's Mewtwo ex - 231/182", "231/182",
+                                "SV10: Destined Rivals") == paths[0]

@@ -471,13 +471,16 @@ def sales_reference(comps: list[dict], url: str, what: str, allow_thin: bool = T
 # --- busca e página da carta ----------------------------------------------------
 
 def search_card_paths(body: str) -> list[str]:
-    """Paths ``/game/...`` da página de busca (hrefs vêm ABSOLUTOS desde 2026-08)."""
+    """Paths ``/game/...`` da página de busca (hrefs vêm ABSOLUTOS desde 2026-08).
+    Percent-encoding do slug é desfeito (``team-rocket%27s-mewtwo-ex-231`` →
+    ``team-rocket's-mewtwo-ex-231``): sem isso o apóstrofo do nome nunca casa
+    (caso real 2026-09-03, Destined Rivals)."""
     paths = re.findall(
         r'href="(?:https?://www\.pricecharting\.com)?(/game/[^"#?]+)"', body)
     seen: set[str] = set()
     out: list[str] = []
     for p in paths:
-        p = html_mod.unescape(p)
+        p = urllib.parse.unquote(html_mod.unescape(p))
         if p not in seen:
             seen.add(p)
             out.append(p)
