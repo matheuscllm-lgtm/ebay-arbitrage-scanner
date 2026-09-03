@@ -175,7 +175,9 @@ def _header(meta, rows, by_verdict, sensitivity):
         modes.append("modo confiável (--confiavel)")
     min_discount = cfg.get("min_discount_percent")
     if min_discount is None:
-        min_discount = cfg.get("min_gross_margin_percent", "?")
+        legacy = cfg.get("min_gross_margin_percent")
+        min_discount = (f"? (JSON antigo: gate era ROI bruto {legacy}%)"
+                        if legacy is not None else "?")
     graded = cfg.get("graded_allow") or []
     counts = " · ".join(f"{len(by_verdict[v])} {v}" for v in VERDICTS)
     lines = [

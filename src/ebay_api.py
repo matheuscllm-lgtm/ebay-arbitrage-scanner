@@ -147,6 +147,7 @@ class EbayClient:
         # (token nao conta). Tentativa repetida por 429/5xx tambem conta --
         # ela gastou cota do mesmo jeito.
         self.calls = 0
+        self.dedup_dropped = 0  # itens repetidos entre paginas (vao pro funil)
         # `total` reportado pela API na ultima busca (None antes da 1a).
         self.last_total = None
 
@@ -210,6 +211,12 @@ class EbayClient:
                 with urllib.request.urlopen(req, timeout=30) as r:
                     return json.loads(r.read().decode())
             except urllib.error.HTTPError as e:
+                if e.code in (401, 403):
+                    # Token invalido/sem permissao na BUSCA: e falha de
+                    # autenticacao (aborta o run), nao erro transitorio.
+                    raise EbayAuthError(
+                        f"eBay Browse API HTTP {e.code} {e.reason} na busca "
+                        f"(credencial invalida/sem permissao) em {url}") from e
                 if not _is_transient_http(e.code):
                     raise EbayApiError(
                         f"eBay Browse API HTTP {e.code} {e.reason} "
@@ -277,6 +284,7 @@ class EbayClient:
                 # item_id vazio nao identifica nada -> nao entra no set.
                 if listing.item_id:
                     if listing.item_id in seen_ids:
+                        self.dedup_dropped += 1
                         continue
                     seen_ids.add(listing.item_id)
                 listings.append(listing)

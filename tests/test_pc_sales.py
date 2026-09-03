@@ -852,3 +852,30 @@ def test_black_label_sale_requires_label_context_in_both_word_orders():
     ]
     assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 10.0, "")] == [500.0, 520.0, 510.0]
     assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 10.0, "BLACK")] == [5000.0]
+
+
+def test_noise_sales_lots_packs_never_comparable():
+    # Review Codex 2026-09-03: "Expansion Pack #103 Charizard BGS 9.5" e trio
+    # "Charizard Venusaur Blastoise LP" entravam nas medianas.
+    sales = [
+        {"date": "2026-08-01", "price": 900.0, "title": "Charizard 4/102 Holo BGS 9.5 GEM MINT"},
+        {"date": "2026-08-02", "price": 90.0, "title": "2001 Base Set Expansion Pack #103 Charizard Holo BGS 9.5 GEM MINT"},
+        {"date": "2026-08-03", "price": 50.0, "title": "Charizard lot of 3 BGS 9.5"},
+        {"date": "2026-08-04", "price": 950.0, "title": "Charizard 4/102 pack fresh BGS 9.5"},
+    ]
+    assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 9.5)] == [900.0, 950.0]
+    lp = [
+        {"date": "2026-08-01", "price": 300.0, "title": "Charizard 4/102 Holo LP"},
+        {"date": "2026-08-02", "price": 120.0, "title": "Charizard Venusaur Blastoise trio LP bundle"},
+        {"date": "2026-08-03", "price": 100.0, "title": "Charizard 4/102 LP x10 playset"},
+    ]
+    assert [s["price"] for s in pc.lp_sales(lp)] == [300.0]
+
+
+def test_foreign_grader_mention_makes_sale_ambiguous():
+    sales = [
+        {"date": "2026-08-01", "price": 900.0, "title": "Charizard 4/102 PSA 10"},
+        {"date": "2026-08-02", "price": 200.0, "title": "Charizard 4/102 PSA 10 vs GMA 10"},
+        {"date": "2026-08-03", "price": 210.0, "title": "Charizard 4/102 HGA 10 crossover PSA 10"},
+    ]
+    assert [s["price"] for s in pc.comparable_sales(sales, "PSA", 10.0)] == [900.0]

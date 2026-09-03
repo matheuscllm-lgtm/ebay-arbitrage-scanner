@@ -49,6 +49,9 @@ def _load_config(path):
         print("AVISO: config.yaml usa `min_gross_margin_percent` (ROI bruto), que "
               "deixou de ser o gate; use `min_discount_percent` (Desconto%). "
               f"Usando o default {scanner.scorer.DEFAULT_CONFIG['min_discount_percent']}%.")
+    # O gate efetivo vai SEMPRE explicito no config (e no artefato JSON), nunca
+    # implicito no default do scorer -- a entrega mostra o valor real usado.
+    config.setdefault("min_discount_percent", scanner.scorer.DEFAULT_CONFIG["min_discount_percent"])
     return config
 
 

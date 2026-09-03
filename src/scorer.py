@@ -71,8 +71,9 @@ RAW_REF_DIVERGENCE = 0.40
 COLUMN_DEVIATION_MAX = 0.30
 MIN_COMPARABLE_SALES = pc_sales.MIN_COMPARABLE_SALES
 
-_VERDICT_STAT = {"OPORTUNIDADE": "rows_opportunity", "REVISAR": "rows_review",
-                 "SUSPEITO": "rows_suspect", "REJEITADO": "rows_rejected"}
+# Contado pelo scanner DEPOIS da anotacao de referencia (veredito final).
+VERDICT_STAT = {"OPORTUNIDADE": "rows_opportunity", "REVISAR": "rows_review",
+                "SUSPEITO": "rows_suspect", "REJEITADO": "rows_rejected"}
 
 
 def _skip(stats, key):
@@ -190,7 +191,7 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
 
     if cfg.get("fixed_price_only", True) and listing.buying_option != "FIXED_PRICE":
         return _skip(stats, "skip_not_fixed_price")
-    if listing.price < float(cfg["min_price_usd"]):
+    if listing.price <= 0 or listing.price < float(cfg["min_price_usd"]):
         return _skip(stats, "skip_price_floor")
     required_country = cfg.get("required_location_country")
     if required_country and listing.country and listing.country != required_country:
@@ -320,11 +321,12 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
         tier = liquidity_tier(liquidity_sales)
     else:  # raw LP: pre-filtro pela referencia NM, depois a SUA referencia (vendas LP)
         nm_ref = tcg_market or prices.get("RAW")
-        if not nm_ref:
-            return _skip(stats, "lp_no_nm_reference")
-        cap = nm_ref * (1.0 - min_discount / 100.0)
-        if listing.price > cap:
-            return _skip(stats, "lp_prefilter")
+        if nm_ref:
+            cap = nm_ref * (1.0 - min_discount / 100.0)
+            if listing.price > cap:
+                return _skip(stats, "lp_prefilter")
+        elif stats is not None:
+            stats["lp_no_nm_prefilter"] += 1  # sem teto NM: vai direto as vendas LP
         if refs is None or not refs.available:
             return _skip(stats, "ref_unavailable")
         ref = refs.lp(variants)
@@ -392,9 +394,6 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
         reasons.append("ref-divergente")
         if verdict == "OPORTUNIDADE":
             verdict = "REVISAR"
-
-    if stats is not None:
-        stats[_VERDICT_STAT[verdict]] += 1
 
     grade_label = grade_obj.label if grade_obj else "RAW"
     pc_url = (refs.pc_url if refs is not None and getattr(refs, "pc_url", "") else "") \

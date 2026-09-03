@@ -320,10 +320,16 @@ def variant_tokens(text: str) -> frozenset[str]:
 
 
 _LANG_NOISE = re.compile(r"\b(japanese|korean|chinese|german|french|italian|spanish)\b", re.I)
+# Venda que NAO e uma carta unica (lote, playset, booster/pack, selado, "escolha") nunca
+# e comparavel -- review Codex 2026-09-03 ("Expansion Pack", trio LP). "pack fresh" e
+# condicao, nao produto.
+_NOISE_SALE_RE = re.compile(
+    r"\b(lots?|bundle|playset|booster|sealed|collection|choose|pick|set\s+of|x\s*\d{2,}|\d{2,}\s*x)\b"
+    r"|\bpacks?\b(?![\s-]*fresh)", re.I)
 # Qualquer menção "<certificadora> <nota>" no título — usada para exigir que o
 # anúncio cite UMA só nota (título "PSA 9 … comps PSA 10" não entra em nenhuma cesta).
 _ANY_GRADE_RE = re.compile(
-    r"\b(PSA|BGS|BECKETT|CGC|SGC|TAG|ACE|MNT)\s*-?\s*(10|[1-9](?:\.5)?)(?![\d.])", re.I)
+    r"\b(PSA|BGS|BECKETT|CGC|SGC|TAG|ACE|MNT|GMA|HGA|AGS|KSA|RCG|CSG)\s*-?\s*(10|[1-9](?:\.5)?)(?![\d.])", re.I)
 _GRADER_CANON = {"BECKETT": "BGS"}
 _CGC_PRISTINE_RE = re.compile(r"\bCGC\s*-?\s*10\s*(?:Pristine)\b", re.I)
 
@@ -363,7 +369,7 @@ def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: st
     out = []
     for s in sales:
         t = s["title"]
-        if s.get("price", 0) <= 0 or _LANG_NOISE.search(t):
+        if s.get("price", 0) <= 0 or _LANG_NOISE.search(t) or _NOISE_SALE_RE.search(t):
             continue
         if _grade_mentions(t) != wanted:
             continue  # nenhuma menção, outra nota, ou mais de uma nota citada
@@ -399,7 +405,8 @@ def lp_sales(sales: list[dict], variants: frozenset[str] = frozenset()) -> list[
     out = []
     for s in sales:
         t = s["title"]
-        if s.get("price", 0) <= 0 or _LANG_NOISE.search(t) or not _LP_RE.search(t):
+        if s.get("price", 0) <= 0 or _LANG_NOISE.search(t) or _NOISE_SALE_RE.search(t) \
+                or not _LP_RE.search(t):
             continue
         if _ANY_GRADE_RE.search(t) or _BARE_GRADER_RE.search(t):
             continue
