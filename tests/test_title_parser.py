@@ -170,3 +170,12 @@ def test_ambiguous_grade_detected():
 
 def test_clean_grade_not_ambiguous():
     assert not tp.grade_is_ambiguous("Charizard 4/102 Holo PSA 9", "PSA 9")
+
+
+def test_gold_foil_and_plated_fakes_rejected():
+    # Caso REAL (smoke 2026-09-03): "Charizard 120HP Gold Foil card 4/102 Near
+    # Mint" a US$65 saia como raw NM com ROI 463% -- e carta de metal/falsa.
+    for title in ("Pokemon Charizard 120HP Gold Foil card 4/102 Near Mint",
+                  "Charizard 4/102 24k gold plated card", "Charizard gold foil NM"):
+        assert any(f.startswith("REJEITAR") for f in tp.risk_flags(title)), title
+    assert tp.risk_flags("Charizard 4/102 Base Set Holo NM") == []

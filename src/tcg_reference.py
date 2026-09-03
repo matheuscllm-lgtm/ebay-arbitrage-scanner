@@ -194,7 +194,14 @@ def find_product(card, products):
         by_number = [p for p in products
                      if _number_matches(number, _product_number(p))]
         confirmed = [p for p in by_number if name_matches(p)]
-        return confirmed[0] if len(confirmed) == 1 else None
+        if len(confirmed) == 1:
+            return confirmed[0]
+        # Caso real (smoke 2026-09-03): "Charizard" e "Charizard (Black Dot
+        # Error)" dividem o 004/102 do Base Set. O nome EXATO (normalizado)
+        # desempata; sem nome exato ("Cosmos Holo" vs "Shadowless") segue
+        # ambiguo -> None.
+        exact = [p for p in confirmed if _norm(p.get("name")) == want_words]
+        return exact[0] if len(exact) == 1 else None
 
     # Watchlist sem numero: so aceita se o match por nome for UNICO.
     by_name = [p for p in products if name_matches(p)]
