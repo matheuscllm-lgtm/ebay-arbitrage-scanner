@@ -5,8 +5,9 @@ description: >-
   slab = mediana de vendas concluídas no PriceCharting; raw NM = TCGplayer
   market) e entregar via ebay_summary.py no layout COMC. Use SEMPRE que o
   operador pedir para rodar o scanner do eBay / "roda o eBay" / "scan eBay" /
-  escanear a watchlist do eBay: antes de rodar, PERGUNTE o grupo
-  (--list-groups) e o modo (comercial = --min-discount 20; diagnóstico =
+  escanear a watchlist do eBay: antes de rodar, PERGUNTE o grupo canônico
+  (1–12, UM por vez; --list-groups mostra os títulos) e o modo (comercial =
+  --min-discount 20; diagnóstico =
   --min-price 5 --min-discount 10 --include-raw + --sensitivity 10,15,20) e
   entregue SEMPRE a saída do ebay_summary.py verbatim (2 links em toda linha,
   todos os buckets, funil no cabeçalho).
@@ -37,20 +38,47 @@ referência, percentual INTEIRO (`min_discount_percent: 20` no config;
   Windows — keyset "MinhaLojaEbay"; sessão de terminal antiga pode não herdar
   → passar inline se "ausentes"). Sem chaves, o run degrada para pricing-only
   e NÃO grava artefato.
-- `watchlist.yaml` na raiz do repo. É local-only (gitignored): **um clone limpo
-  ainda precisa dela** — hoje se copia `watchlist.example.yaml` e preenche; o
-  PR B vai gerá-la a partir do catálogo (campos `pokemon`/`pokemon_rank`/
-  `rarity`/`year`). Sem watchlist o run falha antes de começar.
+- `watchlist.yaml` **já vem no repo** (GERADA por `build_watchlist.py` e
+  versionada — decisão do operador 2026-09-03): um clone limpo roda sem
+  preparo. Universo = catálogo de 123 sets (`src/catalog/set_catalog.json`,
+  os mesmos 12 grupos da COMC em `src/groups.py`) × 100 "chases"
+  (`src/catalog/iconic_pokemon.csv`) × raridade ≥ Holo Rare × teto 30 cartas
+  por set; `pc_url` = página exata da carta no PriceCharting (carta sem
+  página fica fora; nunca se inventa URL). **Não editar à mão**; regenerar
+  (`python build_watchlist.py`) só quando o catálogo/grupos/chases mudarem —
+  o teste `tests/test_groups.py` falha de propósito se o catálogo crescer sem
+  os grupos acompanharem.
 
 ## Passo 1 — perguntar grupo e modo (AskUserQuestion) — nunca assumir
 
-1. **Qual grupo da watchlist rodar?** Obtenha as opções DINAMICAMENTE (não
-   precisa de chaves eBay):
+1. **Qual grupo canônico rodar (UM por vez)?** Obtenha títulos e contagens
+   DINAMICAMENTE (não precisa de chaves eBay):
    ```powershell
    .venv\Scripts\python main.py --list-groups
    ```
-   Apresente os grupos com a contagem de cartas + a opção "todas as cartas"
-   (sem `--group`).
+   Os 12 grupos são os mesmos da COMC (`src/groups.py`, títulos verbatim):
+
+   | Grupo | Título | Sets |
+   |---|---|---|
+   | 1 | SV recente | 7 |
+   | 2 | SV restante | 6 |
+   | 3 | WotC 1999-2000 | 8 |
+   | 4 | WotC 2001-2003 | 7 |
+   | 5 | EX 2004-2005 | 8 |
+   | 6 | EX 2006-2007 + DP 2007 | 8 |
+   | 7 | DP/Platinum 2008-2010 | 8 |
+   | 8 | HGSS + BW 2010-2013 | 17 |
+   | 9 | XY 2014-2016 | 14 |
+   | 10 | SM 2017-2019 | 17 |
+   | 11 | SWSH 2020-2021 | 12 |
+   | 12 | SWSH 2022 + Crown Zenith | 11 |
+
+   (1–2 = SV 2023–25; 3–4 = WotC 1999–2003; 5–10 = EX/DP/Platinum/HGSS/BW/
+   XY/SM 2004–19; 11–12 = SWSH + Crown Zenith 2020–23.) `--group` aceita
+   `N` | `N-M` | `1,3,10-12` | `all`; número fora de 1–12 erra alto. Apresente
+   os grupos com a contagem de cartas que o `--list-groups` imprimiu. Padrão do
+   operador = **um grupo por vez** (cota da Browse API: 5.000 chamadas/dia,
+   ~1–3 chamadas por carta; a watchlist inteira tem ~1.600 cartas).
 2. **Qual modo?**
    - **Comercial** (default): `--min-discount 20` (= default do config), só
      slabs, piso US$10. Entrega em 4 buckets por veredito.
@@ -67,17 +95,19 @@ referência, percentual INTEIRO (`min_discount_percent: 20` no config;
 
 ```powershell
 $env:PYTHONIOENCODING="utf-8"
-# comercial
-.venv\Scripts\python main.py --group <g> --min-discount 20 --out results\last_scan.json
-# diagnóstico
-.venv\Scripts\python main.py --group <g> --min-price 5 --min-discount 10 --include-raw --out results\last_scan.json
+# comercial (um grupo por vez; artefato nomeado pelo grupo)
+.venv\Scripts\python main.py --group <N> --min-discount 20 --out results\last_scan_g<N>.json
+# diagnóstico (padrão COMC do operador, 2026-09-03)
+.venv\Scripts\python main.py --group <N> --min-price 5 --min-discount 10 --include-raw --out results\last_scan_g<N>.json
 ```
 
-- Sem `--group` = watchlist inteira. `--pricing-only` não gera artefato JSON
-  (não há anúncios avaliados).
-- Cota da Browse API: 5.000 chamadas/dia grátis; cada carta gasta até
-  `max_pages` (3) chamadas de 200 anúncios. O funil da entrega mostra
-  "Chamadas à Browse API" — reportar.
+- `--out results\last_scan_g<N>.json` = um artefato por grupo (o run do grupo
+  seguinte não sobrescreve o anterior). Sem `--group` = watchlist inteira
+  (~1.600 cartas — não cabe na cota diária; só sob pedido explícito).
+  `--pricing-only` não gera artefato JSON (não há anúncios avaliados).
+- Cota da Browse API: 5.000 chamadas/dia grátis; cada carta gasta ~1–3
+  chamadas (1 busca paginada, até `max_pages` = 3 páginas de 200 anúncios).
+  O funil da entrega mostra "Chamadas à Browse API" — reportar.
 - **Exit code 1 = run abortado** (falha de autenticação no eBay ou 3 erros
   seguidos da API): o artefato sai marcado `aborted: true` e a entrega mostra
   "RUN ABORTADO — cartas restantes não varridas". Entregar assim mesmo, dizendo
@@ -90,9 +120,9 @@ $env:PYTHONIOENCODING="utf-8"
 
 ```powershell
 # comercial
-.venv\Scripts\python ebay_summary.py results\last_scan.json -o results\ebay-<AAAA-MM-DD>.md
+.venv\Scripts\python ebay_summary.py results\last_scan_g<N>.json -o results\ebay-g<N>-<AAAA-MM-DD>.md
 # diagnóstico
-.venv\Scripts\python ebay_summary.py results\last_scan.json -o results\ebay-<AAAA-MM-DD>.md --sensitivity 10,15,20
+.venv\Scripts\python ebay_summary.py results\last_scan_g<N>.json -o results\ebay-g<N>-<AAAA-MM-DD>.md --sensitivity 10,15,20
 ```
 
 1. Colar o conteúdo do `.md` **VERBATIM** no chat — **proibido** remontar
