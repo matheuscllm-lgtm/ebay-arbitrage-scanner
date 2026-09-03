@@ -587,7 +587,7 @@ def test_console_and_slug_guards():
 
 @pytest.mark.parametrize("number,expected", [
     ("006/165", "6"), ("4/102", "4"), ("95b", "95"), ("000", "0"), ("", ""), (None, ""), (12, "12"),
-    ("TG05/TG30", "5"), ("abc", ""),
+    ("TG05/TG30", "tg5"), ("SV49", "sv49"), ("H09", "h9"), ("AR1", "ar1"), ("abc", ""),
 ])
 def test_norm_number(number, expected):
     assert pc.norm_number(number) == expected
@@ -909,3 +909,72 @@ def test_console_matches_series_prefix_and_series_base_sets():
     assert not pc.console_matches("/game/pokemon-sun-&-moon/lapras-gx-35", "SM - Unbroken Bonds")
     assert not pc.console_matches("/game/pokemon-base-set/charizard-4", "SM Base Set")
     assert pc.clean_set_name("SM - Unbroken Bonds") == "Unbroken Bonds"
+
+
+# --- build_watchlist 2026-09-03 (2a rodada): 298 cartas "sem PC" por 4 causas ----------
+
+def test_slug_matches_keeps_letter_prefixed_numbers():
+    # PC mantem as letras do numero no slug: charizard-gx-sv49, umbreon-vmax-tg23,
+    # umbreon-h29, arceus-ar1, rayquaza-sl10, milotic-sh7 (sondagem real 2026-09-03).
+    assert pc.slug_matches("/game/pokemon-hidden-fates/charizard-gx-sv49", "Charizard GX", "SV49")
+    assert pc.slug_matches("/game/pokemon-brilliant-stars/umbreon-vmax-tg23", "Umbreon VMAX", "TG23")
+    assert pc.slug_matches("/game/pokemon-astral-radiance/machamp-tg04", "Machamp", "TG04/TG30")
+    assert pc.slug_matches("/game/pokemon-astral-radiance/machamp-tg4", "Machamp", "TG04")
+    assert pc.slug_matches("/game/pokemon-aquapolis/umbreon-h29", "Umbreon", "H29")
+    assert pc.slug_matches("/game/pokemon-arceus/arceus-ar1", "Arceus", "AR1")
+    assert pc.slug_matches("/game/pokemon-call-of-legends/rayquaza-sl10", "Rayquaza", "SL10")
+    # o prefixo faz parte do numero: SV49 != 49 (Hidden Fates tem Charizard GX #9 e #SV49)
+    assert not pc.slug_matches("/game/pokemon-hidden-fates/charizard-gx-9", "Charizard GX", "SV49")
+    assert not pc.slug_matches("/game/pokemon-hidden-fates/charizard-gx-sv49", "Charizard GX", "49")
+    assert not pc.slug_matches("/game/pokemon-hidden-fates/charizard-gx-sv49", "Charizard GX", "SV4")
+
+
+def test_slug_matches_ampersand_and_lv_x_names():
+    # Tag Team: PC escreve "mewtwo-&-mew-gx-242"; Lv.X: "gengar-lv-x-97".
+    assert pc.slug_matches("/game/pokemon-unified-minds/mewtwo-&-mew-gx-242", "Mewtwo & Mew GX", "242")
+    assert pc.slug_matches("/game/pokemon-team-up/gengar-&-mimikyu-gx-165", "Gengar & Mimikyu GX", "165")
+    assert pc.slug_matches("/game/pokemon-arceus/gengar-lv-x-97", "Gengar Lv.X", "97")
+    assert pc.slug_matches("/game/pokemon-supreme-victors/charizard-g-lv-x-143", "Charizard G Lv.X", "143")
+    assert not pc.slug_matches("/game/pokemon-unified-minds/mewtwo-gx-242", "Mewtwo & Mew GX", "242")
+    assert not pc.slug_matches("/game/pokemon-arceus/gengar-97", "Gengar Lv.X", "97")
+
+
+def test_clean_card_name_strips_number_glued_to_hyphen():
+    # tcgcsv real: "Mimikyu -160/091" (sem espaco depois do hifen).
+    assert pc.clean_card_name("Mimikyu -160/091") == "Mimikyu"
+    assert pc.clean_card_name("Ninetales -199/197") == "Ninetales"
+    assert pc.clean_card_name("Ho-Oh - 010/075") == "Ho-Oh"
+    assert pc.clean_card_name("Ho-Oh") == "Ho-Oh"
+
+
+def test_console_matches_subsets_live_in_parent_set_console():
+    # PC arquiva os subconjuntos no console do set-pai (sondagem real 2026-09-03):
+    # Shiny Vault -> hidden-fates/shining-fates, Trainer Gallery -> brilliant-stars,
+    # Classic Collection -> celebrations, Galarian Gallery -> crown-zenith,
+    # Radiant Collection -> generations/legendary-treasures.
+    assert pc.console_matches("/game/pokemon-hidden-fates/charizard-gx-sv49", "Hidden Fates: Shiny Vault")
+    assert pc.console_matches("/game/pokemon-shining-fates/charizard-vmax-sv107", "Shining Fates: Shiny Vault")
+    assert pc.console_matches("/game/pokemon-brilliant-stars/umbreon-vmax-tg23", "SWSH09: Brilliant Stars Trainer Gallery")
+    assert pc.console_matches("/game/pokemon-astral-radiance/machamp-tg04", "SWSH10: Astral Radiance Trainer Gallery")
+    assert pc.console_matches("/game/pokemon-celebrations/charizard-4", "Celebrations: Classic Collection")
+    assert pc.console_matches("/game/pokemon-crown-zenith/mewtwo-vstar-gg44", "SWSH: Crown Zenith: Galarian Gallery")
+    assert pc.console_matches("/game/pokemon-generations/flareon-ex-rc28", "Generations: Radiant Collection")
+    assert pc.console_matches("/game/pokemon-legendary-treasures/mew-ex-rc24", "Legendary Treasures: Radiant Collection")
+    assert not pc.console_matches("/game/pokemon-shining-fates/charizard-vmax-sv107", "Hidden Fates: Shiny Vault")
+    assert not pc.console_matches("/game/pokemon-hidden-fates/charizard-gx-sv49", "Shining Fates: Shiny Vault")
+    assert pc.pc_console_label("Hidden Fates: Shiny Vault") == "Hidden Fates"
+    assert pc.pc_console_label("SWSH09: Brilliant Stars Trainer Gallery") == "Brilliant Stars"
+    assert pc.pc_console_label("SM Base Set") == "Sun & Moon"
+    assert pc.pc_console_label("Base Set") == "Base Set"
+
+
+def test_product_path_query_uses_parent_console_and_raw_number(monkeypatch):
+    seen = []
+
+    def fake_fetch(url, cache_dir=None):
+        seen.append(url)
+        return '<a href="/game/pokemon-hidden-fates/charizard-gx-sv49">x</a>'
+    monkeypatch.setattr(pc, "fetch_page", fake_fetch)
+    assert pc.product_page_url("Charizard GX", "SV49", "Hidden Fates: Shiny Vault") ==         "https://www.pricecharting.com/game/pokemon-hidden-fates/charizard-gx-sv49"
+    q = seen[0].split("q=", 1)[1].split("&", 1)[0]
+    assert "SV49" in q and "Hidden" in q and "Shiny" not in q, q
