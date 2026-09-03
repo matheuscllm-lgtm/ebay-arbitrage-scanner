@@ -40,6 +40,13 @@ class WatchCard:
     # nao bate com o `name` dos groups do tcgcsv (ex.: set: "151" vs
     # tcgcsv "SV: Scarlet & Violet 151"). Vazio = usa `set` direto.
     tcg_set: str = ""
+    # Padrão COMC (2026-09-03): Pokémon da carta e rank na lista dos 100 "chases"
+    # (comc iconic_pokemon.csv) — usados na coluna Pokémon e no desempate do
+    # ranking; rarity/year vêm do catálogo (build_watchlist.py), só informação.
+    pokemon: str = ""
+    pokemon_rank: int = 9999
+    rarity: str = ""
+    year: int | None = None
 
     def default_query(self) -> str:
         return self.ebay_query or f"pokemon {self.name} {self.number} {self.set_name}"
@@ -107,3 +114,22 @@ class Opportunity:
     # Qual fonte foi usada na MARGEM desta linha:
     # "tcgplayer" (raw com TCG market) ou "pricecharting" (graded, ou raw fallback).
     ref_kind: str = "pricecharting"
+    # --- Padrão COMC (2026-09-03): métricas e proveniência da referência ---
+    # Desconto% = (ref − preço)/ref; Spread$ = ref − preço; ROI bruto% = gross_margin_pct.
+    discount_pct: float = 0.0
+    spread_usd: float = 0.0
+    # Fonte EXATA da referência: "tcgplayer" (raw NM, market) ·
+    # "pricecharting-sales" (slab: mediana de vendas da mesma certificadora+nota+variante) ·
+    # "pricecharting-sales-lp" (raw LP: mediana de ≥3 vendas LP) ·
+    # "pricecharting" (fallback rotulado: coluna Ungraded do PC, raw sem TCG).
+    ref_source: str = ""
+    ref_label: str = ""        # "TCG market" · "vendas PSA 10 (n=5, 2026-03..2026-08)"
+    ref_n_sales: int | None = None
+    ref_liquidity: str = ""    # "ok" | "low" | "thin" (só mediana de vendas)
+    ref_window_days: int | None = None
+    ref_column_price: float | None = None  # coluna exata do PC — só sanidade coluna÷vendas
+    condition: str = ""        # raw: "NM" | "LP"; slab: ""
+    grade_label: str = ""      # "CGC 10 Gem Mint", "BGS 10 Black Label", "PSA 10"
+    listing_type: str = ""     # "Raw NM" | "Raw LP" | grade_label
+    pc_url: str = ""           # página da carta no PriceCharting (link [referência])
+    reasons: list = field(default_factory=list)  # tags curtas do Status (vendas<3(n=1)…)
