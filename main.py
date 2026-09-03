@@ -34,7 +34,11 @@ def _print_groups(cards):
     counts = scanner.group_counts(cards)
     print(f"Grupos da watchlist ({len(cards)} cartas):")
     for name, n in counts.items():
-        print(f"  {name}: {n} carta(s)")
+        title = ""
+        if name.isdigit() and int(name) in scanner.groups.SCAN_GROUPS:
+            title = f" — {scanner.groups.SCAN_GROUPS[int(name)].title}"
+        print(f"  {name}{title}: {n} carta(s)")
+    print("Use --group N | N-M | 1,3,10-12 | all (grupos canonicos) ou o nome literal.")
 
 
 def _load_config(path):

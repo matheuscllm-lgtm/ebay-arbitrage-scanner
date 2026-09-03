@@ -128,3 +128,16 @@ def test_degraded_scan_never_overwrites_artifact(tmp_path, monkeypatch, capsys):
     console = capsys.readouterr().out
     assert "NAO gravado" in console
     assert '"real": true' in out.read_text(encoding="utf-8")
+
+
+def test_filter_group_accepts_numeric_spec(tmp_path):
+    path = tmp_path / "w.yaml"
+    path.write_text(WATCHLIST_YAML.replace("group: chase-en", "group: '3'", 1)
+                    .replace("group: chase-en", "group: '11'").replace("group: vintage-jp", "group: '4'"),
+                    encoding="utf-8")
+    cards = scanner.load_watchlist(str(path))
+    assert [c.name for c in scanner.filter_group(cards, "3")] == ["Charizard"]
+    assert [c.name for c in scanner.filter_group(cards, "3-4")] == ["Charizard", "Pikachu"]
+    assert [c.name for c in scanner.filter_group(cards, "all")] == ["Charizard", "Umbreon VMAX", "Pikachu"]
+    assert scanner.filter_group(cards, "1,2") == []
+
