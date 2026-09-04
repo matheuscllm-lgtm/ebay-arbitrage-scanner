@@ -1058,3 +1058,18 @@ def test_owner_prefix_accepts_two_word_owner():
     assert pc._OWNER_PREFIX.sub("", "Team Aqua's Kyogre") == "Kyogre"
     assert pc._OWNER_PREFIX.sub("", "Erika's Vileplume") == "Vileplume"
     assert pc._OWNER_PREFIX.sub("", "Charizard") == "Charizard"
+
+
+def test_prism_star_and_star_are_optional_tokens():
+    # 4a geracao da watchlist: o PC omite "Prism Star"/"Star" do nome, mantendo o
+    # numero (sondagem real 2026-09-04). O numero + console exatos seguram o match:
+    # dentro de um set, um numero = uma carta.
+    assert pc.slug_matches("/game/pokemon-forbidden-light/arceus-96", "Arceus Prism Star", "96")
+    assert pc.slug_matches("/game/pokemon-lost-thunder/celebi-19", "Celebi Prism Star", "19")
+    assert pc.slug_matches("/game/pokemon-celebrations/umbreon-17", "Umbreon Star", "17")
+    # e continua casando quando o PC escreve o nome COMPLETO
+    assert pc.slug_matches("/game/pokemon-deoxys/rayquaza-gold-star-107", "Rayquaza Star", "107")
+    assert pc.slug_matches("/game/pokemon-forbidden-light/arceus-prism-star-96", "Arceus Prism Star", "96")
+    # numero diferente segue fora: o Rayquaza comum de EX Deoxys e o #22, nao o #107
+    assert not pc.slug_matches("/game/pokemon-deoxys/rayquaza-22", "Rayquaza Star", "107")
+    assert not pc.slug_matches("/game/pokemon-forbidden-light/arceus-96", "Arceus Prism Star", "97")

@@ -553,7 +553,9 @@ def clean_card_name(card_name) -> str:
 # "Rayquaza Star", "typhlosion-prime-110" para "Typhlosion", "infernape-lvx-108" para
 # "Infernape E4 Lv.X" -- tokens opcionais dos DOIS lados; "mega-blastoise-ex" == "M Blastoise EX";
 # "lv-x" / "lvx" / "Lv.X" == lvx.
-_OPTIONAL_TOKENS = {"gold", "prime", "e4"}
+# "star"/"prism": o PC omite "Prism Star" e "Star" do nome mantendo o número
+# ("arceus-96" para "Arceus Prism Star", "umbreon-17" para "Umbreon Star").
+_OPTIONAL_TOKENS = {"gold", "prime", "e4", "prism", "star"}
 _TOKEN_ALIASES = {"mega": "m"}
 
 
