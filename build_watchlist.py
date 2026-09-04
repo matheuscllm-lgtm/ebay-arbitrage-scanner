@@ -181,7 +181,7 @@ def build(group_numbers, fetch_json=None, resolve_pc=None, cap=DEFAULT_CAP,
     tcg_groups = tcg._results(fetch_json(f"{tcg.TCGCSV_BASE}/groups"))
     by_name = {str(g.get("name") or "").strip().lower(): g for g in tcg_groups}
     report = {"per_group": Counter(), "candidates": 0, "no_pc": [], "pc_error": [],
-              "missing_tcg_group": [], "capped_sets": []}
+              "missing_tcg_group": [], "capped_sets": [], "pc_collision": []}
     entries = []
     pc_errors_in_a_row = 0
     for n in group_numbers:
@@ -227,6 +227,17 @@ def build(group_numbers, fetch_json=None, resolve_pc=None, cap=DEFAULT_CAP,
                 kept += 1
             report["per_group"][n] += kept
             log(f"  [grupo {n}] {set_name}: {len(rows)} candidatas -> {kept} na watchlist")
+    # Guarda dura: duas cartas DIFERENTES na mesma pagina do PriceCharting seria uma
+    # referencia de preco de OUTRA carta. O dedupe de `select_candidates` ja tira a
+    # carta repetida do tcgcsv; o que sobrar aqui e erro de casamento e tem de aparecer.
+    by_url: dict[str, list[tuple[str, str, str]]] = {}
+    for e in entries:
+        if e["pc_url"]:
+            by_url.setdefault(e["pc_url"], []).append((e["set"], e["name"], e["number"]))
+    for url, cards in by_url.items():
+        if len(cards) > 1:
+            report["pc_collision"].append((url, cards))
+            log(f"  COLISAO: {len(cards)} cartas na mesma pagina {url}")
     return entries, report
 
 
@@ -245,6 +256,9 @@ def report_text(report, entries):
         lines.append(f"  sem PC: {s} | {name} {num}")
     for s, name, num, err in report["pc_error"]:
         lines.append(f"  ERRO PC: {s} | {name} {num} | {err}")
+    for url, cards in report.get("pc_collision", []):
+        nomes = "; ".join(f"{st} | {name} {num}" for st, name, num in cards)
+        lines.append(f"  COLISAO (mesma pagina para cartas diferentes): {url} -> {nomes}")
     return "\n".join(lines)
 
 

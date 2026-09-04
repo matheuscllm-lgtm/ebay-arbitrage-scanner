@@ -160,3 +160,33 @@ def test_build_fills_year_from_tcgcsv_when_catalog_has_none(monkeypatch):
     entries, _ = bw.build([1], fetch_json=fetch, resolve_pc=lambda *a, **k: "https://x/y",
                           log=lambda *a: None)
     assert entries[0]["year"] == 2025
+
+
+def test_build_reports_collision_when_two_cards_share_a_pc_page(monkeypatch):
+    # Guarda contra o pior caso: duas cartas DIFERENTES resolvendo para a MESMA pagina
+    # do PriceCharting = referencia de preco de outra carta. Hoje nao acontece (as
+    # 1.669 da watchlist passaram limpas), mas uma regeracao futura com catalogo maior
+    # pode criar o caso -- e ele nao pode passar em silencio.
+    prods = [P(1, "Charizard ex - 199/165", "199/165", "Special Illustration Rare"),
+             P(2, "Mew ex - 151/165", "151/165", "Double Rare")]
+    prices = [PR(1, 300.0), PR(2, 20.0)]
+
+    def fetch(url, cache_dir=None):
+        if url.endswith("/groups"):
+            return {"results": [{"groupId": 10, "name": "Base Set", "publishedOn": "1999-01-09"}]}
+        if url.endswith("/products"):
+            return {"results": prods}
+        if url.endswith("/prices"):
+            return {"results": prices}
+        return {"results": []}
+    monkeypatch.setattr(bw, "load_iconic", lambda path=None: dict(RANK))
+    monkeypatch.setattr(bw.groups, "SCAN_GROUPS", {3: bw.groups.GroupDef(
+        number=3, title="t", description="d", era="vintage", sets=("Base Set",))})
+    monkeypatch.setattr(bw.groups, "catalog", lambda: {"Base Set": {"year": "1999"}})
+    entries, report = bw.build([3], fetch_json=fetch,
+                               resolve_pc=lambda *a, **k: "https://www.pricecharting.com/game/x/mesma-4",
+                               log=lambda *a: None)
+    assert len(report["pc_collision"]) == 1
+    url, cards = report["pc_collision"][0]
+    assert url.endswith("/mesma-4") and sorted(c[1] for c in cards) == ["Charizard ex", "Mew ex"]
+    assert "COLISAO" in bw.report_text(report, entries)
