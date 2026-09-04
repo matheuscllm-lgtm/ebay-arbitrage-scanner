@@ -346,8 +346,25 @@ _BLACK_LABEL_SALE_RE = re.compile(
     r"|\bblack\s+BGS\s*-?\s*10\b", re.I)
 
 
+# "BGS 10 Black <mais texto>" é AMBÍGUO: o texto seguinte tanto pode ser o NOME da
+# carta ("BGS 10 Black Kyurem EX") quanto o resto do título de uma Black Label de
+# verdade escrita sem a palavra "Label" ("BGS 10 Black Base Set 4/102"). Aqui não dá
+# para desempatar (a função não recebe o nome da carta), então o ambíguo não entra em
+# cesta NENHUMA -- mesma política do título que cita duas notas. Achado do review da
+# COMC (2026-09-04): antes essa venda caía na cesta do BGS 10 COMUM e envenenava a
+# mediana (uma venda de US$ 90 mil entre duas de US$ 1,5 mil).
+_AMBIGUOUS_BLACK_SALE_RE = re.compile(r"\bBGS\s*-?\s*10\s+black\s+[A-Za-z0-9]", re.I)
+
+
 def _is_black_label_sale(title: str) -> bool:
     return _BLACK_LABEL_SALE_RE.search(title or "") is not None
+
+
+def _is_ambiguous_black_sale(title: str) -> bool:
+    """True quando não dá para dizer se "black" é etiqueta preta ou nome da carta."""
+    t = title or ""
+    return (_AMBIGUOUS_BLACK_SALE_RE.search(t) is not None
+            and _BLACK_LABEL_SALE_RE.search(t) is None)
 
 
 def _grade_mentions(title: str) -> set[tuple[str, float]]:
@@ -379,8 +396,11 @@ def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: st
                 continue
             if qualifier == "GEM" and pristine:
                 continue
-        if grader == "BGS" and value == 10.0 and (qualifier == "BLACK") != _is_black_label_sale(t):
-            continue
+        if grader == "BGS" and value == 10.0:
+            if _is_ambiguous_black_sale(t):
+                continue  # não dá para dizer se é etiqueta preta: não serve a cesta nenhuma
+            if (qualifier == "BLACK") != _is_black_label_sale(t):
+                continue
         if variant_tokens(t) != variants:
             continue
         out.append(s)
@@ -502,12 +522,14 @@ def search_card_paths(body: str) -> list[str]:
 # --- guardas de match (adaptadas do CardTrader pricecharting_ref.py) -----------
 
 def norm_number(number) -> str:
-    """'006/165' → '6'; '4/102' → '4'; '95b' → '95'. Sem dígito → ''."""
+    """'006/165' → '6'; '4/102' → '4'; '95b' → '95'; 'SV49' → 'sv49'; 'TG05/TG30' → 'tg5';
+    'H09' → 'h9'. O prefixo de letras FAZ PARTE do número (PC: charizard-gx-sv49,
+    umbreon-h29, arceus-ar1 — sondagem 2026-09-03); zeros à esquerda caem. Sem dígito → ''."""
     if number is None:
         return ""
-    head = str(number).strip().split("/", 1)[0]
-    digits = re.sub(r"\D", "", head)
-    return digits.lstrip("0") or ("0" if digits else "")
+    head = re.sub(r"[^a-z0-9]", "", str(number).strip().split("/", 1)[0].lower())
+    m = re.match(r"^([a-z]*)0*(\d+)", head)
+    return (m.group(1) + m.group(2)) if m else ""
 
 
 def _norm_token(t: str) -> str:
@@ -519,20 +541,70 @@ def _norm_token(t: str) -> str:
 
 def clean_card_name(card_name) -> str:
     """Nome TCGCSV → nome comparável: tira ' - 006/165', parênteses e 'Lv.NN'."""
-    s = str(card_name or "").split(" - ", 1)[0]
+    # " - 006/165" e tambem "-160/091" colado (tcgcsv real: "Mimikyu -160/091").
+    s = re.split(r"\s+-\s*", str(card_name or ""), 1)[0]
     s = re.sub(r"\(.*?\)", "", s)
+    s = re.sub(r"\(.*$", "", s)  # parentese sem fechar ("Primal Kyogre EX (Alpha")
     s = re.sub(r"(?i)\blv\.?\s*\d+\b", " ", s)
     return s.strip()
 
 
+# Grafias do PriceCharting (sondagem real 2026-09-03): "rayquaza-gold-star-107" para
+# "Rayquaza Star", "typhlosion-prime-110" para "Typhlosion", "infernape-lvx-108" para
+# "Infernape E4 Lv.X" -- tokens opcionais dos DOIS lados; "mega-blastoise-ex" == "M Blastoise EX";
+# "lv-x" / "lvx" / "Lv.X" == lvx.
+# "star"/"prism": o PC omite "Prism Star" e "Star" do nome mantendo o número
+# ("arceus-96" para "Arceus Prism Star", "umbreon-17" para "Umbreon Star").
+_OPTIONAL_TOKENS = {"gold", "prime", "e4", "prism", "star"}
+_TOKEN_ALIASES = {"mega": "m"}
+
+
+def _canon_tokens(tokens) -> list[str]:
+    out: list[str] = []
+    for t in tokens:
+        t = _TOKEN_ALIASES.get(t, t)
+        if t == "x" and out and out[-1] == "lv":
+            out[-1] = "lvx"
+            continue
+        out.append(t)
+    return [t for t in out if t and t not in _OPTIONAL_TOKENS]
+
+
 def _name_tokens(card_name) -> list[str]:
-    name = clean_card_name(card_name).replace(".", "")
-    return [t for t in (_norm_token(x) for x in re.findall(r"[a-z0-9']+", name.lower())) if t]
+    # "." vira separador: "Gengar Lv.X" -> [gengar, lv, x] -> [gengar, lvx].
+    name = clean_card_name(card_name).replace(".", " ")
+    return _canon_tokens(t for t in (_norm_token(x) for x in re.findall(r"[a-z0-9']+", name.lower())) if t)
+
+
+# Sets cujo nome TCGCSV nao bate com o console do PriceCharting nem por tokens.
+PC_CONSOLE_ALIASES = {
+    "SM Base Set": "Sun & Moon",
+    "XY Base Set": "XY",
+    "SWSH01: Sword & Shield Base Set": "Sword & Shield",
+    "SV01: Scarlet & Violet Base Set": "Scarlet & Violet",
+}
+# Prefixo de serie com hifen ("SM - Unbroken Bonds", "XY - Evolutions") -- sem ':'.
+_SERIES_PREFIX = re.compile(r"^(?:SM|XY|SWSH|SV|BW|DP|HGSS)\s+-\s+", re.I)
+# Subconjuntos que o PC arquiva no console do set-PAI (sondagem 2026-09-03):
+# "Hidden Fates: Shiny Vault" -> pokemon-hidden-fates, "... Trainer Gallery" ->
+# pokemon-brilliant-stars, "Celebrations: Classic Collection" -> pokemon-celebrations,
+# "Crown Zenith: Galarian Gallery" -> pokemon-crown-zenith, "Radiant Collection" -> pai.
+_SUBSET_SUFFIX = re.compile(
+    r"(?::\s*(?:Shiny Vault|Galarian Gallery|Classic Collection|Radiant Collection)"
+    r"|\s+Trainer Gallery)\s*$", re.I)
+
+
+def pc_console_label(set_label) -> str:
+    """Nome de set TCGCSV → nome do CONSOLE do PriceCharting: aliases dos Base Set de
+    série, prefixos/códigos fora, subconjunto → set-pai."""
+    raw = str(set_label or "").strip()
+    return _SUBSET_SUFFIX.sub("", clean_set_name(PC_CONSOLE_ALIASES.get(raw, raw))).strip()
 
 
 def clean_set_name(set_label) -> str:
-    """'SV: Scarlet & Violet 151' → 'Scarlet & Violet 151'; 'EX Emerald (em)' → 'EX Emerald'."""
-    s = _CODE_PREFIX.sub("", str(set_label or "").strip())
+    """'SV: Scarlet & Violet 151' → 'Scarlet & Violet 151'; 'EX Emerald (em)' → 'EX Emerald';
+    'SM - Unbroken Bonds' → 'Unbroken Bonds'."""
+    s = _SERIES_PREFIX.sub("", _CODE_PREFIX.sub("", str(set_label or "").strip()))
     return s.rsplit(" (", 1)[0].strip() if " (" in s else s
 
 
@@ -545,12 +617,19 @@ def slug_matches(path: str, card_name, number) -> bool:
         return False
     slug = parts[-1].lower()
     num = norm_number(number)
-    if not num or not re.search(rf"(?:^|-){re.escape(num)}$", slug):
+    raw_tokens = slug.split("-")
+    # ultimo token do slug e o numero, comparado canonizado (tg04 == TG4, sv49 != 49)
+    if not num or len(raw_tokens) < 2 or norm_number(raw_tokens[-1]) != num:
         return False
-    slug_tokens = [_norm_token(t) for t in slug.split("-")]
-    slug_tokens = slug_tokens[:-1]  # drop o número final
+    # "&" do PC ("mewtwo-&-mew-gx-242") nao e token de nome
+    slug_tokens = _canon_tokens(t for t in (_norm_token(t) for t in raw_tokens[:-1])
+                                if re.search(r"[a-z0-9]", t))
     tokens = _name_tokens(card_name)
-    if not tokens or not slug_tokens or slug_tokens[0] != tokens[0]:
+    if not tokens or not slug_tokens:
+        return False
+    # 1o token igual ("shadowless-charizard" != "Charizard"), exceto Tag Team, em que o PC
+    # inverte a ordem ("psyduck-&-slowpoke-gx-217" para "Slowpoke & Psyduck GX")
+    if slug_tokens[0] != tokens[0] and "&" not in str(card_name):
         return False
     core = {t for t in slug_tokens if t and t not in _VARIANT_TOKENS}
     return core == set(tokens)
@@ -562,11 +641,21 @@ def console_matches(path: str, set_label) -> bool:
     parts = path.strip("/").split("/")
     if len(parts) < 3:
         return False
-    console_tokens = {t for t in (re.sub(r"[^a-z0-9]", "", x)
-                                  for x in parts[1].lower().split("-")) if t} - {"pokemon"}
-    set_tokens = {t for t in re.findall(r"[a-z0-9]+", clean_set_name(set_label).lower())
-                  if t != "ex"}
-    return bool(set_tokens) and console_tokens == set_tokens
+    noise = {"pokemon", "ex", "vs", "and", "the"}
+    console_list = [t for t in (re.sub(r"[^a-z0-9]", "", x)
+                                for x in parts[1].lower().split("-")) if t and t not in noise]
+    # aliases dos Base Set de serie + subconjunto -> console do set-pai
+    set_list = [t for t in re.findall(r"[a-z0-9]+", pc_console_label(set_label).lower())
+                if t not in noise]
+    if not set_list:
+        return False
+    if set(console_list) == set(set_list):
+        return True
+    # Tolerancia real (build_watchlist 2026-09-03): PC escreve "fire-red-&-leaf-green"
+    # e "team-magma-&-team-aqua" para "EX FireRed & LeafGreen" / "EX Team Magma vs
+    # Team Aqua" -- comparar o texto colado (sem separadores) resolve os dois sem
+    # afrouxar idioma/edicao ("japanese-base-set" e "base-set-2" seguem fora).
+    return "".join(console_list) == "".join(set_list)
 
 
 def choose_path(paths: list[str], card_name, number, set_label) -> str | None:
@@ -578,16 +667,31 @@ def choose_path(paths: list[str], card_name, number, set_label) -> str | None:
     return min(matches, key=lambda p: len(p.rsplit("/", 1)[-1]))
 
 
+# dono com uma OU duas palavras: "Team Aqua's Kyogre", "Lt. Surge's Electabuzz"
+_OWNER_PREFIX = re.compile(r"^(?:\w[\w.]*\s+)?[\w.]+'s\s+", re.I)
+
+
 def _product_path(card_name, number, set_label, cache_dir: str | None = None) -> str | None:
     """Busca (nome+número+set) → ``choose_path`` (match exato) → path ``/game/...`` ou
     None. Rede/bloqueio → ``PcError``."""
-    set_name = clean_set_name(set_label)
+    set_name = pc_console_label(set_label)
     base_name = clean_card_name(card_name)
     num = norm_number(number)
-    query = " ".join(p for p in ("pokemon", set_name, base_name, num) if p)
+    head = str(number or "").strip().split("/", 1)[0].strip()
+    # numero com letras vai cru na busca ("SV49", "TG04", "H29": 1 resultado exato);
+    # so digitos continua canonizado ("006/165" -> "6", cache do dia intacto)
+    qnum = head if re.match(r"^[A-Za-z]", head) else num
+    query = " ".join(p for p in ("pokemon", set_name, base_name, qnum) if p)
     body = fetch_page(f"{BASE_URL}/search-products?q={urllib.parse.quote(query)}&type=prices",
                       cache_dir=cache_dir)
-    path = choose_path(search_card_paths(body), card_name, number, set_label)
+    paths = search_card_paths(body)
+    path = choose_path(paths, card_name, number, set_label)
+    if not path:
+        # PC omite o dono em sets so de cartas "de alguem" ("kyogre-3" para "Team Aqua's
+        # Kyogre", EX Team Magma vs Team Aqua). So como 2a tentativa, mesmo console+numero.
+        stripped = _OWNER_PREFIX.sub("", base_name)
+        if stripped != base_name:
+            path = choose_path(paths, stripped, number, set_label)
     if not path:
         log.info("PC: sem página que case '%s' #%s (%s).", base_name, num, set_name)
     return path

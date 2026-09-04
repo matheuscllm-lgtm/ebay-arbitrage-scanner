@@ -11,6 +11,117 @@ solta; "mediana" = valor do meio de uma lista ordenada; "gate" = filtro que
 decide se o anúncio vira linha; "funil" = contagem de para onde foi cada
 anúncio; "Browse API" = a API oficial de busca do eBay.
 
+## 0.5.1 — 2026-09-03
+
+PR B (decisão do operador, 2026-09-03): a watchlist deixa de ser feita à mão e
+passa a ser GERADA do catálogo e VERSIONADA; o scan roda por grupo canônico
+(os mesmos 12 grupos da COMC). 479 testes offline (17 arquivos).
+
+### Adicionado
+
+- `build_watchlist.py`: gera `watchlist.yaml` de forma reproduzível.
+  Universo = catálogo de **123 sets** (`src/catalog/set_catalog.json`, nomes
+  do tcgcsv) nos **mesmos 12 grupos da COMC** × **100 "chases"**
+  (`src/catalog/iconic_pokemon.csv` — Pokémon mais cobiçados, com `rank` de
+  popularidade) × **raridade ≥ Holo Rare** (campo `Rarity` do tcgcsv; lista
+  `RARITY_ALLOW` — Rare não-holo, Common/Uncommon e Code Card ficam fora) ×
+  **teto `--cap 30`** cartas por set (as mais caras pelo market do TCGplayer).
+  `pc_url` (página da carta no PriceCharting) resolvida por nome+número+set
+  com o **mesmo matcher exato** do scan (`pc_sales.product_page_url`); carta
+  sem página **não entra** e sai no relatório (`sem PC: …`) — nunca se inventa
+  URL; 5 erros seguidos do PriceCharting abrem o breaker. Flags `--groups
+  all|3|5-8|1,3,10-12`, `--cap`, `--out`, `--no-pc`, `--pc-cache-dir`.
+  Relatório final: total, por grupo, sem página PC, erros PC, sets no teto,
+  sets sem grupo no tcgcsv. Medido pelo operador: **~1.600 cartas**.
+- `src/groups.py` (portado de `scanner-comc/comc_scanner/groups.py` @
+  dd952ba): `SCAN_GROUPS` com os 12 grupos canônicos (número, título, era,
+  sets verbatim do catálogo — 1–2 SV 2023–25; 3–4 WotC 1999–2003; 5–10 EX/DP/
+  Platinum/HGSS/BW/XY/SM 2004–19; 11–12 SWSH + Crown Zenith 2020–23),
+  `parse_group_arg` (`N` | `N-M` | `1,3,10-12` | `all`; grupo fora de 1–12
+  erra alto), `is_group_spec`, `describe_groups`, `catalog`, `set_group`.
+- `src/catalog/set_catalog.json` (123 sets com ano) e
+  `src/catalog/iconic_pokemon.csv` (100 chases com rank).
+- `main.py --group` aceita a spec numérica dos grupos canônicos (`3`, `5-8`,
+  `1,3,10-12`, `all`) além do nome literal do campo `group:`
+  (`scanner.filter_group`); `--list-groups` mostra o título de cada grupo
+  canônico ao lado da contagem.
+- `tests/test_groups.py`: **invariante** — a união dos 12 grupos é EXATAMENTE
+  o catálogo (123 sets), sem sobreposição; catálogo novo faz o teste falhar de
+  propósito (lembrete de atualizar grupos + regenerar a watchlist + skill).
+  `tests/test_build_watchlist.py`: geração da watchlist a partir do catálogo.
+- Diagnóstico do operador (padrão COMC) documentado: um grupo por vez —
+  `python main.py --group <N> --min-price 5 --min-discount 10 --include-raw
+  --out results/last_scan_g<N>.json` (cota da Browse API 5.000/dia, ~1–3
+  chamadas por carta) → `python ebay_summary.py results/last_scan_g<N>.json -o
+  results/ebay-g<N>-<data>.md --sensitivity 10,15,20`, entrega verbatim.
+  Comercial: `--min-discount 20`.
+
+### Mudado
+
+- `watchlist.yaml` passa a ser **VERSIONADA** (saiu do `.gitignore`): um clone
+  limpo já roda. Não editar à mão (o cabeçalho gerado avisa); regenerar só
+  quando catálogo, grupos ou chases mudarem. Campo `group` = número canônico
+  1–12; `pokemon`/`pokemon_rank`/`rarity`/`year` vêm do catálogo.
+- `watchlist.example.yaml` vira modelo apenas para lista alternativa feita à
+  mão (`--watchlist <arquivo>`).
+- Documentação (`CLAUDE.md`, `README.md`, skill `scan-ebay`) atualizada: setup
+  sem watchlist manual, tabela dos 12 grupos, run por grupo com artefato
+  `results/last_scan_g<N>.json`.
+
+### Corrigido
+
+Fixes do PR #24 (review Codex, 2026-09-03) já em `main` e ainda não
+registrados no 0.5.0:
+
+- 401/403 **na busca** da Browse API (não só no token) aborta o run
+  (`EbayAuthError`) em vez de seguir com scan vazio.
+- Duplicados **entre páginas** da busca (mesmo `itemId`) são contados no funil
+  (`dedup_dropped`), não descartados em silêncio.
+- Vendas de **lote/pack/playset/selado/"escolha"** ficam fora das medianas de
+  vendas do PriceCharting (`pc_sales`, regex de venda não-unitária; "pack
+  fresh" continua sendo carta única).
+- A **nota** do slab nunca casa com o **número da carta** no título (ex.: "10"
+  de "10/102" não vira "PSA 10").
+- Certificadoras **GMA/HGA** entram na regex de fora-de-escopo
+  (`skip_grade_out_of_scope`), em vez de passarem como raw.
+- O **veredito final** (após anotação de referência) é o que conta no funil,
+  não o provisório.
+- Chamadas à Browse API são contadas **também quando dão erro** (`ebay_calls`
+  inclui tentativas repetidas e falhas) — a cota consumida aparece de verdade.
+- O **gate** efetivo (`min_discount_percent`) vai sempre explícito no config e
+  no artefato JSON, nunca implícito no default do scorer.
+- Anúncio com **preço ≤ 0** é descartado no piso (`skip_min_price`), não vira
+  Desconto%/ROI absurdo.
+- Raw **LP sem referência NM** disponível vai direto às vendas LP do
+  PriceCharting (antes ficava sem referência por falta do pré-filtro NM).
+
+Fixes do review limpo do PR B (2026-09-03):
+
+- `--group` fora de 1–12, spec inválida ou grupo/nome **sem cartas na
+  watchlist** erra ALTO (`ERRO: …`, exit ≠ 0) — antes `--group 13` derrubava
+  com traceback e `--group x` virava scan de 0 cartas "bem-sucedido".
+- Resolvedor do PriceCharting (`pc_sales`), após sondagem real do site: números
+  **com letras** mantêm o prefixo (`SV49`, `TG23`, `H29`, `AR1`, `SL10` — o
+  slug do PC é `charizard-gx-sv49`; antes viravam `49`, `23`…, e nunca
+  casavam); **subconjuntos** (Shiny Vault, Trainer Gallery, Galarian Gallery,
+  Classic Collection, Radiant Collection) são procurados no console do
+  **set-pai** (`pc_console_label`, ex.: `pokemon-hidden-fates`); nomes **Tag
+  Team** (`mewtwo-&-mew-gx-242`) e **Lv.X** (`gengar-lv-x-97`) casam; nome
+  tcgcsv com número colado (`Mimikyu -160/091`) é limpo. Sem isso, 298 das
+  1.673 candidatas da watchlist ficavam "sem PC" e fora do universo.
+
+Backport do review da COMC (2026-09-04), os dois no mesmo resolvedor:
+
+- **Venda "BGS 10 Black &lt;texto&gt;" não entra em cesta nenhuma.** O texto depois de
+  "Black" tanto pode ser o nome da carta ("BGS 10 Black Kyurem EX") quanto o resto
+  do título de uma etiqueta preta escrita sem a palavra "Label" ("BGS 10 Black Base
+  Set 4/102"). Antes a segunda caía na cesta do **BGS 10 comum** e envenenava a
+  mediana (uma venda de US$ 90 mil entre duas de US$ 1,5 mil). Mesma política do
+  título que cita duas notas: no escuro, não conta. Custo: carta cujo nome começa
+  com "Black" perde as vendas escritas nessa ordem.
+- **Dono com duas palavras** no nome da carta ("Lt. Surge's Electabuzz", Gym Heroes
+  e Gym Challenge): a 2ª tentativa sem o dono agora roda para eles também.
+
 ## 0.5.0 — 2026-09-03
 
 Padrão COMC (decisão do operador, 2026-09-03): o scanner passa a usar o mesmo

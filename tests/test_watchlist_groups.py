@@ -1,3 +1,4 @@
+import pytest
 """Testes de grupos na watchlist (--group / --list-groups) e run degradado."""
 import sys
 
@@ -64,7 +65,8 @@ def test_filter_group(tmp_path):
     assert [c.name for c in chase] == ["Charizard", "Umbreon VMAX"]
     assert scanner.filter_group(cards, "") == cards
     assert scanner.filter_group(cards, None) == cards
-    assert scanner.filter_group(cards, "nope") == []
+    with pytest.raises(ValueError, match="sem cartas na watchlist"):  # typo erra ALTO
+        scanner.filter_group(cards, "nope")
 
 
 def test_group_counts_includes_ungrouped(tmp_path):
@@ -128,3 +130,17 @@ def test_degraded_scan_never_overwrites_artifact(tmp_path, monkeypatch, capsys):
     console = capsys.readouterr().out
     assert "NAO gravado" in console
     assert '"real": true' in out.read_text(encoding="utf-8")
+
+
+def test_filter_group_accepts_numeric_spec(tmp_path):
+    path = tmp_path / "w.yaml"
+    path.write_text(WATCHLIST_YAML.replace("group: chase-en", "group: '3'", 1)
+                    .replace("group: chase-en", "group: '11'").replace("group: vintage-jp", "group: '4'"),
+                    encoding="utf-8")
+    cards = scanner.load_watchlist(str(path))
+    assert [c.name for c in scanner.filter_group(cards, "3")] == ["Charizard"]
+    assert [c.name for c in scanner.filter_group(cards, "3-4")] == ["Charizard", "Pikachu"]
+    assert [c.name for c in scanner.filter_group(cards, "all")] == ["Charizard", "Umbreon VMAX", "Pikachu"]
+    with pytest.raises(ValueError, match="grupos presentes: 3, 4"):
+        scanner.filter_group(cards, "1,2")  # spec valida, mas sem cartas = erro, nao scan vazio
+

@@ -10,8 +10,8 @@ entrega tabela com **Desconto% / ROI bruto% / Spread$**. Escopo default =
 CGC 9/9.5/10 Gem Mint/10 Pristine, BGS 9/9.5/10/10 Black Label, SGC 9/9.5/10,
 TAG 9.5/10. Carta **raw** (solta, sem nota) só entra por run com `--include-raw`.
 Projeto independente dos scanners irmãos (CardTrader, MYP, Liga, sealed, PSA
-Arbitrage, COMC) — não compartilha código com eles (o `src/pc_sales.py` e o
-`src/grading.py` foram **portados** da COMC, não importados).
+Arbitrage, COMC) — não compartilha código com eles (o `src/pc_sales.py`, o
+`src/grading.py` e o `src/groups.py` foram **portados** da COMC, não importados).
 
 > **Linguagem acessível (regra permanente do operador, 2026-09-02):** todo termo
 > técnico aqui e no chat vem com explicação curta. Mini-glossário do repo:
@@ -26,7 +26,11 @@ Arbitrage, COMC) — não compartilha código com eles (o `src/pc_sales.py` e o
 > duplicados; **breaker** ("disjuntor") = após N falhas seguidas de uma fonte,
 > parar de chamá-la no run; **allowlist** = lista do que é aceito;
 > **fixture** = arquivo real salvo em `tests/fixtures/` para testar offline;
-> **opt-in** = só liga se pedir explicitamente.
+> **opt-in** = só liga se pedir explicitamente; **watchlist** = lista de
+> cartas-alvo que o scan varre (`watchlist.yaml`); **catálogo** = os 123 sets
+> validados em `src/catalog/set_catalog.json`; **chase** = carta cobiçada de um
+> Pokémon popular (os 100 de `src/catalog/iconic_pokemon.csv`, com `rank`);
+> **grupo canônico** = fatia numerada 1–12 do catálogo (a mesma divisão da COMC).
 
 ## 🛰️ Convenções da frota (cross-scanner)
 
@@ -129,44 +133,105 @@ Listings via eBay Browse API; chaves que o CÓDIGO lê = `EBAY_CLIENT_ID`/`EBAY_
 ## Como rodar
 
 > 🎯 **Skill `scan-ebay`** (`.claude/skills/scan-ebay/SKILL.md`): quando o
-> operador pedir pra "rodar o eBay", PERGUNTE o grupo (`--list-groups`) e o
-> modo: **comercial** = `--group <grupo> --min-discount 20` (default do config)
-> ou **diagnóstico** = `--group <grupo> --min-price 5 --min-discount 10
+> operador pedir pra "rodar o eBay", PERGUNTE o grupo canônico (1–12, UM por
+> vez; `--list-groups` mostra o título de cada um) e o
+> modo: **comercial** = `--group <N> --min-discount 20` (default do config)
+> ou **diagnóstico** = `--group <N> --min-price 5 --min-discount 10
 > --include-raw` + entrega com `--sensitivity 10,15,20`. Entrega SEMPRE via
 > `ebay_summary.py` — verbatim.
 
-**Setup (1ª vez, qualquer ambiente):** o run exige uma watchlist, que é
-local-only (gitignored) e NÃO vem num clone limpo. O PR B vai gerar a
-watchlist a partir do catálogo (campos `pokemon`/`pokemon_rank`/`rarity`/`year`
-já são lidos); por ora, copiar o exemplo e preencher:
+**Setup (1ª vez, qualquer ambiente):** só o venv. A `watchlist.yaml` é
+**GERADA** por `build_watchlist.py` e **VERSIONADA** no repo (decisão do
+operador 2026-09-03; deixou de ser gitignored) — um clone limpo já roda.
 
 ```bash
 python -m venv .venv    # PC do operador: Python 3.12
 # Windows: .venv\Scripts\python -m pip install -r requirements.txt
 # Linux/nuvem: source .venv/bin/activate && pip install -r requirements.txt
-cp watchlist.example.yaml watchlist.yaml   # e preencher com os itens reais
 ```
+
+**Watchlist gerada (PR B, 2026-09-03):** `python build_watchlist.py` monta a
+lista de cartas-alvo a partir do catálogo, sem nada digitado à mão:
+
+- **Universo** = catálogo de **123 sets** (`src/catalog/set_catalog.json`, nomes
+  do tcgcsv) dividido nos **mesmos 12 grupos da COMC** (`src/groups.py`) ×
+  **100 "chases"** (`src/catalog/iconic_pokemon.csv` — Pokémon mais cobiçados,
+  com `rank` de popularidade) × **raridade ≥ Holo Rare** (campo `Rarity` do
+  tcgcsv; lista `RARITY_ALLOW` no script — Rare não-holo, Common/Uncommon e
+  Code Card ficam fora) × **teto `--cap 30`** cartas por set (as mais caras
+  pelo market do TCGplayer).
+- **`pc_url`** (página da carta no PriceCharting = referência de vendas) é
+  resolvida por nome+número+set com o **mesmo matcher exato** do scan
+  (`pc_sales.product_page_url`). **Carta sem página no PriceCharting NÃO
+  entra** (sem referência possível) e sai listada no relatório do script
+  (`sem PC: …`) — **nunca se inventa URL**. 5 erros seguidos do PriceCharting
+  abrem o breaker (`ERRO PC: … breaker`) e o restante fica de fora → regenerar.
+- Flags: `--groups all|3|5-8|1,3,10-12` (default `all`), `--cap N` (default
+  30; 0 = sem teto), `--out` (default `watchlist.yaml`), `--no-pc` (só
+  catálogo, `pc_url` vazio — o scan NÃO roda com ela; serve para inspecionar
+  candidatas), `--pc-cache-dir` (cache das páginas do PriceCharting entre
+  execuções).
+- Tamanho medido pelo operador (2026-09-03, `--cap 30`, todos os grupos):
+  **~1.600 cartas**. O relatório final do script imprime o total real, por
+  grupo, quantas ficaram sem página PC, sets no teto e sets sem grupo no tcgcsv.
+- **Quando regenerar:** só quando catálogo, grupos ou chases mudarem (ou para
+  refazer `pc_url`). Editar `watchlist.yaml` à mão é proibido (o cabeçalho do
+  arquivo avisa); regenere e versione junto no PR.
+- Lista alternativa feita à mão (teste, carta avulsa): use
+  `watchlist.example.yaml` como modelo e passe `--watchlist <arquivo>`.
 
 **Dia a dia (PC do operador, PowerShell):**
 
 ```powershell
 cd C:\Users\mathe\ebay-arbitrage-scanner
 $env:PYTHONIOENCODING="utf-8"
-.venv\Scripts\python -m pytest tests/ -q        # 434 testes, offline
-.venv\Scripts\python main.py --list-groups      # grupos da watchlist (sem chaves)
+.venv\Scripts\python -m pytest tests/ -q        # 479 testes, offline
+.venv\Scripts\python main.py --list-groups      # grupos c/ título e contagem (sem chaves)
 .venv\Scripts\python main.py --pricing-only     # sem credenciais (só PriceCharting)
 
-# Run COMERCIAL (gate 20% de desconto = default do config):
-.venv\Scripts\python main.py --group <grupo> --min-discount 20
+# Run COMERCIAL (gate 20% de desconto = default do config), UM grupo por vez:
+.venv\Scripts\python main.py --group <N> --min-discount 20 --out results\last_scan_g<N>.json
 
-# Run DIAGNÓSTICO (operador 2026-09-03): piso US$5, gate 10%, raw incluído
-.venv\Scripts\python main.py --group <grupo> --min-price 5 --min-discount 10 --include-raw
+# Run DIAGNÓSTICO (operador 2026-09-03, padrão COMC): piso US$5, gate 10%, raw incluído,
+# um grupo por vez, artefato nomeado pelo grupo (não sobrescreve o run anterior)
+.venv\Scripts\python main.py --group <N> --min-price 5 --min-discount 10 --include-raw --out results\last_scan_g<N>.json
 
 .venv\Scripts\python main.py --grades "PSA 10, CGC 10 Pristine"   # funil restrito a notas
 .venv\Scripts\python main.py --confiavel        # só vendedores >=50 avals/98%+, sem SUSPEITO/REJEITADO
 ```
 
 Na nuvem/Linux, os mesmos comandos com `python`/`.venv/bin/python`.
+
+**Por que um grupo por vez:** a cota grátis da Browse API é **5.000
+chamadas/dia** e cada carta gasta **~1–3 chamadas** (1 busca paginada, até
+`max_pages` 3 páginas de 200 anúncios). Com ~1.600 cartas, a watchlist inteira
+não cabe com folga num dia; rodar `--group <N>` (6 a 17 sets por grupo) mantém
+o run dentro da cota e o funil da entrega mostra "Chamadas à Browse API".
+
+**Grupos canônicos (12, os mesmos da COMC — `src/groups.py`; títulos verbatim,
+`era` = campo do código):**
+
+| Grupo | Título | era | Sets |
+|---|---|---|---|
+| 1 | SV recente | recent | 7 |
+| 2 | SV restante | recent | 6 |
+| 3 | WotC 1999-2000 | vintage | 8 |
+| 4 | WotC 2001-2003 | vintage | 7 |
+| 5 | EX 2004-2005 | middle | 8 |
+| 6 | EX 2006-2007 + DP 2007 | middle | 8 |
+| 7 | DP/Platinum 2008-2010 | middle | 8 |
+| 8 | HGSS + BW 2010-2013 | middle | 17 |
+| 9 | XY 2014-2016 | middle | 14 |
+| 10 | SM 2017-2019 | middle | 17 |
+| 11 | SWSH 2020-2021 | recent | 12 |
+| 12 | SWSH 2022 + Crown Zenith | recent | 11 |
+
+Faixas: 1–2 = SV (2023–2025); 3–4 = WotC (1999–2003); 5–10 = EX / DP /
+Platinum / HGSS / BW / XY / SM (2004–2019); 11–12 = SWSH + Crown Zenith
+(2020–2023). **Invariante travado por `tests/test_groups.py`:** a união dos 12
+grupos é EXATAMENTE o catálogo (123 sets), sem sobreposição. Catálogo novo →
+o teste FALHA de propósito → atualizar `src/groups.py`, regenerar
+`watchlist.yaml` e atualizar a skill `scan-ebay`.
 
 O scan grava um **artefato JSON** (`--out`, default `results/last_scan.json`,
 gitignored) com TODAS as linhas avaliadas (inclusive REJEITADO), o funil e os
@@ -180,17 +245,23 @@ passa por completo). A **entrega** sai do artefato:
 
 ```powershell
 # comercial (4 buckets por veredito)
-.venv\Scripts\python ebay_summary.py results\last_scan.json -o results\ebay-<AAAA-MM-DD>.md
+.venv\Scripts\python ebay_summary.py results\last_scan_g<N>.json -o results\ebay-g<N>-<AAAA-MM-DD>.md
 # diagnóstico (faixas por limiar de desconto; só a faixa >=20% é candidato comercial)
-.venv\Scripts\python ebay_summary.py results\last_scan.json -o results\ebay-<AAAA-MM-DD>.md --sensitivity 10,15,20
+.venv\Scripts\python ebay_summary.py results\last_scan_g<N>.json -o results\ebay-g<N>-<AAAA-MM-DD>.md --sensitivity 10,15,20
 ```
 
 **Flags do CLI (`main.py`; `--help` é a fonte da verdade):**
 
 - `--watchlist` (default `watchlist.yaml`) — watchlist alternativa.
 - `--config` (default `config.yaml`) — configuração alternativa.
-- `--list-groups` — lista os grupos da watchlist (sem chaves) e sai.
-- `--group <nome>` — roda só as cartas do grupo nomeado (campo `group:`).
+- `--list-groups` — lista os grupos da watchlist com contagem e, para grupo
+  canônico, o título (`3 — WotC 1999-2000: <n> carta(s)`) e sai; sem chaves.
+- `--group <spec>` — roda só as cartas do(s) grupo(s). Aceita a spec numérica
+  dos grupos canônicos `N` | `N-M` | `1,3,10-12` | `all`
+  (`src/groups.py` `parse_group_arg`) **ou** o nome literal do campo `group:`
+  (watchlist alternativa feita à mão). Grupo fora de 1–12, spec inválida ou
+  grupo/nome SEM cartas na watchlist erra ALTO (`ERRO: …`, exit ≠ 0) — typo
+  nunca vira scan vazio "bem-sucedido".
 - `--min-discount N` — Desconto% mínimo (INTEIRO) deste run; sobrescreve
   `min_discount_percent` (diagnóstico: 10).
 - `--min-price USD` — piso de preço deste run; sobrescreve `min_price_usd`
@@ -355,9 +426,12 @@ A formatação canônica vive em `src/report.py` (`TABLE_COLS`, `REJECTED_COLS`,
 python -m pytest -q          # canônico (pytest.ini já escopa testpaths=tests)
 ```
 
-No PC do operador: `.venv\Scripts\python -m pytest tests/ -q`. São **434
+No PC do operador: `.venv\Scripts\python -m pytest tests/ -q`. São **459
 testes** (verificado 2026-09-03), todos offline (sem rede, sem credenciais),
-em 15 arquivos: `test_ebay_api` (parse do payload real, paginação, retry,
+em 17 arquivos: `test_groups` (invariante união dos 12 grupos == catálogo de
+123 sets sem sobreposição; `parse_group_arg`/`is_group_spec`),
+`test_build_watchlist` (geração da watchlist a partir do catálogo),
+`test_ebay_api` (parse do payload real, paginação, retry,
 contador), `test_grading` (allowlist e regras de título), `test_pc_sales`
 (vendas comparáveis, janelas, variantes, LP), `test_scan_funnel` (funil,
 breaker, abort), `test_scorer`, `test_report`, `test_summary` (layout COMC,
@@ -374,18 +448,30 @@ Totalmente offline e **sem nenhum secret** (repo público, runner grátis).
 ```
 main.py                CLI: watchlist + config -> run_scan -> markdown console + JSON (--out) +
                        CSV de registro; --min-discount/--min-price/--max-pages por run; aviso se o
-                       config ainda tiver min_gross_margin_percent; exit 1 quando o run aborta
+                       config ainda tiver min_gross_margin_percent; exit 1 quando o run aborta;
+                       --group N | N-M | 1,3,10-12 | all (canonicos) ou nome literal; --list-groups
+                       mostra o titulo de cada grupo canonico
+build_watchlist.py     GERA watchlist.yaml (versionada): catalogo 123 sets x 100 chases x raridade
+                       >= Holo Rare x teto --cap 30 por set (market TCGplayer); pc_url via
+                       pc_sales.product_page_url (sem pagina = fora + relatorio; nunca inventa URL);
+                       flags --groups/--cap/--out/--no-pc/--pc-cache-dir
 config.yaml            gate Desconto% (inteiro)/piso/fixed_price_only/graded_only/graded_allow/
                        lp_with_reference/max_pages/modo confiavel/pais exigido (comentados)
-watchlist.example.yaml modelo da watchlist (copiar p/ watchlist.yaml, local-only); grupos de cartas;
-                       campos opcionais pokemon/pokemon_rank/rarity/year (PR B gera do catalogo)
+watchlist.yaml         GERADA e versionada (nao editar a mao; regenerar so quando o catalogo mudar);
+                       campo group = numero canonico 1-12; pokemon/pokemon_rank/rarity/year do catalogo
+watchlist.example.yaml modelo p/ lista alternativa feita a mao (--watchlist <arquivo>)
+src/groups.py          (portado da COMC @ dd952ba) 12 grupos canonicos: SCAN_GROUPS (numero, titulo,
+                       era, sets verbatim do catalogo), parse_group_arg (N | N-M | 1,3,10-12 | all),
+                       is_group_spec, describe_groups; invariante uniao == catalogo (test_groups)
+src/catalog/           set_catalog.json (123 sets c/ ano) + iconic_pokemon.csv (100 chases c/ rank)
 src/scanner.py         orquestrador: por carta, 1 pagina do PriceCharting (CardRefs = medianas de
                        vendas por nota/variante/LP; PcBreaker = 5 falhas seguidas suspendem a fonte)
                        + referencia TCG + 1 busca paginada na Browse API (dedupe id E titulo+preco)
                        -> scorer.evaluate com Counter `stats` (funil); run_scan devolve
                        (fair_values, opportunities, pricing_only, stats, aborted); guarda REF
                        DESALINHADA (ref vs mediana dos anuncios limpos da mesma nota, 1.5x/0.6x,
-                       min. 3 amostras); load_watchlist le os campos novos
+                       min. 3 amostras); load_watchlist le os campos novos; filter_group aceita spec
+                       numerica (groups.parse_group_arg) ou nome literal do campo group:
 src/grading.py         (portado da COMC) nota do slab a partir do TITULO: allowlist
                        DEFAULT_GRADED_ALLOW, Grade/GradeResult (graded/raw/ambiguous/out_of_scope),
                        CGC 10 seco = Gem Mint, BGS 10 Black Label, PSA 9.5 nao existe,
@@ -417,7 +503,7 @@ src/models.py          dataclasses (WatchCard c/ pokemon/pokemon_rank/rarity/yea
 ebay_summary.py        ENTREGA ao operador: JSON do scan -> markdown layout COMC (4 buckets ou
                        --sensitivity 10,15,20 com faixas + contagens por limiar); espelho do
                        comc_summary.py / myp_summary.py
-tests/                 434 testes offline + fixtures reais (ver Armadilhas)
+tests/                 479 testes offline + fixtures reais (ver Armadilhas)
 ```
 
 A watchlist é **list-driven de propósito**: casar item a partir de título
@@ -460,6 +546,15 @@ precisão (ver comentário em `watchlist.example.yaml`).
 - O parser de volume do PriceCharting depende da ORDEM das células de volume
   na tabela principal (mesma ordem das colunas de preço). Sinal "+" da
   tendência vem como `&#43;` no HTML.
+- **Slug do PriceCharting mantém as letras do número** (`charizard-gx-sv49`,
+  `umbreon-vmax-tg23`, `umbreon-h29`, `arceus-ar1`) e arquiva os
+  **subconjuntos** (Shiny Vault, Trainer Gallery, Galarian Gallery, Classic
+  Collection, Radiant Collection) no console do **set-pai**
+  (`pokemon-hidden-fates`, `pokemon-brilliant-stars`, `pokemon-celebrations`).
+  `pc_sales.norm_number` canoniza com o prefixo (`tg04` == `TG4`, `sv49` ≠ `49`)
+  e `pc_console_label` faz subconjunto → pai. Tag Team vira `mewtwo-&-mew-gx-242`
+  e Lv.X vira `gengar-lv-x-97` (sondagem real 2026-09-03; sem isso 298
+  candidatas da watchlist ficavam "sem PC").
 - Cache do PriceCharting é **do dia** (`data/cache/pc/<AAAA-MM-DD>/`): página
   de bloqueio/erro/vazia (<2.000 bytes ou `<title>` de "Just a moment"/"Access
   denied") nunca é cacheada, senão seria re-servida o dia inteiro.
@@ -480,8 +575,9 @@ precisão (ver comentário em `watchlist.example.yaml`).
   limpo → PR (ver `~/.claude/CLAUDE.md`).
 - **Repo público e discreto**: dados de scan NUNCA entram no repo. Gitignored:
   `data/` (cache + CSVs), `results/` (JSON de scan), `*.csv`/`*.xlsx`/`*.json`
-  (exceto `tests/fixtures/*.json`), `watchlist.yaml` e `METODO.md` (lista de
-  alvos e método são locais), `.env`, `.venv/`.
+  (exceto `tests/fixtures/*.json`), `METODO.md` (o método é local), `.env`,
+  `.venv/`. **`watchlist.yaml` é VERSIONADA desde 0.5.1** (gerada do catálogo
+  público pelo `build_watchlist.py`; não é dado de scan nem contém preço).
 - **Credenciais nunca versionadas** — só env vars / `.env` local / secrets do
   GitHub. Procedimento de report e rotação (regenerar Cert ID em
   developer.ebay.com → Application Keys): `SECURITY.md`. Checklist de
@@ -492,7 +588,8 @@ precisão (ver comentário em `watchlist.example.yaml`).
 
 ## Estado e histórico
 
-- **Versão atual: 0.5.0 (2026-09-03)** — padrão COMC. Histórico em
+- **Versão atual: 0.5.1 (2026-09-03)** — watchlist gerada do catálogo +
+  grupos canônicos (PR B), sobre o padrão COMC da 0.5.0. Histórico em
   `CHANGELOG.md` (criado nesta versão; não há string de versão no código — a
   fonte de verdade continua sendo o `main` mergeado + o CHANGELOG).
 - Decisões do operador em vigor: **gate = Desconto% ≥ 20, só preço fixo,
@@ -510,6 +607,10 @@ precisão (ver comentário em `watchlist.example.yaml`).
   não grava artefato + guard JP no tcgcsv (#19); retry do PriceCharting e
   `--grades` (2026-09-01). Validações históricas de rede: PriceCharting HTTP
   200 e eBay 403 a scraping (2026-06-09).
-- **Pendente (PR B):** gerar `watchlist.yaml` a partir do catálogo (campos
-  `pokemon`/`pokemon_rank`/`rarity`/`year` já são lidos e usados no ranking);
-  smoke ao vivo do run diagnóstico com `--include-raw`.
+- **0.5.1 (PR B, 2026-09-03):** `watchlist.yaml` GERADA por
+  `build_watchlist.py` (catálogo 123 sets × 100 chases × raridade ≥ Holo Rare
+  × teto 30/set; `pc_url` exata ou a carta fica fora) e VERSIONADA;
+  `src/groups.py` com os 12 grupos da COMC; `--group N|N-M|1,3,10-12|all`;
+  `--list-groups` com título; fixes do PR #24 (Codex) registrados no CHANGELOG.
+- **Pendente:** smoke ao vivo do run diagnóstico por grupo com `--include-raw`
+  (`--group <N> --min-price 5 --min-discount 10 --include-raw`).

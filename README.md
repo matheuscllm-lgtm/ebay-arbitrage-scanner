@@ -15,7 +15,8 @@ sales of the same item/grade; ungraded items use a public market price with a
 labeled fallback. When a source fails, the row is counted in a "funnel"
 summary instead of silently disappearing.
 
-Single-user project. No paid services. Operational details and the comparison
+Single-user project. No paid services. The target list ships with the repo
+(it is generated from a public catalog, see below); the notes on the comparison
 method are kept locally and are not part of this published repository.
 
 ## Setup
@@ -31,16 +32,32 @@ environment variables (`EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`). Without them the
 tool still runs in reference-price-only mode. Never commit credentials — see
 [SECURITY.md](SECURITY.md).
 
-Copy `watchlist.example.yaml` to `watchlist.yaml` and add your own items (the
-file is git-ignored; a fresh clone has no watchlist until you create one).
+The target list (`watchlist.yaml`) is **generated** by `build_watchlist.py`
+and committed, so a fresh clone runs as-is. It is built from the catalog under
+`src/catalog/`: 123 sets split into 12 fixed groups (`src/groups.py`), crossed
+with the 100 most sought-after subjects (`iconic_pokemon.csv`), keeping only
+rarity Holo Rare or higher and at most `--cap 30` items per set (ranked by
+market price). Each item keeps an exact reference-page URL resolved by
+name + number + set; an item with no reference page is left out and listed in
+the script's report — a URL is never guessed. Regenerate only when the catalog
+changes (the generated file says so in its header; do not edit it by hand):
+
+```bash
+python build_watchlist.py                        # all groups -> watchlist.yaml
+python build_watchlist.py --groups 3-4 --cap 30  # a subset of groups
+python build_watchlist.py --no-pc                # catalog only, no reference URLs (scan will not run on it)
+```
+
+`watchlist.example.yaml` remains as a template for a hand-made alternative
+list (`python main.py --watchlist <file>`).
 
 ## Usage
 
 ```bash
 python main.py --pricing-only                    # reference prices only (no credentials needed)
-python main.py --list-groups                     # list watchlist groups (no credentials needed)
-python main.py --group <name>                    # scan one watchlist group (default: discount >= 20%)
-python main.py --group <name> --min-discount 10 --min-price 5 --include-raw
+python main.py --list-groups                     # list the groups with their titles (no credentials needed)
+python main.py --group 3                         # scan one group (default: discount >= 20%)
+python main.py --group 3 --min-discount 10 --min-price 5 --include-raw --out results/last_scan_g3.json
                                                  # diagnostic run: lower gate, lower floor, ungraded included
 python main.py --grades "PSA 10, CGC 10 Pristine"   # restrict this run to specific grades
 python main.py --max-pages 2                     # fewer API pages per item (200 listings each)
@@ -63,6 +80,12 @@ coverage line) and saves it to `-o`. With `--sensitivity`, the highest
 threshold is the operational one; the lower bands are printed as diagnostics
 only, with a per-threshold count table.
 
+`--group` takes a group spec — `N`, `N-M`, `1,3,10-12` or `all` (the 12
+numbered groups; an unknown number is an error, never an empty scan) — or a
+free-text group name from a hand-made list. Scanning one group per run keeps
+the daily marketplace API quota in check (5,000 calls/day; roughly 1–3 calls
+per item).
+
 Run `python main.py --help` and `python ebay_summary.py --help` for all options.
 
 ## Tests
@@ -71,7 +94,7 @@ Run `python main.py --help` and `python ebay_summary.py --help` for all options.
 python -m pytest -q
 ```
 
-The suite (434 tests) is offline — no network, no credentials; real payloads
+The suite (479 tests) is offline — no network, no credentials; real payloads
 and pages are stored under `tests/fixtures/` — and runs in CI on every push and
 pull request.
 

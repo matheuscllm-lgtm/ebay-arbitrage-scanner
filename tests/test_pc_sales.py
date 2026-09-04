@@ -587,7 +587,7 @@ def test_console_and_slug_guards():
 
 @pytest.mark.parametrize("number,expected", [
     ("006/165", "6"), ("4/102", "4"), ("95b", "95"), ("000", "0"), ("", ""), (None, ""), (12, "12"),
-    ("TG05/TG30", "5"), ("abc", ""),
+    ("TG05/TG30", "tg5"), ("SV49", "sv49"), ("H09", "h9"), ("AR1", "ar1"), ("abc", ""),
 ])
 def test_norm_number(number, expected):
     assert pc.norm_number(number) == expected
@@ -850,7 +850,13 @@ def test_black_label_sale_requires_label_context_in_both_word_orders():
         {"date": "2026-08-03", "price": 510.0, "title": "Black Kyurem EX 154 BGS 10"},
         {"date": "2026-08-04", "price": 5000.0, "title": "Black Kyurem EX BGS 10 Black Label"},
     ]
-    assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 10.0, "")] == [500.0, 520.0, 510.0]
+    # Divergencia deliberada (backport do review da COMC, 2026-09-04): "BGS 10 Black
+    # <texto>" e AMBIGUO e nao entra em cesta nenhuma -- ver o teste do ambiguo. Custo:
+    # carta cujo NOME comeca com "Black" perde as vendas escritas nessa ordem; as
+    # escritas "<nome> BGS 10" continuam valendo (510). O ganho e nao deixar uma
+    # etiqueta preta de US$ 90 mil, escrita sem "Label", envenenar a mediana do BGS 10
+    # comum -- erro caro; perder uma venda so encolhe a amostra (e n<3 vira REVISAR).
+    assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 10.0, "")] == [510.0]
     assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 10.0, "BLACK")] == [5000.0]
 
 
@@ -879,3 +885,191 @@ def test_foreign_grader_mention_makes_sale_ambiguous():
         {"date": "2026-08-03", "price": 210.0, "title": "Charizard 4/102 HGA 10 crossover PSA 10"},
     ]
     assert [s["price"] for s in pc.comparable_sales(sales, "PSA", 10.0)] == [900.0]
+
+
+def test_console_matches_tolerates_vs_ampersand_and_split_words():
+    # Casos REAIS do build_watchlist (2026-09-03): PC usa "team-magma-&-team-aqua"
+    # e "fire-red-&-leaf-green"; o set TCGCSV e "EX Team Magma vs Team Aqua" /
+    # "EX FireRed & LeafGreen". Sem tolerancia esses sets ficavam sem pagina.
+    assert pc.console_matches("/game/pokemon-team-magma-&-team-aqua/blaziken-ex-89",
+                              "EX Team Magma vs Team Aqua")
+    assert pc.console_matches("/game/pokemon-fire-red-&-leaf-green/charizard-ex-105",
+                              "EX FireRed & LeafGreen")
+    assert pc.console_matches("/game/pokemon-firered-&-leafgreen/charizard-ex-105",
+                              "EX FireRed & LeafGreen")
+    # continua rejeitando outro set / outro idioma
+    assert not pc.console_matches("/game/pokemon-japanese-base-set/charizard-4", "Base Set")
+    assert not pc.console_matches("/game/pokemon-base-set-2/charizard-4", "Base Set")
+
+
+def test_console_matches_series_prefix_and_series_base_sets():
+    # build_watchlist 2026-09-03: "SM - Unbroken Bonds" (prefixo com hifen, sem ':')
+    # e os "Base Set" de serie, cujo console no PC e o nome da serie.
+    assert pc.console_matches("/game/pokemon-unbroken-bonds/reshiram-charizard-gx-20", "SM - Unbroken Bonds")
+    assert pc.console_matches("/game/pokemon-evolutions/charizard-11", "XY - Evolutions")
+    assert pc.console_matches("/game/pokemon-sun-&-moon/lapras-gx-35", "SM Base Set")
+    assert pc.console_matches("/game/pokemon-xy/xerneas-ex-97", "XY Base Set")
+    assert pc.console_matches("/game/pokemon-sword-&-shield/zacian-v-138", "SWSH01: Sword & Shield Base Set")
+    assert pc.console_matches("/game/pokemon-scarlet-&-violet/koraidon-ex-125", "SV01: Scarlet & Violet Base Set")
+    assert pc.console_matches("/game/pokemon-heartgold-&-soulsilver/ninetales-7", "HeartGold SoulSilver")
+    assert not pc.console_matches("/game/pokemon-sun-&-moon/lapras-gx-35", "SM - Unbroken Bonds")
+    assert not pc.console_matches("/game/pokemon-base-set/charizard-4", "SM Base Set")
+    assert pc.clean_set_name("SM - Unbroken Bonds") == "Unbroken Bonds"
+
+
+# --- build_watchlist 2026-09-03 (2a rodada): 298 cartas "sem PC" por 4 causas ----------
+
+def test_slug_matches_keeps_letter_prefixed_numbers():
+    # PC mantem as letras do numero no slug: charizard-gx-sv49, umbreon-vmax-tg23,
+    # umbreon-h29, arceus-ar1, rayquaza-sl10, milotic-sh7 (sondagem real 2026-09-03).
+    assert pc.slug_matches("/game/pokemon-hidden-fates/charizard-gx-sv49", "Charizard GX", "SV49")
+    assert pc.slug_matches("/game/pokemon-brilliant-stars/umbreon-vmax-tg23", "Umbreon VMAX", "TG23")
+    assert pc.slug_matches("/game/pokemon-astral-radiance/machamp-tg04", "Machamp", "TG04/TG30")
+    assert pc.slug_matches("/game/pokemon-astral-radiance/machamp-tg4", "Machamp", "TG04")
+    assert pc.slug_matches("/game/pokemon-aquapolis/umbreon-h29", "Umbreon", "H29")
+    assert pc.slug_matches("/game/pokemon-arceus/arceus-ar1", "Arceus", "AR1")
+    assert pc.slug_matches("/game/pokemon-call-of-legends/rayquaza-sl10", "Rayquaza", "SL10")
+    # o prefixo faz parte do numero: SV49 != 49 (Hidden Fates tem Charizard GX #9 e #SV49)
+    assert not pc.slug_matches("/game/pokemon-hidden-fates/charizard-gx-9", "Charizard GX", "SV49")
+    assert not pc.slug_matches("/game/pokemon-hidden-fates/charizard-gx-sv49", "Charizard GX", "49")
+    assert not pc.slug_matches("/game/pokemon-hidden-fates/charizard-gx-sv49", "Charizard GX", "SV4")
+
+
+def test_slug_matches_ampersand_and_lv_x_names():
+    # Tag Team: PC escreve "mewtwo-&-mew-gx-242"; Lv.X: "gengar-lv-x-97".
+    assert pc.slug_matches("/game/pokemon-unified-minds/mewtwo-&-mew-gx-242", "Mewtwo & Mew GX", "242")
+    assert pc.slug_matches("/game/pokemon-team-up/gengar-&-mimikyu-gx-165", "Gengar & Mimikyu GX", "165")
+    assert pc.slug_matches("/game/pokemon-arceus/gengar-lv-x-97", "Gengar Lv.X", "97")
+    assert pc.slug_matches("/game/pokemon-supreme-victors/charizard-g-lv-x-143", "Charizard G Lv.X", "143")
+    assert not pc.slug_matches("/game/pokemon-unified-minds/mewtwo-gx-242", "Mewtwo & Mew GX", "242")
+    assert not pc.slug_matches("/game/pokemon-arceus/gengar-97", "Gengar Lv.X", "97")
+
+
+def test_clean_card_name_strips_number_glued_to_hyphen():
+    # tcgcsv real: "Mimikyu -160/091" (sem espaco depois do hifen).
+    assert pc.clean_card_name("Mimikyu -160/091") == "Mimikyu"
+    assert pc.clean_card_name("Ninetales -199/197") == "Ninetales"
+    assert pc.clean_card_name("Ho-Oh - 010/075") == "Ho-Oh"
+    assert pc.clean_card_name("Ho-Oh") == "Ho-Oh"
+
+
+def test_console_matches_subsets_live_in_parent_set_console():
+    # PC arquiva os subconjuntos no console do set-pai (sondagem real 2026-09-03):
+    # Shiny Vault -> hidden-fates/shining-fates, Trainer Gallery -> brilliant-stars,
+    # Classic Collection -> celebrations, Galarian Gallery -> crown-zenith,
+    # Radiant Collection -> generations/legendary-treasures.
+    assert pc.console_matches("/game/pokemon-hidden-fates/charizard-gx-sv49", "Hidden Fates: Shiny Vault")
+    assert pc.console_matches("/game/pokemon-shining-fates/charizard-vmax-sv107", "Shining Fates: Shiny Vault")
+    assert pc.console_matches("/game/pokemon-brilliant-stars/umbreon-vmax-tg23", "SWSH09: Brilliant Stars Trainer Gallery")
+    assert pc.console_matches("/game/pokemon-astral-radiance/machamp-tg04", "SWSH10: Astral Radiance Trainer Gallery")
+    assert pc.console_matches("/game/pokemon-celebrations/charizard-4", "Celebrations: Classic Collection")
+    assert pc.console_matches("/game/pokemon-crown-zenith/mewtwo-vstar-gg44", "SWSH: Crown Zenith: Galarian Gallery")
+    assert pc.console_matches("/game/pokemon-generations/flareon-ex-rc28", "Generations: Radiant Collection")
+    assert pc.console_matches("/game/pokemon-legendary-treasures/mew-ex-rc24", "Legendary Treasures: Radiant Collection")
+    assert not pc.console_matches("/game/pokemon-shining-fates/charizard-vmax-sv107", "Hidden Fates: Shiny Vault")
+    assert not pc.console_matches("/game/pokemon-hidden-fates/charizard-gx-sv49", "Shining Fates: Shiny Vault")
+    assert pc.pc_console_label("Hidden Fates: Shiny Vault") == "Hidden Fates"
+    assert pc.pc_console_label("SWSH09: Brilliant Stars Trainer Gallery") == "Brilliant Stars"
+    assert pc.pc_console_label("SM Base Set") == "Sun & Moon"
+    assert pc.pc_console_label("Base Set") == "Base Set"
+
+
+def test_product_path_query_uses_parent_console_and_raw_number(monkeypatch):
+    seen = []
+
+    def fake_fetch(url, cache_dir=None):
+        seen.append(url)
+        return '<a href="/game/pokemon-hidden-fates/charizard-gx-sv49">x</a>'
+    monkeypatch.setattr(pc, "fetch_page", fake_fetch)
+    assert pc.product_page_url("Charizard GX", "SV49", "Hidden Fates: Shiny Vault") ==         "https://www.pricecharting.com/game/pokemon-hidden-fates/charizard-gx-sv49"
+    q = seen[0].split("q=", 1)[1].split("&", 1)[0]
+    assert "SV49" in q and "Hidden" in q and "Shiny" not in q, q
+
+
+def test_slug_matches_pc_spellings_lvx_mega_gold_star_prime_e4_tag_team_order():
+    # Sondagem real 2026-09-03 (3a geracao da watchlist, 43 "sem PC"):
+    assert pc.slug_matches("/game/pokemon-diamond-&-pearl/empoleon-lvx-120", "Empoleon LV.X", "120")
+    assert pc.slug_matches("/game/pokemon-rising-rivals/luxray-gl-lvx-109", "Luxray GL Lv.X", "109")
+    assert pc.slug_matches("/game/pokemon-arceus/gengar-lv-x-97", "Gengar Lv.X", "97")
+    assert pc.slug_matches("/game/pokemon-rising-rivals/infernape-lvx-108", "Infernape E4 Lv.X", "108")
+    assert pc.slug_matches("/game/pokemon-xy/mega-blastoise-ex-30", "M Blastoise EX", "30")
+    assert pc.slug_matches("/game/pokemon-deoxys/rayquaza-gold-star-107", "Rayquaza Star", "107")
+    assert pc.slug_matches("/game/pokemon-team-rocket-returns/mudkip-gold-star-107", "Mudkip Star", "107")
+    assert pc.slug_matches("/game/pokemon-heartgold-&-soulsilver/typhlosion-prime-110", "Typhlosion", "110")
+    assert pc.slug_matches("/game/pokemon-unified-minds/psyduck-&-slowpoke-gx-217", "Slowpoke & Psyduck GX", "217")
+    # exatidao preservada
+    assert not pc.slug_matches("/game/pokemon-base-set/shadowless-charizard-4", "Charizard", "4")
+    assert not pc.slug_matches("/game/pokemon-base-set/dark-charizard-4", "Charizard", "4")
+    assert not pc.slug_matches("/game/pokemon-deoxys/rayquaza-ex-102", "Rayquaza Star", "107")
+    assert not pc.slug_matches("/game/pokemon-xy/mega-blastoise-ex-30", "Blastoise EX", "30")
+    assert not pc.slug_matches("/game/pokemon-unified-minds/psyduck-gx-217", "Slowpoke & Psyduck GX", "217")
+    assert not pc.slug_matches("/game/pokemon-team-up/gengar-&-mimikyu-gx-165", "Gengar & Mew GX", "165")
+
+
+def test_clean_card_name_unclosed_parenthesis():
+    assert pc.clean_card_name("Primal Kyogre EX (Alpha - 149/160)") == "Primal Kyogre EX"
+    assert pc.clean_card_name("Primal Groudon EX (Omega") == "Primal Groudon EX"
+
+
+def test_product_path_falls_back_to_name_without_owner_prefix(monkeypatch):
+    # EX Team Magma vs Team Aqua: PC escreve so "kyogre-3" para "Team Aqua's Kyogre".
+    html = ('<a href="/game/pokemon-team-magma-&-team-aqua/kyogre-3">a</a>'
+            '<a href="/game/pokemon-team-magma-&-team-aqua/kyogre-holo-3">b</a>'
+            '<a href="/game/pokemon-double-crisis/team-aqua\'s-spheal-3">c</a>')
+    monkeypatch.setattr(pc, "fetch_page", lambda url, cache_dir=None: html)
+    assert pc.product_page_url("Team Aqua's Kyogre", "3", "EX Team Magma vs Team Aqua") ==         "https://www.pricecharting.com/game/pokemon-team-magma-&-team-aqua/kyogre-3"
+    # o fallback NAO troca de console nem de numero
+    assert pc.product_page_url("Team Aqua's Kyogre", "4", "EX Team Magma vs Team Aqua") is None
+    assert pc.product_page_url("Team Aqua's Kyogre", "3", "EX Deoxys") is None
+    # com match exato disponivel, o fallback nem entra
+    html2 = ('<a href="/game/pokemon-gym-heroes/lt-surge\'s-pikachu-81">a</a>'
+             '<a href="/game/pokemon-gym-heroes/pikachu-81">b</a>')
+    monkeypatch.setattr(pc, "fetch_page", lambda url, cache_dir=None: html2)
+    assert pc.product_page_url("Lt. Surge's Pikachu", "81", "Gym Heroes").endswith("/lt-surge's-pikachu-81")
+
+
+# --- backport da COMC (2026-09-04): 2 achados do review de lá que valiam aqui --------
+
+def test_bgs_10_black_ambiguous_never_enters_either_bucket():
+    # "BGS 10 Black <texto>" e AMBIGUO: tanto pode ser o NOME da carta ("BGS 10 Black
+    # Kyurem EX") quanto uma etiqueta preta escrita sem "Label" ("BGS 10 Black Base Set
+    # 4/102"). Antes, a 2a forma caia na cesta do BGS 10 COMUM e envenenava a mediana.
+    sales = [
+        {"title": "Charizard BGS 10 Base Set 4/102", "price": 1500.0},
+        {"title": "Charizard BGS 10 Base Set 4/102", "price": 1400.0},
+        {"title": "Charizard BGS 10 Black Base Set 4/102", "price": 90000.0},
+        {"title": "Charizard BGS 10 Black Label Base Set", "price": 95000.0},
+    ]
+    comum = pc.comparable_sales(sales, "BGS", 10.0, "")
+    assert [x["price"] for x in comum] == [1500.0, 1400.0]
+    preta = pc.comparable_sales(sales, "BGS", 10.0, "BLACK")
+    assert [x["price"] for x in preta] == [95000.0]
+    # etiqueta preta INEQUIVOCA continua entrando na cesta certa
+    assert pc._is_black_label_sale("Charizard BGS 10 Black Label")
+    assert pc._is_black_label_sale("Charizard Black BGS 10")
+    assert not pc._is_ambiguous_black_sale("Charizard BGS 10 Black Label Base Set")
+    assert pc._is_ambiguous_black_sale("Charizard BGS 10 Black Base Set 4/102")
+
+
+def test_owner_prefix_accepts_two_word_owner():
+    # "Lt. Surge's Electabuzz" (Gym Heroes/Gym Challenge, ambos no catalogo): o dono tem
+    # DUAS palavras. Sem isso a 2a tentativa (PC as vezes omite o dono) nunca rodava.
+    assert pc._OWNER_PREFIX.sub("", "Lt. Surge's Electabuzz") == "Electabuzz"
+    assert pc._OWNER_PREFIX.sub("", "Team Aqua's Kyogre") == "Kyogre"
+    assert pc._OWNER_PREFIX.sub("", "Erika's Vileplume") == "Vileplume"
+    assert pc._OWNER_PREFIX.sub("", "Charizard") == "Charizard"
+
+
+def test_prism_star_and_star_are_optional_tokens():
+    # 4a geracao da watchlist: o PC omite "Prism Star"/"Star" do nome, mantendo o
+    # numero (sondagem real 2026-09-04). O numero + console exatos seguram o match:
+    # dentro de um set, um numero = uma carta.
+    assert pc.slug_matches("/game/pokemon-forbidden-light/arceus-96", "Arceus Prism Star", "96")
+    assert pc.slug_matches("/game/pokemon-lost-thunder/celebi-19", "Celebi Prism Star", "19")
+    assert pc.slug_matches("/game/pokemon-celebrations/umbreon-17", "Umbreon Star", "17")
+    # e continua casando quando o PC escreve o nome COMPLETO
+    assert pc.slug_matches("/game/pokemon-deoxys/rayquaza-gold-star-107", "Rayquaza Star", "107")
+    assert pc.slug_matches("/game/pokemon-forbidden-light/arceus-prism-star-96", "Arceus Prism Star", "96")
+    # numero diferente segue fora: o Rayquaza comum de EX Deoxys e o #22, nao o #107
+    assert not pc.slug_matches("/game/pokemon-deoxys/rayquaza-22", "Rayquaza Star", "107")
+    assert not pc.slug_matches("/game/pokemon-forbidden-light/arceus-96", "Arceus Prism Star", "97")

@@ -23,7 +23,7 @@ import statistics
 from collections import Counter
 
 from .models import FairValue, WatchCard
-from . import grading, pc_sales, pricecharting, scorer, tcg_reference, title_parser
+from . import grading, groups, pc_sales, pricecharting, scorer, tcg_reference, title_parser
 from .ebay_api import EbayApiError, EbayAuthError, EbayClient
 
 log = logging.getLogger(__name__)
@@ -105,10 +105,22 @@ def group_counts(cards):
 
 
 def filter_group(cards, group):
-    """Filtra a watchlist por grupo. `group` vazio/None = todas as cartas."""
+    """Filtra a watchlist por grupo. `group` vazio/None = todas as cartas;
+    spec numerica (``3``, ``5-8``, ``1,3,10-12``, ``all`` -- grupos canonicos de
+    ``src/groups.py``) ou nome literal do campo `group:` da watchlist."""
     if not group:
         return cards
-    return [c for c in cards if c.group == group]
+    if groups.is_group_spec(group):
+        wanted = {str(n) for n in groups.parse_group_arg(group)}
+        picked = [c for c in cards if c.group in wanted]
+    else:
+        picked = [c for c in cards if c.group == group]
+    if not picked:
+        # typo/grupo ausente erra ALTO -- nunca vira um scan vazio "bem-sucedido"
+        present = sorted({c.group for c in cards if c.group}, key=lambda g: (len(g), g))
+        raise ValueError(f"grupo {group!r} sem cartas na watchlist "
+                         f"(grupos presentes: {', '.join(present) or 'nenhum'})")
+    return picked
 
 
 # --- referencias por vendas (pagina do PriceCharting, 1x por carta) ---------------
