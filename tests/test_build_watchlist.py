@@ -190,3 +190,42 @@ def test_build_reports_collision_when_two_cards_share_a_pc_page(monkeypatch):
     url, cards = report["pc_collision"][0]
     assert url.endswith("/mesma-4") and sorted(c[1] for c in cards) == ["Charizard ex", "Mew ex"]
     assert "COLISAO" in bw.report_text(report, entries)
+
+
+def test_build_REMOVE_da_watchlist_as_cartas_em_colisao(monkeypatch):
+    # Regressao 2026-09-04: a "guarda dura" so REPORTAVA a colisao; as duas cartas
+    # continuavam na watchlist com o mesmo pc_url, e o scan usaria o preco de uma como
+    # referencia da outra. Reportar nao basta -- tem de sair do artefato.
+    prods = [P(1, "Charizard ex - 199/165", "199/165", "Special Illustration Rare"),
+             P(2, "Mew ex - 151/165", "151/165", "Double Rare")]
+    prices = [PR(1, 300.0), PR(2, 20.0)]
+
+    def fetch(url, cache_dir=None):
+        if url.endswith("/groups"):
+            return {"results": [{"groupId": 10, "name": "Base Set", "publishedOn": "1999-01-09"}]}
+        if url.endswith("/products"):
+            return {"results": prods}
+        if url.endswith("/prices"):
+            return {"results": prices}
+        return {"results": []}
+    monkeypatch.setattr(bw, "load_iconic", lambda path=None: dict(RANK))
+    monkeypatch.setattr(bw.groups, "SCAN_GROUPS", {3: bw.groups.GroupDef(
+        number=3, title="t", description="d", era="vintage", sets=("Base Set",))})
+    monkeypatch.setattr(bw.groups, "catalog", lambda: {"Base Set": {"year": "1999"}})
+    entries, report = bw.build([3], fetch_json=fetch,
+                               resolve_pc=lambda *a, **k: "https://www.pricecharting.com/game/x/mesma-4",
+                               log=lambda *a: None)
+    assert len(report["pc_collision"]) == 1
+    # nenhuma das duas sobrevive: nao da para saber qual das duas e a dona da pagina
+    assert entries == []
+
+
+def test_main_erra_alto_quando_ha_colisao(monkeypatch, tmp_path):
+    # Sair com 0 fazia a colisao passar despercebida em CI e em run nao-interativo.
+    out = tmp_path / "w.yaml"
+    monkeypatch.setattr(bw, "build", lambda *a, **k: (
+        [], {"total": 0, "candidates": 0, "per_group": {}, "no_pc": [], "pc_error": [],
+             "missing_tcg_group": [], "capped_sets": [],
+             "pc_collision": [("https://x/mesma-4", [("S", "A", "1"), ("S", "B", "2")])]}))
+    assert bw.main(["--groups", "3", "--out", str(out)]) == 1
+    assert out.exists()  # o artefato limpo continua sendo gravado

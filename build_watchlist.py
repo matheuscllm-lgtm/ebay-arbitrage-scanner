@@ -234,10 +234,17 @@ def build(group_numbers, fetch_json=None, resolve_pc=None, cap=DEFAULT_CAP,
     for e in entries:
         if e["pc_url"]:
             by_url.setdefault(e["pc_url"], []).append((e["set"], e["name"], e["number"]))
+    colliding: set[str] = set()
     for url, cards in by_url.items():
         if len(cards) > 1:
             report["pc_collision"].append((url, cards))
+            colliding.add(url)
             log(f"  COLISAO: {len(cards)} cartas na mesma pagina {url}")
+    # Reportar nao basta: enquanto as duas ficarem na watchlist, o scan usa o preco de uma
+    # como referencia da OUTRA. Como nao da para saber qual das duas e a dona da pagina,
+    # as duas saem do artefato -- o operador ve a colisao no relatorio e no codigo de saida.
+    if colliding:
+        entries = [e for e in entries if e["pc_url"] not in colliding]
     return entries, report
 
 
@@ -282,6 +289,12 @@ def main(argv=None):
     Path(args.out).write_text(render_yaml(entries, note), encoding="utf-8")
     print(text)
     print(f"[build_watchlist] gravado em {args.out}")
+    # Erra ALTO: colisao significa matcher furado. O artefato gravado ja esta limpo (as
+    # cartas em colisao sairam), mas o run nao pode terminar como sucesso silencioso.
+    if report["pc_collision"]:
+        print(f"ERRO: {len(report['pc_collision'])} pagina(s) do PriceCharting com mais de "
+              f"uma carta -- cartas removidas da watchlist; corrija o matcher e regenere.")
+        return 1
     return 0
 
 

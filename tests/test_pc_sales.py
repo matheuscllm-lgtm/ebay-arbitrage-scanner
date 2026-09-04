@@ -580,7 +580,10 @@ def test_console_and_slug_guards():
     assert not pc.slug_matches("/game/pokemon-base-set/charizard-ex-4", "Charizard", "4")
     assert not pc.slug_matches("/game/pokemon-base-set/charizard-4", "Charizard ex", "4")
     assert not pc.slug_matches("/game/pokemon-base-set/charizard-14", "Charizard", "4")
-    assert pc.slug_matches("/game/pokemon-base-set/charizard-1st-edition-holo-4", "Charizard", "004/102")
+    # Invertida em 2026-09-04: esta linha travava o defeito. Variante de tiragem fora da
+    # 1a posicao passava e a referencia saia da carta errada (1st Edition vale dezenas de
+    # vezes a Unlimited). Ver test_slug_com_variante_de_tiragem_nao_casa_... abaixo.
+    assert not pc.slug_matches("/game/pokemon-base-set/charizard-1st-edition-holo-4", "Charizard", "004/102")
     assert not pc.slug_matches("/charizard-4", "Charizard", "4")
     assert not pc.slug_matches(p, "Charizard", None)
 
@@ -1073,3 +1076,32 @@ def test_prism_star_and_star_are_optional_tokens():
     # numero diferente segue fora: o Rayquaza comum de EX Deoxys e o #22, nao o #107
     assert not pc.slug_matches("/game/pokemon-deoxys/rayquaza-22", "Rayquaza Star", "107")
     assert not pc.slug_matches("/game/pokemon-forbidden-light/arceus-96", "Arceus Prism Star", "97")
+
+
+# --- Regressao: variante de TIRAGEM em qualquer posicao do slug (2026-09-04) -----------
+# A guarda de "1o token" so rejeitava variante NO INICIO ("shadowless-charizard"); com a
+# palavra DEPOIS do nome ("charizard-1st-edition-holo-4") o slug passava, porque `core`
+# removia a palavra dos dois lados. Efeito: a watchlist podia gravar como referencia da
+# Charizard Unlimited a pagina da 1st Edition -- carta 10-50x mais cara -- e o caminho raw
+# le a coluna dessa pagina direto, sem filtro de variante. Margem ilusoria.
+@pytest.mark.parametrize("slug", [
+    "charizard-1st-edition-holo-4",
+    "charizard-shadowless-4",
+    "charizard-unlimited-4",
+    "charizard-reverse-holo-4",
+    "charizard-promo-4",
+])
+def test_slug_com_variante_de_tiragem_nao_casa_carta_sem_variante_no_nome(slug):
+    assert not pc.slug_matches(f"/game/pokemon-base-set/{slug}", "Charizard", "004/102")
+
+
+def test_variante_de_tiragem_casa_quando_o_proprio_nome_da_carta_a_traz():
+    # Se a watchlist pedir explicitamente a variante, a pagina da variante e a certa.
+    assert pc.slug_matches(
+        "/game/pokemon-base-set/charizard-1st-edition-4", "Charizard 1st Edition", "004/102")
+
+
+def test_holo_continua_tolerado_por_ser_cosmetico_e_nao_de_tiragem():
+    # O PC escreve "holo" em cartas cujo nome no catalogo nao traz a palavra; isso NAO muda
+    # a tiragem nem o preco, entao segue casando (diferente de 1st/shadowless/unlimited).
+    assert pc.slug_matches("/game/pokemon-base-set/charizard-holo-4", "Charizard", "004/102")
