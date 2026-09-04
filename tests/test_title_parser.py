@@ -206,3 +206,33 @@ def test_reject_jumbo_oversized_and_metal_foil():
     for t in ("Charizard 4/102 Base Set Holo NM", "Umbreon VMAX 215/203 Evolving Skies",
               "Metagross ex 141/165 151 NM"):
         assert not tp._REJECT_KEYWORDS.search(t), t
+
+
+def test_number_never_matches_the_denominator_of_a_fraction():
+    # Achado do review (2026-09-04): "Mew #11 /25" casava o card numero 25 (Mew Secret
+    # Rare, caro) porque o DENOMINADOR "/25" tem \b dos dois lados. 49 linhas do
+    # diagnostico saiam com a referencia da carta errada, uma delas OPORTUNIDADE.
+    c25 = WatchCard(name="Mew", set_name="Celebrations", number="25", language="EN", pc_url="")
+    c11 = WatchCard(name="Mew", set_name="Celebrations", number="11", language="EN", pc_url="")
+    t = "2021 Pokemon Celebrations Mew #11 /25 PSA 9 MINT"
+    assert not tp.card_matches_title(c25, t)
+    assert tp.card_matches_title(c11, t)
+    # a forma normal "11/25" idem
+    assert not tp.card_matches_title(c25, "Pokemon Celebrations Mew 11/25 PSA 9")
+    assert tp.card_matches_title(c11, "Pokemon Celebrations Mew 11/25 PSA 9")
+    # o proprio Secret Rare (25/25) continua casando
+    assert tp.card_matches_title(c25, "Pokemon Celebrations Mew 25/25 Secret Rare PSA 10")
+    # numero com letras: o numerador e "SV49" de "SV49/SV94"
+    csv49 = WatchCard(name="Charizard GX", set_name="Hidden Fates", number="SV49", language="EN", pc_url="")
+    csv94 = WatchCard(name="Charizard GX", set_name="Hidden Fates", number="SV94", language="EN", pc_url="")
+    assert tp.card_matches_title(csv49, "Charizard GX SV49/SV94 Hidden Fates Shiny Vault")
+    assert not tp.card_matches_title(csv94, "Charizard GX SV49/SV94 Hidden Fates Shiny Vault")
+    # sem fracao no titulo, o numero solto continua valendo
+    assert tp.card_matches_title(c25, "Pokemon Celebrations Mew No. 25 PSA 10")
+    assert tp.card_matches_title(c11, "Pokemon Celebrations Mew #11 PSA 10")
+    # zeros a esquerda seguem casando (004/102 = carta 4)
+    c4 = WatchCard(name="Charizard", set_name="Base Set", number="4", language="EN", pc_url="")
+    assert tp.card_matches_title(c4, "Pokemon Base Set Charizard 004/102 PSA 8")
+    assert not tp.card_matches_title(
+        WatchCard(name="Charizard", set_name="Base Set", number="102", language="EN", pc_url=""),
+        "Pokemon Base Set Charizard 004/102 PSA 8")
