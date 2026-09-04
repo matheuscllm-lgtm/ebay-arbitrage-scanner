@@ -850,7 +850,13 @@ def test_black_label_sale_requires_label_context_in_both_word_orders():
         {"date": "2026-08-03", "price": 510.0, "title": "Black Kyurem EX 154 BGS 10"},
         {"date": "2026-08-04", "price": 5000.0, "title": "Black Kyurem EX BGS 10 Black Label"},
     ]
-    assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 10.0, "")] == [500.0, 520.0, 510.0]
+    # Divergencia deliberada (backport do review da COMC, 2026-09-04): "BGS 10 Black
+    # <texto>" e AMBIGUO e nao entra em cesta nenhuma -- ver o teste do ambiguo. Custo:
+    # carta cujo NOME comeca com "Black" perde as vendas escritas nessa ordem; as
+    # escritas "<nome> BGS 10" continuam valendo (510). O ganho e nao deixar uma
+    # etiqueta preta de US$ 90 mil, escrita sem "Label", envenenar a mediana do BGS 10
+    # comum -- erro caro; perder uma venda so encolhe a amostra (e n<3 vira REVISAR).
+    assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 10.0, "")] == [510.0]
     assert [s["price"] for s in pc.comparable_sales(sales, "BGS", 10.0, "BLACK")] == [5000.0]
 
 
@@ -1020,3 +1026,35 @@ def test_product_path_falls_back_to_name_without_owner_prefix(monkeypatch):
              '<a href="/game/pokemon-gym-heroes/pikachu-81">b</a>')
     monkeypatch.setattr(pc, "fetch_page", lambda url, cache_dir=None: html2)
     assert pc.product_page_url("Lt. Surge's Pikachu", "81", "Gym Heroes").endswith("/lt-surge's-pikachu-81")
+
+
+# --- backport da COMC (2026-09-04): 2 achados do review de lá que valiam aqui --------
+
+def test_bgs_10_black_ambiguous_never_enters_either_bucket():
+    # "BGS 10 Black <texto>" e AMBIGUO: tanto pode ser o NOME da carta ("BGS 10 Black
+    # Kyurem EX") quanto uma etiqueta preta escrita sem "Label" ("BGS 10 Black Base Set
+    # 4/102"). Antes, a 2a forma caia na cesta do BGS 10 COMUM e envenenava a mediana.
+    sales = [
+        {"title": "Charizard BGS 10 Base Set 4/102", "price": 1500.0},
+        {"title": "Charizard BGS 10 Base Set 4/102", "price": 1400.0},
+        {"title": "Charizard BGS 10 Black Base Set 4/102", "price": 90000.0},
+        {"title": "Charizard BGS 10 Black Label Base Set", "price": 95000.0},
+    ]
+    comum = pc.comparable_sales(sales, "BGS", 10.0, "")
+    assert [x["price"] for x in comum] == [1500.0, 1400.0]
+    preta = pc.comparable_sales(sales, "BGS", 10.0, "BLACK")
+    assert [x["price"] for x in preta] == [95000.0]
+    # etiqueta preta INEQUIVOCA continua entrando na cesta certa
+    assert pc._is_black_label_sale("Charizard BGS 10 Black Label")
+    assert pc._is_black_label_sale("Charizard Black BGS 10")
+    assert not pc._is_ambiguous_black_sale("Charizard BGS 10 Black Label Base Set")
+    assert pc._is_ambiguous_black_sale("Charizard BGS 10 Black Base Set 4/102")
+
+
+def test_owner_prefix_accepts_two_word_owner():
+    # "Lt. Surge's Electabuzz" (Gym Heroes/Gym Challenge, ambos no catalogo): o dono tem
+    # DUAS palavras. Sem isso a 2a tentativa (PC as vezes omite o dono) nunca rodava.
+    assert pc._OWNER_PREFIX.sub("", "Lt. Surge's Electabuzz") == "Electabuzz"
+    assert pc._OWNER_PREFIX.sub("", "Team Aqua's Kyogre") == "Kyogre"
+    assert pc._OWNER_PREFIX.sub("", "Erika's Vileplume") == "Vileplume"
+    assert pc._OWNER_PREFIX.sub("", "Charizard") == "Charizard"

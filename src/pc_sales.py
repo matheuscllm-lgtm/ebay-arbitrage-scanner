@@ -346,8 +346,25 @@ _BLACK_LABEL_SALE_RE = re.compile(
     r"|\bblack\s+BGS\s*-?\s*10\b", re.I)
 
 
+# "BGS 10 Black <mais texto>" é AMBÍGUO: o texto seguinte tanto pode ser o NOME da
+# carta ("BGS 10 Black Kyurem EX") quanto o resto do título de uma Black Label de
+# verdade escrita sem a palavra "Label" ("BGS 10 Black Base Set 4/102"). Aqui não dá
+# para desempatar (a função não recebe o nome da carta), então o ambíguo não entra em
+# cesta NENHUMA -- mesma política do título que cita duas notas. Achado do review da
+# COMC (2026-09-04): antes essa venda caía na cesta do BGS 10 COMUM e envenenava a
+# mediana (uma venda de US$ 90 mil entre duas de US$ 1,5 mil).
+_AMBIGUOUS_BLACK_SALE_RE = re.compile(r"\bBGS\s*-?\s*10\s+black\s+[A-Za-z0-9]", re.I)
+
+
 def _is_black_label_sale(title: str) -> bool:
     return _BLACK_LABEL_SALE_RE.search(title or "") is not None
+
+
+def _is_ambiguous_black_sale(title: str) -> bool:
+    """True quando não dá para dizer se "black" é etiqueta preta ou nome da carta."""
+    t = title or ""
+    return (_AMBIGUOUS_BLACK_SALE_RE.search(t) is not None
+            and _BLACK_LABEL_SALE_RE.search(t) is None)
 
 
 def _grade_mentions(title: str) -> set[tuple[str, float]]:
@@ -379,8 +396,11 @@ def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: st
                 continue
             if qualifier == "GEM" and pristine:
                 continue
-        if grader == "BGS" and value == 10.0 and (qualifier == "BLACK") != _is_black_label_sale(t):
-            continue
+        if grader == "BGS" and value == 10.0:
+            if _is_ambiguous_black_sale(t):
+                continue  # não dá para dizer se é etiqueta preta: não serve a cesta nenhuma
+            if (qualifier == "BLACK") != _is_black_label_sale(t):
+                continue
         if variant_tokens(t) != variants:
             continue
         out.append(s)
@@ -645,7 +665,8 @@ def choose_path(paths: list[str], card_name, number, set_label) -> str | None:
     return min(matches, key=lambda p: len(p.rsplit("/", 1)[-1]))
 
 
-_OWNER_PREFIX = re.compile(r"^(?:team\s+\w+|[\w.]+)'s\s+", re.I)
+# dono com uma OU duas palavras: "Team Aqua's Kyogre", "Lt. Surge's Electabuzz"
+_OWNER_PREFIX = re.compile(r"^(?:\w[\w.]*\s+)?[\w.]+'s\s+", re.I)
 
 
 def _product_path(card_name, number, set_label, cache_dir: str | None = None) -> str | None:

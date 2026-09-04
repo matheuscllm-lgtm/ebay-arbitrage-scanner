@@ -15,7 +15,7 @@ anúncio; "Browse API" = a API oficial de busca do eBay.
 
 PR B (decisão do operador, 2026-09-03): a watchlist deixa de ser feita à mão e
 passa a ser GERADA do catálogo e VERSIONADA; o scan roda por grupo canônico
-(os mesmos 12 grupos da COMC). 470 testes offline (17 arquivos).
+(os mesmos 12 grupos da COMC). 475 testes offline (17 arquivos).
 
 ### Adicionado
 
@@ -109,6 +109,18 @@ Fixes do review limpo do PR B (2026-09-03):
   Team** (`mewtwo-&-mew-gx-242`) e **Lv.X** (`gengar-lv-x-97`) casam; nome
   tcgcsv com número colado (`Mimikyu -160/091`) é limpo. Sem isso, 298 das
   1.673 candidatas da watchlist ficavam "sem PC" e fora do universo.
+
+Backport do review da COMC (2026-09-04), os dois no mesmo resolvedor:
+
+- **Venda "BGS 10 Black &lt;texto&gt;" não entra em cesta nenhuma.** O texto depois de
+  "Black" tanto pode ser o nome da carta ("BGS 10 Black Kyurem EX") quanto o resto
+  do título de uma etiqueta preta escrita sem a palavra "Label" ("BGS 10 Black Base
+  Set 4/102"). Antes a segunda caía na cesta do **BGS 10 comum** e envenenava a
+  mediana (uma venda de US$ 90 mil entre duas de US$ 1,5 mil). Mesma política do
+  título que cita duas notas: no escuro, não conta. Custo: carta cujo nome começa
+  com "Black" perde as vendas escritas nessa ordem.
+- **Dono com duas palavras** no nome da carta ("Lt. Surge's Electabuzz", Gym Heroes
+  e Gym Challenge): a 2ª tentativa sem o dono agora roda para eles também.
 
 ## 0.5.0 — 2026-09-03
 
