@@ -125,7 +125,19 @@ def select_candidates(set_name, products, prices, rank_of, rx, cap=DEFAULT_CAP,
             "set": set_name,
         })
     rows.sort(key=lambda r: (-(r["market"] or 0.0), r["pokemon_rank"], r["number"]))
-    return rows[:cap] if cap else rows
+    # tcgcsv repete a MESMA carta em productIds diferentes (Mew ex 205 Hyper/Double
+    # Rare, Charizard Base Set 4, Celebi Triumphant 3): mesmo nome+numero = mesma
+    # pagina no PriceCharting = 2 chamadas ao eBay e 2 linhas iguais na entrega.
+    # Como a lista ja vem por market decrescente, o primeiro e o mais caro.
+    seen: set[tuple[str, str]] = set()
+    uniq = []
+    for r in rows:
+        key = (r["name"].strip().lower(), r["number"])
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(r)
+    return uniq[:cap] if cap else uniq
 
 
 def to_entry(cand, group_number, year, pc_url):
@@ -189,6 +201,10 @@ def build(group_numbers, fetch_json=None, resolve_pc=None, cap=DEFAULT_CAP,
                 report["capped_sets"].append((set_name, len(all_rows)))
             report["candidates"] += len(rows)
             year = (catalog.get(set_name) or {}).get("year")
+            if not str(year or "").strip():
+                # catalogo sem ano (os 13 sets SV): usar o publishedOn do tcgcsv --
+                # fonte real, nada inventado.
+                year = str(g.get("publishedOn") or "")[:4]
             kept = 0
             for cand in rows:
                 pc_url = ""

@@ -185,7 +185,7 @@ lista de cartas-alvo a partir do catálogo, sem nada digitado à mão:
 ```powershell
 cd C:\Users\mathe\ebay-arbitrage-scanner
 $env:PYTHONIOENCODING="utf-8"
-.venv\Scripts\python -m pytest tests/ -q        # 476 testes, offline
+.venv\Scripts\python -m pytest tests/ -q        # 478 testes, offline
 .venv\Scripts\python main.py --list-groups      # grupos c/ título e contagem (sem chaves)
 .venv\Scripts\python main.py --pricing-only     # sem credenciais (só PriceCharting)
 
@@ -503,7 +503,7 @@ src/models.py          dataclasses (WatchCard c/ pokemon/pokemon_rank/rarity/yea
 ebay_summary.py        ENTREGA ao operador: JSON do scan -> markdown layout COMC (4 buckets ou
                        --sensitivity 10,15,20 com faixas + contagens por limiar); espelho do
                        comc_summary.py / myp_summary.py
-tests/                 476 testes offline + fixtures reais (ver Armadilhas)
+tests/                 478 testes offline + fixtures reais (ver Armadilhas)
 ```
 
 A watchlist é **list-driven de propósito**: casar item a partir de título

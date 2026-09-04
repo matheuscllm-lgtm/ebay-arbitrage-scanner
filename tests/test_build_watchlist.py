@@ -124,3 +124,39 @@ def test_rarity_allow_covers_measured_catalog_rarities():
         assert r.lower() in bw.RARITY_ALLOW, r
     for r in ("Common", "Uncommon", "Rare", "Code Card", ""):
         assert r.lower() not in bw.RARITY_ALLOW, r
+
+
+# --- 5a geracao (2026-09-04): duplicata de produto e ano vazio no catalogo ------------
+
+def test_select_candidates_dedups_same_card_keeping_priciest():
+    # tcgcsv real: 3 pares com MESMO nome+numero e productId diferente (Mew ex 205
+    # Hyper/Double Rare, Charizard Base Set 4, Celebi Triumphant 3). Sem dedupe viram
+    # 2 chamadas ao eBay pela MESMA pagina e 2 linhas iguais na entrega.
+    prods = [P(10, "Mew ex - 205/165", "205/165", "Hyper Rare"),
+             P(11, "Mew ex - 205/165", "205/165", "Double Rare"),
+             P(12, "Charizard - 004/102", "004/102", "Holo Rare")]
+    prices = [PR(10, 90.0), PR(11, 120.0), PR(12, 300.0)]
+    rows = bw.select_candidates("S", prods, prices, RANK, RX, cap=0)
+    assert [(r["name"], r["number"], r["market"]) for r in rows] == [
+        ("Charizard", "4", 300.0), ("Mew ex", "205", 120.0)]  # fica a mais cara
+
+
+def test_build_fills_year_from_tcgcsv_when_catalog_has_none(monkeypatch):
+    # Os 13 sets SV vieram do catalogo com year "" -> 182 cartas com year nulo.
+    # O tcgcsv traz `publishedOn`: fonte real, nada inventado.
+    def fetch(url, cache_dir=None):
+        if url.endswith("/groups"):
+            return {"results": [{"groupId": 10, "name": "Base Set", "publishedOn": "1999-01-09T00:00:00"},
+                                {"groupId": 11, "name": "SV10: Destined Rivals", "publishedOn": "2025-05-30T00:00:00"}]}
+        if url.endswith("/products"):
+            return {"results": [P(1, "Charizard ex - 199/165", "199/165", "Special Illustration Rare")]}
+        if url.endswith("/prices"):
+            return {"results": [PR(1, 300.0)]}
+        return {"results": []}
+    monkeypatch.setattr(bw, "load_iconic", lambda path=None: dict(RANK))
+    monkeypatch.setattr(bw.groups, "SCAN_GROUPS", {1: bw.groups.GroupDef(
+        number=1, title="t", description="d", era="recent", sets=("SV10: Destined Rivals",))})
+    monkeypatch.setattr(bw.groups, "catalog", lambda: {"SV10: Destined Rivals": {"year": ""}})
+    entries, _ = bw.build([1], fetch_json=fetch, resolve_pc=lambda *a, **k: "https://x/y",
+                          log=lambda *a: None)
+    assert entries[0]["year"] == 2025
