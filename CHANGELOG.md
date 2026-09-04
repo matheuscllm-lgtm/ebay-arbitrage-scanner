@@ -15,7 +15,7 @@ anúncio; "Browse API" = a API oficial de busca do eBay.
 
 PR B (decisão do operador, 2026-09-03): a watchlist deixa de ser feita à mão e
 passa a ser GERADA do catálogo e VERSIONADA; o scan roda por grupo canônico
-(os mesmos 12 grupos da COMC). 479 testes offline (17 arquivos).
+(os mesmos 12 grupos da COMC). 494 testes offline (17 arquivos).
 
 ### Adicionado
 

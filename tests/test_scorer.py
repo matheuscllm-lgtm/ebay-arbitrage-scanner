@@ -459,3 +459,32 @@ def test_trusted_mode_threshold_boundary():
     assert ev(title, 2200.0, cfg=cfg, seller_feedback_score=50, seller_feedback_pct=98.0) is not None
     assert ev(title, 2200.0, cfg=cfg, seller_feedback_score=49, seller_feedback_pct=98.0) is None
     assert ev(title, 2200.0, cfg=cfg, seller_feedback_score=50, seller_feedback_pct=97.9) is None
+
+
+# --- diagnostico 2026-09-04: reverse holo media contra o preco da versao normal -------
+
+def _TCG_MULTI():
+    return TcgReference(market_usd=400.0, product_url="https://www.tcgplayer.com/product/123",
+                        group_name="Base Set", sub_type="Holofoil",
+                        markets={"Holofoil": 400.0, "Reverse Holofoil": 1000.0})
+
+
+def test_raw_nm_reverse_holo_uses_the_reverse_market_not_the_normal_one():
+    # Com ref 400 (normal), um reverse a 700 pareceria caro demais e sumiria; com a
+    # ref certa do reverse (1000) ele e um desconto real de 30%.
+    o = ev("Charizard 4/102 Base Set Reverse Holo NM", 700.0, cfg=CFG_RAW, tcg_ref=_TCG_MULTI())
+    assert o is not None and round(o.fair_value) == 1000 and round(o.discount_pct) == 30
+    assert "Reverse" in o.ref_label
+    # e o inverso: carta normal nao usa o preco do reverse
+    o2 = ev("Charizard 4/102 Base Set Holo NM", 280.0, cfg=CFG_RAW, tcg_ref=_TCG_MULTI())
+    assert o2 is not None and round(o2.fair_value) == 400 and round(o2.discount_pct) == 30
+
+
+def test_raw_nm_reverse_without_reverse_market_has_no_tcg_reference():
+    # Produto sem subtype reverse: NAO cai no preco da normal -- fica sem referencia.
+    so_holo = TcgReference(market_usd=400.0, product_url="u", group_name="Base Set",
+                           sub_type="Holofoil", markets={"Holofoil": 400.0})
+    stats = Counter()
+    assert ev("Charizard 4/102 Base Set Reverse Holo NM", 100.0, cfg=CFG_RAW,
+              tcg_ref=so_holo, refs=make_refs(), stats=stats) is None
+    assert stats["raw_variant_no_reference"] == 1

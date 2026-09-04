@@ -252,7 +252,10 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
 
     # ------------------------------------------------------------------ referencia
     variants = pc_sales.variant_tokens(listing.title)
-    tcg_market = tcg_ref.market_usd if tcg_ref else None
+    # O market do TCGplayer tem de ser o do MESMO subtype da listagem: reverse holo
+    # tem preco proprio (diagnostico 2026-09-04 -- 37 linhas OPORTUNIDADE eram reverse
+    # medidas contra o preco da versao normal). Sem subtype que case: sem referencia.
+    tcg_market, tcg_sub = (tcg_ref.market_for(variants) if tcg_ref else (None, ""))
     prices = fair.prices if fair is not None else {}
     deltas = fair.deltas if fair is not None else {}
     volume = fair.sales_per_month if fair is not None else {}
@@ -296,10 +299,15 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
         tier = _tier_from_ref(ref)
     elif condition == "NM":
         pc_raw = prices.get("RAW")
+        if "reverse" in variants and not tcg_market:
+            # Sem market do subtype Reverse Holofoil nao ha referencia: o Ungraded do
+            # PriceCharting e da versao NORMAL, nunca serve de comparavel do reverse.
+            return _skip(stats, "raw_variant_no_reference")
         if tcg_market:
             fair_price = tcg_market
             ref_source = "tcgplayer"
-            ref_label = "TCG market"
+            ref_label = ("TCG market (Reverse Holofoil)"
+                         if tcg_sub == "Reverse Holofoil" else "TCG market")
             if pc_raw and abs(pc_raw - tcg_market) / tcg_market > RAW_REF_DIVERGENCE:
                 ref_flags.append(
                     f"REF RAW DIVERGENTE (PC vs TCG): PriceCharting "

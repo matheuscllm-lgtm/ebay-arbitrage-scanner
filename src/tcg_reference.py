@@ -27,7 +27,7 @@ import os
 import re
 import time
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 TCGCSV_BASE = "https://tcgcsv.com/tcgplayer/3"  # categoria 3 = Pokemon
 CACHE_TTL_SECONDS = 24 * 3600
@@ -56,6 +56,21 @@ class TcgReference:
     product_url: str    # URL do produto no TCGplayer (campo `url` do tcgcsv)
     group_name: str     # nome do set no tcgcsv (auditoria do match)
     sub_type: str       # subtype usado (Normal / Holofoil / Reverse Holofoil)
+    markets: dict = field(default_factory=dict)  # subtype -> marketPrice (todos)
+
+    def market_for(self, variants=frozenset()):
+        """(market, subtype) do subtype que CASA a variante da listagem, ou
+        (None, "") quando o produto nao tem esse subtype -- nunca compara reverse
+        holo com o preco da versao normal (diagnostico 2026-09-04: 37 linhas
+        OPORTUNIDADE eram reverse medidas contra o preco da normal)."""
+        by = self.markets or ({self.sub_type: self.market_usd} if self.sub_type else {})
+        if "reverse" in (variants or frozenset()):
+            m = by.get("Reverse Holofoil")
+            return (m, "Reverse Holofoil") if m else (None, "")
+        for sub in ("Normal", "Holofoil"):
+            if by.get(sub):
+                return by[sub], sub
+        return None, ""
 
 
 def _fetch_json(url, cache_dir=DEFAULT_CACHE_DIR):
@@ -208,6 +223,17 @@ def find_product(card, products):
     return by_name[0] if len(by_name) == 1 else None
 
 
+def markets_by_subtype(price_rows):
+    """subtype -> marketPrice (> 0). So `marketPrice`; nunca mid/low."""
+    by = {}
+    for row in price_rows:
+        sub = str(row.get("subTypeName") or "")
+        market = row.get("marketPrice")
+        if isinstance(market, (int, float)) and market > 0:
+            by.setdefault(sub, float(market))
+    return by
+
+
 def pick_market_price(price_rows):
     """Escolhe o marketPrice do produto na ordem Normal -> Holofoil ->
     Reverse Holofoil. SO `marketPrice` conta; sem marketPrice em nenhum
@@ -261,4 +287,5 @@ def get_tcg_reference(card, cache_dir=DEFAULT_CACHE_DIR):
         product_url=str(product.get("url") or ""),
         group_name=str(group.get("name") or ""),
         sub_type=sub,
+        markets=markets_by_subtype(rows),
     )

@@ -33,6 +33,7 @@ _CONDITION_BAD = re.compile(
 _REJECT_KEYWORDS = re.compile(
     r"\b(proxy|proxies|replica|reprint|custom|fake|orica|altered|art\s*card|"
     r"goldcard|gold\s+card|gold\s+foil|gold\s+plated|24k|metal\s+card|"
+    r"metal\s+foil|gold\s+metal|jumbo|oversiz(?:e|ed)|"
     r"sticker|digital|online\s+code|"
     r"code\s+card|empty|box\s+only|case\s+only|slab\s+only|toploader|"
     r"poker|playing\s+card|acrylic|case\s+card|magnetic\s+case|alloy|"
@@ -175,6 +176,16 @@ _GRADE_MENTION_STRIP = re.compile(
     r"(?:(?:gem\s*m(?:in)?t|mint|pristine|nm-?mt|black\s*label|graded)\s*)?\d{1,2}(?:\.5)?\b", re.I)
 
 
+# "004/102", "SV49/SV94", "TG04/TG30", "#11 /25": (numerador, denominador).
+_FRACTION_RE = re.compile(r"([a-z]{0,3}\d{1,4}[a-z]?)\s*/\s*([a-z]{0,3}\d{1,4}[a-z]?)", re.I)
+
+
+def _norm_num_token(tok):
+    """'004' -> '4'; 'SV049' -> 'sv49'; 'TG04' -> 'tg4'. Numero de carta comparavel."""
+    m = re.match(r"^([a-z]*)0*(\d+)([a-z]?)$", str(tok).strip().lower())
+    return (m.group(1) + m.group(2) + m.group(3)) if m else str(tok).strip().lower()
+
+
 def card_matches_title(card, title):
     """Checagem minima de identidade: nome da carta presente no titulo e,
     se houver numero, o numero tambem (evita casar 'Charizard ex' com
@@ -187,7 +198,14 @@ def card_matches_title(card, title):
             return False
     if card.number:
         num = card.number.lower().lstrip("0") or card.number.lower()
+        clean = _GRADE_MENTION_STRIP.sub(" ", t)
+        # Em "11/25" o DENOMINADOR e o tamanho do set, nunca a carta. Sem isto,
+        # "Mew #11 /25" casava o card numero 25 (o Secret Rare, caro) e a referencia
+        # saia da carta errada -- achado do review, 2026-09-04 (49 linhas afetadas).
+        fracs = _FRACTION_RE.findall(clean)
+        if fracs:
+            return any(_norm_num_token(a) == _norm_num_token(num) for a, _ in fracs)
         pattern = r"(?:#|no\.?\s*|\b)0*%s\b" % re.escape(num)
-        if not re.search(pattern, _GRADE_MENTION_STRIP.sub(" ", t)):
+        if not re.search(pattern, clean):
             return False
     return True

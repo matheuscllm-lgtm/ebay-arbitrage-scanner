@@ -119,7 +119,13 @@ class PcError(RuntimeError):
 _last_request_at = [0.0]
 _CODE_PREFIX = re.compile(r"^[A-Za-z0-9]{2,6}:\s*")
 # Palavras de variante toleradas no SLUG da busca (não confundir com ``variant_tokens``).
-_VARIANT_TOKENS = {"holo", "reverse", "1st", "edition", "shadowless", "unlimited", "promo"}
+# Variante de TIRAGEM: muda o preco em ordens de grandeza (1st Edition da Base Set vale
+# dezenas de vezes a Unlimited). So pode casar se os DOIS lados trouxerem a palavra.
+_PRINTING_TOKENS = {"reverse", "1st", "edition", "shadowless", "unlimited", "promo"}
+# Cosmetico: o PC escreve "holo" em carta cujo nome do catalogo nao traz a palavra, e isso
+# nao muda tiragem nem preco -- segue tolerado dos dois lados.
+_COSMETIC_TOKENS = {"holo"}
+_VARIANT_TOKENS = _PRINTING_TOKENS | _COSMETIC_TOKENS
 
 
 @dataclass(frozen=True, slots=True)
@@ -631,8 +637,14 @@ def slug_matches(path: str, card_name, number) -> bool:
     # inverte a ordem ("psyduck-&-slowpoke-gx-217" para "Slowpoke & Psyduck GX")
     if slug_tokens[0] != tokens[0] and "&" not in str(card_name):
         return False
+    # Variante de tiragem em QUALQUER posicao do slug (nao so na 1a): "charizard-1st-
+    # edition-holo-4" nao pode casar a Charizard sem variante no nome -- a referencia
+    # sairia da carta errada, varias vezes mais cara (regressao 2026-09-04).
+    if ({t for t in slug_tokens if t in _PRINTING_TOKENS}
+            != {t for t in tokens if t in _PRINTING_TOKENS}):
+        return False
     core = {t for t in slug_tokens if t and t not in _VARIANT_TOKENS}
-    return core == set(tokens)
+    return core == {t for t in tokens if t not in _VARIANT_TOKENS}
 
 
 def console_matches(path: str, set_label) -> bool:
