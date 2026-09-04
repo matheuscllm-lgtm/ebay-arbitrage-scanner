@@ -978,3 +978,45 @@ def test_product_path_query_uses_parent_console_and_raw_number(monkeypatch):
     assert pc.product_page_url("Charizard GX", "SV49", "Hidden Fates: Shiny Vault") ==         "https://www.pricecharting.com/game/pokemon-hidden-fates/charizard-gx-sv49"
     q = seen[0].split("q=", 1)[1].split("&", 1)[0]
     assert "SV49" in q and "Hidden" in q and "Shiny" not in q, q
+
+
+def test_slug_matches_pc_spellings_lvx_mega_gold_star_prime_e4_tag_team_order():
+    # Sondagem real 2026-09-03 (3a geracao da watchlist, 43 "sem PC"):
+    assert pc.slug_matches("/game/pokemon-diamond-&-pearl/empoleon-lvx-120", "Empoleon LV.X", "120")
+    assert pc.slug_matches("/game/pokemon-rising-rivals/luxray-gl-lvx-109", "Luxray GL Lv.X", "109")
+    assert pc.slug_matches("/game/pokemon-arceus/gengar-lv-x-97", "Gengar Lv.X", "97")
+    assert pc.slug_matches("/game/pokemon-rising-rivals/infernape-lvx-108", "Infernape E4 Lv.X", "108")
+    assert pc.slug_matches("/game/pokemon-xy/mega-blastoise-ex-30", "M Blastoise EX", "30")
+    assert pc.slug_matches("/game/pokemon-deoxys/rayquaza-gold-star-107", "Rayquaza Star", "107")
+    assert pc.slug_matches("/game/pokemon-team-rocket-returns/mudkip-gold-star-107", "Mudkip Star", "107")
+    assert pc.slug_matches("/game/pokemon-heartgold-&-soulsilver/typhlosion-prime-110", "Typhlosion", "110")
+    assert pc.slug_matches("/game/pokemon-unified-minds/psyduck-&-slowpoke-gx-217", "Slowpoke & Psyduck GX", "217")
+    # exatidao preservada
+    assert not pc.slug_matches("/game/pokemon-base-set/shadowless-charizard-4", "Charizard", "4")
+    assert not pc.slug_matches("/game/pokemon-base-set/dark-charizard-4", "Charizard", "4")
+    assert not pc.slug_matches("/game/pokemon-deoxys/rayquaza-ex-102", "Rayquaza Star", "107")
+    assert not pc.slug_matches("/game/pokemon-xy/mega-blastoise-ex-30", "Blastoise EX", "30")
+    assert not pc.slug_matches("/game/pokemon-unified-minds/psyduck-gx-217", "Slowpoke & Psyduck GX", "217")
+    assert not pc.slug_matches("/game/pokemon-team-up/gengar-&-mimikyu-gx-165", "Gengar & Mew GX", "165")
+
+
+def test_clean_card_name_unclosed_parenthesis():
+    assert pc.clean_card_name("Primal Kyogre EX (Alpha - 149/160)") == "Primal Kyogre EX"
+    assert pc.clean_card_name("Primal Groudon EX (Omega") == "Primal Groudon EX"
+
+
+def test_product_path_falls_back_to_name_without_owner_prefix(monkeypatch):
+    # EX Team Magma vs Team Aqua: PC escreve so "kyogre-3" para "Team Aqua's Kyogre".
+    html = ('<a href="/game/pokemon-team-magma-&-team-aqua/kyogre-3">a</a>'
+            '<a href="/game/pokemon-team-magma-&-team-aqua/kyogre-holo-3">b</a>'
+            '<a href="/game/pokemon-double-crisis/team-aqua\'s-spheal-3">c</a>')
+    monkeypatch.setattr(pc, "fetch_page", lambda url, cache_dir=None: html)
+    assert pc.product_page_url("Team Aqua's Kyogre", "3", "EX Team Magma vs Team Aqua") ==         "https://www.pricecharting.com/game/pokemon-team-magma-&-team-aqua/kyogre-3"
+    # o fallback NAO troca de console nem de numero
+    assert pc.product_page_url("Team Aqua's Kyogre", "4", "EX Team Magma vs Team Aqua") is None
+    assert pc.product_page_url("Team Aqua's Kyogre", "3", "EX Deoxys") is None
+    # com match exato disponivel, o fallback nem entra
+    html2 = ('<a href="/game/pokemon-gym-heroes/lt-surge\'s-pikachu-81">a</a>'
+             '<a href="/game/pokemon-gym-heroes/pikachu-81">b</a>')
+    monkeypatch.setattr(pc, "fetch_page", lambda url, cache_dir=None: html2)
+    assert pc.product_page_url("Lt. Surge's Pikachu", "81", "Gym Heroes").endswith("/lt-surge's-pikachu-81")

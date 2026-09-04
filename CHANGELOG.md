@@ -15,7 +15,7 @@ anúncio; "Browse API" = a API oficial de busca do eBay.
 
 PR B (decisão do operador, 2026-09-03): a watchlist deixa de ser feita à mão e
 passa a ser GERADA do catálogo e VERSIONADA; o scan roda por grupo canônico
-(os mesmos 12 grupos da COMC). 462 testes offline (17 arquivos).
+(os mesmos 12 grupos da COMC). 470 testes offline (17 arquivos).
 
 ### Adicionado
 
@@ -94,6 +94,21 @@ registrados no 0.5.0:
   Desconto%/ROI absurdo.
 - Raw **LP sem referência NM** disponível vai direto às vendas LP do
   PriceCharting (antes ficava sem referência por falta do pré-filtro NM).
+
+Fixes do review limpo do PR B (2026-09-03):
+
+- `--group` fora de 1–12, spec inválida ou grupo/nome **sem cartas na
+  watchlist** erra ALTO (`ERRO: …`, exit ≠ 0) — antes `--group 13` derrubava
+  com traceback e `--group x` virava scan de 0 cartas "bem-sucedido".
+- Resolvedor do PriceCharting (`pc_sales`), após sondagem real do site: números
+  **com letras** mantêm o prefixo (`SV49`, `TG23`, `H29`, `AR1`, `SL10` — o
+  slug do PC é `charizard-gx-sv49`; antes viravam `49`, `23`…, e nunca
+  casavam); **subconjuntos** (Shiny Vault, Trainer Gallery, Galarian Gallery,
+  Classic Collection, Radiant Collection) são procurados no console do
+  **set-pai** (`pc_console_label`, ex.: `pokemon-hidden-fates`); nomes **Tag
+  Team** (`mewtwo-&-mew-gx-242`) e **Lv.X** (`gengar-lv-x-97`) casam; nome
+  tcgcsv com número colado (`Mimikyu -160/091`) é limpo. Sem isso, 298 das
+  1.673 candidatas da watchlist ficavam "sem PC" e fora do universo.
 
 ## 0.5.0 — 2026-09-03
 

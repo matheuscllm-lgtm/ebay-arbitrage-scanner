@@ -185,7 +185,7 @@ lista de cartas-alvo a partir do catálogo, sem nada digitado à mão:
 ```powershell
 cd C:\Users\mathe\ebay-arbitrage-scanner
 $env:PYTHONIOENCODING="utf-8"
-.venv\Scripts\python -m pytest tests/ -q        # 462 testes, offline
+.venv\Scripts\python -m pytest tests/ -q        # 470 testes, offline
 .venv\Scripts\python main.py --list-groups      # grupos c/ título e contagem (sem chaves)
 .venv\Scripts\python main.py --pricing-only     # sem credenciais (só PriceCharting)
 
@@ -503,7 +503,7 @@ src/models.py          dataclasses (WatchCard c/ pokemon/pokemon_rank/rarity/yea
 ebay_summary.py        ENTREGA ao operador: JSON do scan -> markdown layout COMC (4 buckets ou
                        --sensitivity 10,15,20 com faixas + contagens por limiar); espelho do
                        comc_summary.py / myp_summary.py
-tests/                 462 testes offline + fixtures reais (ver Armadilhas)
+tests/                 470 testes offline + fixtures reais (ver Armadilhas)
 ```
 
 A watchlist é **list-driven de propósito**: casar item a partir de título
@@ -546,6 +546,15 @@ precisão (ver comentário em `watchlist.example.yaml`).
 - O parser de volume do PriceCharting depende da ORDEM das células de volume
   na tabela principal (mesma ordem das colunas de preço). Sinal "+" da
   tendência vem como `&#43;` no HTML.
+- **Slug do PriceCharting mantém as letras do número** (`charizard-gx-sv49`,
+  `umbreon-vmax-tg23`, `umbreon-h29`, `arceus-ar1`) e arquiva os
+  **subconjuntos** (Shiny Vault, Trainer Gallery, Galarian Gallery, Classic
+  Collection, Radiant Collection) no console do **set-pai**
+  (`pokemon-hidden-fates`, `pokemon-brilliant-stars`, `pokemon-celebrations`).
+  `pc_sales.norm_number` canoniza com o prefixo (`tg04` == `TG4`, `sv49` ≠ `49`)
+  e `pc_console_label` faz subconjunto → pai. Tag Team vira `mewtwo-&-mew-gx-242`
+  e Lv.X vira `gengar-lv-x-97` (sondagem real 2026-09-03; sem isso 298
+  candidatas da watchlist ficavam "sem PC").
 - Cache do PriceCharting é **do dia** (`data/cache/pc/<AAAA-MM-DD>/`): página
   de bloqueio/erro/vazia (<2.000 bytes ou `<title>` de "Just a moment"/"Access
   denied") nunca é cacheada, senão seria re-servida o dia inteiro.

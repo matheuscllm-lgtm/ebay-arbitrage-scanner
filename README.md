@@ -94,7 +94,7 @@ Run `python main.py --help` and `python ebay_summary.py --help` for all options.
 python -m pytest -q
 ```
 
-The suite (462 tests) is offline — no network, no credentials; real payloads
+The suite (470 tests) is offline — no network, no credentials; real payloads
 and pages are stored under `tests/fixtures/` — and runs in CI on every push and
 pull request.
 

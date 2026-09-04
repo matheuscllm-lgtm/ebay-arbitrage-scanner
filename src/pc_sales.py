@@ -524,14 +524,34 @@ def clean_card_name(card_name) -> str:
     # " - 006/165" e tambem "-160/091" colado (tcgcsv real: "Mimikyu -160/091").
     s = re.split(r"\s+-\s*", str(card_name or ""), 1)[0]
     s = re.sub(r"\(.*?\)", "", s)
+    s = re.sub(r"\(.*$", "", s)  # parentese sem fechar ("Primal Kyogre EX (Alpha")
     s = re.sub(r"(?i)\blv\.?\s*\d+\b", " ", s)
     return s.strip()
 
 
+# Grafias do PriceCharting (sondagem real 2026-09-03): "rayquaza-gold-star-107" para
+# "Rayquaza Star", "typhlosion-prime-110" para "Typhlosion", "infernape-lvx-108" para
+# "Infernape E4 Lv.X" -- tokens opcionais dos DOIS lados; "mega-blastoise-ex" == "M Blastoise EX";
+# "lv-x" / "lvx" / "Lv.X" == lvx.
+_OPTIONAL_TOKENS = {"gold", "prime", "e4"}
+_TOKEN_ALIASES = {"mega": "m"}
+
+
+def _canon_tokens(tokens) -> list[str]:
+    out: list[str] = []
+    for t in tokens:
+        t = _TOKEN_ALIASES.get(t, t)
+        if t == "x" and out and out[-1] == "lv":
+            out[-1] = "lvx"
+            continue
+        out.append(t)
+    return [t for t in out if t and t not in _OPTIONAL_TOKENS]
+
+
 def _name_tokens(card_name) -> list[str]:
-    # "." vira separador: "Gengar Lv.X" -> [gengar, lv, x] == slug "gengar-lv-x-97".
+    # "." vira separador: "Gengar Lv.X" -> [gengar, lv, x] -> [gengar, lvx].
     name = clean_card_name(card_name).replace(".", " ")
-    return [t for t in (_norm_token(x) for x in re.findall(r"[a-z0-9']+", name.lower())) if t]
+    return _canon_tokens(t for t in (_norm_token(x) for x in re.findall(r"[a-z0-9']+", name.lower())) if t)
 
 
 # Sets cujo nome TCGCSV nao bate com o console do PriceCharting nem por tokens.
@@ -580,9 +600,14 @@ def slug_matches(path: str, card_name, number) -> bool:
     if not num or len(raw_tokens) < 2 or norm_number(raw_tokens[-1]) != num:
         return False
     # "&" do PC ("mewtwo-&-mew-gx-242") nao e token de nome
-    slug_tokens = [t for t in (_norm_token(t) for t in raw_tokens[:-1]) if re.search(r"[a-z0-9]", t)]
+    slug_tokens = _canon_tokens(t for t in (_norm_token(t) for t in raw_tokens[:-1])
+                                if re.search(r"[a-z0-9]", t))
     tokens = _name_tokens(card_name)
-    if not tokens or not slug_tokens or slug_tokens[0] != tokens[0]:
+    if not tokens or not slug_tokens:
+        return False
+    # 1o token igual ("shadowless-charizard" != "Charizard"), exceto Tag Team, em que o PC
+    # inverte a ordem ("psyduck-&-slowpoke-gx-217" para "Slowpoke & Psyduck GX")
+    if slug_tokens[0] != tokens[0] and "&" not in str(card_name):
         return False
     core = {t for t in slug_tokens if t and t not in _VARIANT_TOKENS}
     return core == set(tokens)
@@ -620,6 +645,9 @@ def choose_path(paths: list[str], card_name, number, set_label) -> str | None:
     return min(matches, key=lambda p: len(p.rsplit("/", 1)[-1]))
 
 
+_OWNER_PREFIX = re.compile(r"^(?:team\s+\w+|[\w.]+)'s\s+", re.I)
+
+
 def _product_path(card_name, number, set_label, cache_dir: str | None = None) -> str | None:
     """Busca (nome+número+set) → ``choose_path`` (match exato) → path ``/game/...`` ou
     None. Rede/bloqueio → ``PcError``."""
@@ -633,7 +661,14 @@ def _product_path(card_name, number, set_label, cache_dir: str | None = None) ->
     query = " ".join(p for p in ("pokemon", set_name, base_name, qnum) if p)
     body = fetch_page(f"{BASE_URL}/search-products?q={urllib.parse.quote(query)}&type=prices",
                       cache_dir=cache_dir)
-    path = choose_path(search_card_paths(body), card_name, number, set_label)
+    paths = search_card_paths(body)
+    path = choose_path(paths, card_name, number, set_label)
+    if not path:
+        # PC omite o dono em sets so de cartas "de alguem" ("kyogre-3" para "Team Aqua's
+        # Kyogre", EX Team Magma vs Team Aqua). So como 2a tentativa, mesmo console+numero.
+        stripped = _OWNER_PREFIX.sub("", base_name)
+        if stripped != base_name:
+            path = choose_path(paths, stripped, number, set_label)
     if not path:
         log.info("PC: sem página que case '%s' #%s (%s).", base_name, num, set_name)
     return path
