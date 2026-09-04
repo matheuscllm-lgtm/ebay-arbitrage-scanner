@@ -242,3 +242,35 @@ def test_exact_name_wins_over_error_variant_with_same_number(monkeypatch):
     ref = tcg_reference.get_tcg_reference(card(number="4"))
     assert ref is not None and ref.market_usd == 400.0
     assert ref.product_url.endswith("/801")
+
+
+# --- diagnostico 2026-09-04: reverse holo comparado com o preco da versao normal ------
+
+def test_market_for_picks_the_subtype_that_matches_the_listing_variant():
+    # 37 linhas OPORTUNIDADE do diagnostico eram reverse holo medidas contra o preco
+    # da versao NORMAL. Reverse tem preco proprio -- em set vintage chega a ser bem
+    # mais caro, o que inventava desconto.
+    ref = tcg_reference.TcgReference(
+        market_usd=10.0, product_url="u", group_name="g", sub_type="Holofoil",
+        markets={"Holofoil": 10.0, "Reverse Holofoil": 40.0})
+    assert ref.market_for(frozenset()) == (10.0, "Holofoil")
+    assert ref.market_for(frozenset({"reverse"})) == (40.0, "Reverse Holofoil")
+    # sem o subtype que casa a variante, NAO cai na outra: fica sem referencia
+    so_holo = tcg_reference.TcgReference(
+        market_usd=10.0, product_url="u", group_name="g", sub_type="Holofoil",
+        markets={"Holofoil": 10.0})
+    assert so_holo.market_for(frozenset({"reverse"})) == (None, "")
+    so_rev = tcg_reference.TcgReference(
+        market_usd=40.0, product_url="u", group_name="g", sub_type="Reverse Holofoil",
+        markets={"Reverse Holofoil": 40.0})
+    assert so_rev.market_for(frozenset()) == (None, "")
+
+
+def test_get_tcg_reference_keeps_every_subtype_market(monkeypatch):
+    prices = [{"productId": 7, "subTypeName": "Holofoil", "marketPrice": 10.0},
+              {"productId": 7, "subTypeName": "Reverse Holofoil", "marketPrice": 40.0},
+              {"productId": 7, "subTypeName": "Normal", "marketPrice": 0},
+              {"productId": 8, "subTypeName": "Holofoil", "marketPrice": 99.0}]
+    assert tcg_reference.pick_market_price(prices[:1]) == (10.0, "Holofoil")
+    by = tcg_reference.markets_by_subtype([r for r in prices if r["productId"] == 7])
+    assert by == {"Holofoil": 10.0, "Reverse Holofoil": 40.0}  # marketPrice 0 fica fora

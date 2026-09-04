@@ -151,6 +151,7 @@ FUNNEL_LABELS = [
     ("lp_no_nm_prefilter", "Raw LP avaliadas sem pré-filtro (sem referência NM para o teto)"),
     ("lp_no_reference", "Raw LP sem ≥3 vendas LP comparáveis — sem referência"),
     ("raw_no_reference", "Raw NM sem referência (sem TCG market nem Ungraded do PC)"),
+    ("raw_variant_no_reference", "Raw reverse holo sem market do subtype Reverse Holofoil (o Ungraded do PriceCharting é da versão normal) — sem referência"),
     ("pc_error", "Cartas com ERRO na fonte PriceCharting (rede/bloqueio/layout)"),
     ("pc_breaker", "Cartas puladas com o PriceCharting suspenso (5 falhas seguidas)"),
     ("below_discount", "Descartados: desconto abaixo do mínimo"),

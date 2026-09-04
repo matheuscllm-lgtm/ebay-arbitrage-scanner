@@ -33,6 +33,7 @@ _CONDITION_BAD = re.compile(
 _REJECT_KEYWORDS = re.compile(
     r"\b(proxy|proxies|replica|reprint|custom|fake|orica|altered|art\s*card|"
     r"goldcard|gold\s+card|gold\s+foil|gold\s+plated|24k|metal\s+card|"
+    r"metal\s+foil|gold\s+metal|jumbo|oversiz(?:e|ed)|"
     r"sticker|digital|online\s+code|"
     r"code\s+card|empty|box\s+only|case\s+only|slab\s+only|toploader|"
     r"poker|playing\s+card|acrylic|case\s+card|magnetic\s+case|alloy|"

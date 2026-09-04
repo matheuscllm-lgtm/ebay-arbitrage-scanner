@@ -191,3 +191,18 @@ def test_card_number_never_matches_the_grade():
     assert tp.card_matches_title(mewtwo, "Mewtwo VSTAR #10 PSA 9")
     nine = WatchCard(name="Blastoise", set_name="Base Set", number="9", language="EN", pc_url="")
     assert not tp.card_matches_title(nine, "Blastoise 2/102 PSA 9")
+
+
+def test_reject_jumbo_oversized_and_metal_foil():
+    # Diagnostico 2026-09-04: um jumbo (carta grande, produto diferente) chegou a
+    # OPORTUNIDADE medido contra a referencia da carta normal; e "Gold Metal Foil"
+    # (carta de metal, falsa) escapou porque so havia "gold foil"/"metal card".
+    for t in ("Dragonite EX 72/108 Jumbo - Oversized XY Evolutions Promos Holo NM",
+              "Jumbo Oversized Charizard EX Promo Card 11/106 Flashfire 2014 NM",
+              "Charizard GX Gold Metal Foil Secret Rare 150/147 Burning Shadows NM",
+              "Pokemon Gold Metal Card Lugia Neo Genesis 9/111"):
+        assert tp._REJECT_KEYWORDS.search(t), t
+    # carta de verdade nao pode ser rejeitada por essas palavras
+    for t in ("Charizard 4/102 Base Set Holo NM", "Umbreon VMAX 215/203 Evolving Skies",
+              "Metagross ex 141/165 151 NM"):
+        assert not tp._REJECT_KEYWORDS.search(t), t
