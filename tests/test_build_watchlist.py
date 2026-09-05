@@ -8,6 +8,18 @@ RANK = {"charizard": 1, "mew": 20, "mewtwo": 6}
 RX = bw.iconic_regex(RANK)
 
 
+def test_shipped_iconic_catalog_is_complete_and_matches_watchlist():
+    """Exercise the real input: mocked load_iconic hid the missing CSV in CI."""
+    rank_of = bw.load_iconic()
+    assert len(rank_of) == 100
+    assert set(rank_of.values()) == set(range(1, 101))
+    cards = yaml.safe_load((bw.CATALOG_DIR.parent.parent / "watchlist.yaml").read_text(
+        encoding="utf-8"))["cards"]
+    assert cards
+    for card in cards:
+        assert rank_of[card["pokemon"].lower()] == card["pokemon_rank"]
+
+
 def P(pid, name, number, rarity):
     return {"productId": pid, "name": name, "url": f"https://www.tcgplayer.com/product/{pid}",
             "extendedData": [{"name": "Number", "value": number}, {"name": "Rarity", "value": rarity}]}
