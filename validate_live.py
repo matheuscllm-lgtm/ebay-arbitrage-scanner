@@ -43,8 +43,12 @@ def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=
             entry['set'] = entry.pop('set_name')
             if focus_psa10:
                 language_term = {'EN': 'English', 'JP': 'Japanese', 'KO': 'Korean', 'ZH-HANS': 'Simplified Chinese', 'ZH-HANT': 'Traditional Chinese'}.get(card.language, card.language)
-                entry['ebay_query'] = f'{card.default_query()} {language_term} PSA 10'
+                # Catalog year narrows discovery (e.g. Base Set vs Celebrations
+                # reprints). It never replaces identity/variant checks on sales.
+                year_term = f' {card.year}' if card.year else ''
+                entry['ebay_query'] = f'{card.default_query()}{year_term} {language_term} PSA 10'
             entries.append(entry)
+        summary['queries'] = [entry.get('ebay_query', '') for entry in entries]
         diagnostics = []
         def source_status(message):
             # Only fixed source labels and HTTP status numbers leave the process.

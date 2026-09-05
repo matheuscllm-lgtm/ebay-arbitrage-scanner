@@ -6,7 +6,7 @@ Uso:
   python main.py --pricing-only               # so referencias da watchlist (sem chaves)
   python main.py --watchlist w.yaml           # watchlist alternativa
   python main.py --list-groups                # lista os grupos da watchlist e sai
-  python main.py --include-raw                # inclui raw (NM = TCG market; LP = vendas LP)
+  python main.py --check-config               # regras e pendências, sem rede
   python main.py --grades "PSA 10, CGC 10 Pristine"   # funil restrito a notas
   python main.py --out results/last_scan.json # artefato JSON (default)
 
@@ -15,8 +15,8 @@ Depois do scan, a ENTREGA canonica sai de:
       [--sensitivity 10,15,20]
 
 Convencao de threshold deste repo: percentuais INTEIROS (20 = 20%).
-`--min-discount` = Desconto% minimo = (ref - preco) / ref (gate do scan);
-ROI bruto% = (ref - preco) / preco segue como coluna. Nunca "lucro".
+`--min-discount` altera o braço de desconto da regra lucro OU desconto.
+Lucro estimado, margem e ROI líquidos consideram custos COMC explícitos.
 """
 import argparse
 import io
@@ -71,9 +71,7 @@ def main(argv=None):
     ap.add_argument("--pricing-only", action="store_true",
                     help="so referencias da watchlist (PriceCharting); nao consulta eBay")
     ap.add_argument("--confiavel", action="store_true",
-                    help="modo confiavel: so vendedores com historico (>=50 "
-                         "avaliacoes, >=98%%) e ROI abaixo do teto de suspeita; "
-                         "tabela 100%% acionavel")
+                    help="compatibilidade: o histórico do vendedor é sempre verificado; todos os candidatos permanecem visíveis")
     ap.add_argument("--include-raw", action="store_true",
                     help="opcao legada: rejeitada; o projeto aceita apenas cartas certificadas")
     ap.add_argument("--grades", default="",

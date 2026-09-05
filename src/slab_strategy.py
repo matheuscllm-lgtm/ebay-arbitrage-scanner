@@ -323,7 +323,6 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                     cap = comparison * max_percent / 100
                     details['comparison_cap'] = amount(cap)
                     details['comparison_cap_exact'] = str(cap)
-                    details['comparison_cap_exact'] = str(cap)
                     if price is not None and listing.currency == 'USD' and price > cap:
                         reject.append(f'preco-acima-do-limite-{grade.grader}')
             if price is not None and listing.currency == "USD":

@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 from collections import Counter
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -60,3 +61,19 @@ def test_workflow_secrets_only_in_live_step():
     assert len(with_secrets)==1
     assert set(with_secrets[0]['env'])=={'EBAY_CLIENT_ID','EBAY_CLIENT_SECRET'}
     assert 'validate_live.py --group 3 --limit 1' in with_secrets[0]['run']
+
+
+def test_catalog_year_narrows_discovery_without_altering_card(monkeypatch, tmp_path):
+    setup(monkeypatch)
+    card = replace(CARD, year=1999)
+    monkeypatch.setattr(live.scanner, 'load_watchlist', lambda *a: [card])
+    def run(**kw):
+        import yaml
+        entry = yaml.safe_load(Path(kw['watchlist_path']).read_text())['cards'][0]
+        assert entry['ebay_query'].endswith('1999 English PSA 10')
+        assert entry['set'] == card.set_name and entry['pc_url'] == card.pc_url
+        return {}, [], False, Counter(seen=1), False
+    monkeypatch.setattr(live.scanner, 'run_scan', run)
+    assert live.validate(out_dir=tmp_path) == 2
+    summary = json.loads((tmp_path/'validation.json').read_text())
+    assert summary['queries'][0].endswith('1999 English PSA 10')
