@@ -85,7 +85,31 @@ def listing_language(listing):
 
 
 def normalized(text):
-    return ' '.join(re.findall(r'[a-z0-9]+', unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode().lower()))
+    # Apostrophes are typography, not a different Pokemon (Rocket's / Rockets).
+    text = str(text).replace("'", '').replace('’', '')
+    key = ' '.join(re.findall(r'[a-z0-9]+', unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode().lower()))
+    return re.sub(r'\blv x\b', 'lvx', key)
+
+
+def set_label(value):
+    """Remove known catalog codes; keep subset/edition names as identity."""
+    value = str(value).strip()
+    value = pc_sales.PC_CONSOLE_ALIASES.get(value, value)
+    return re.sub(r'^(?:SV|SWSH|SM|XY|BW|DP|HGSS)\d{0,2}\s*(?::|\s-\s)\s*', '', value, flags=re.I)
+
+
+def discovery_query(card):
+    """Use readable catalog labels in discovery without changing stored identity."""
+    return re.sub(re.escape(card.set_name), lambda _: set_label(card.set_name),
+                  card.default_query(), flags=re.I)
+
+
+def risk_title(card, title):
+    """A named catalog collection is not a lot; other lot words stay visible."""
+    label = set_label(card.set_name)
+    if re.search(r'\bcollection\b', label, re.I):
+        return re.sub(r'(?<!\w)' + re.escape(label) + r'(?!\w)', ' ', title, flags=re.I)
+    return title
 
 
 def identity_matches(card, title):
@@ -94,7 +118,9 @@ def identity_matches(card, title):
     numerator = str(card.number).split('/')[0]
     if not numerator or not card.name or not card.set_name:
         return False
-    if not title_parser.card_matches_title(replace(card, number=numerator), title):
+    # Check the number and explicit exclusions on the original title; names below
+    # use canonical typography rather than a raw substring requirement.
+    if not title_parser.card_matches_title(replace(card, name='', number=numerator), title):
         return False
     # 'Mew' must not match 'Mewtwo'; card suffixes are part of identity.
     name_key = normalized(card.name)
@@ -104,15 +130,22 @@ def identity_matches(card, title):
     if not re.search(r'\b' + suffixes + r'$', name_key) and re.search(
             r'\b' + re.escape(name_key) + r'\s+' + suffixes + r'\b', normalized(title)):
         return False
-    set_key, title_key = normalized(card.set_name), normalized(title)
+    set_key, title_key = normalized(set_label(card.set_name)), normalized(title)
     if not re.search(r"(?<![a-z0-9])" + re.escape(set_key) + r"(?![a-z0-9])", title_key):
         return False
     # Longer catalog names identify another set (Base Set 2 vs Base Set).
     from .groups import SCAN_GROUPS
     for group in SCAN_GROUPS.values():
         for other in group.sets:
-            other_key = normalized(other)
-            if other_key != set_key and set_key in other_key and other_key in title_key:
+            other_key = normalized(set_label(other))
+            if (other_key != set_key and set_key in normalized(other)
+                    and other_key in title_key):
+                return False
+            # A series name alone must not turn an expansion into its base set:
+            # "Sun & Moon Guardians Rising" is not "SM Base Set".
+            if (card.set_name in pc_sales.PC_CONSOLE_ALIASES and other_key != set_key
+                    and other_key not in set_key and len(re.findall(r'[a-z]+', other_key)) >= 2
+                    and re.search(r'(?<![a-z0-9])' + re.escape(other_key) + r'(?![a-z0-9])', title_key)):
                 return False
     if '/' in str(card.number):
         expected = [pc_sales.norm_number(n) for n in str(card.number).split('/')]
@@ -155,7 +188,8 @@ def reference_sales(card, refs, grade, variants, policy, today=None):
         if pc_sales.variant_tokens(title) != variants:
             excluded['variante-diferente'] += 1
             continue
-        if (pc_sales._NOISE_SALE_RE.search(title) or title_parser.risk_flags(title)
+        noise_title = risk_title(card, title)
+        if (pc_sales._NOISE_SALE_RE.search(noise_title) or title_parser.risk_flags(noise_title)
                 or re.search(r'best offer|or best|accepted offer|offer accepted|\b(?:potential|candidate|possibly|qualifiers?|OC|MC|ST|MK|PD)\b', title, re.I)
                 or pc_sales._is_ambiguous_black_sale(title)):
             excluded['oferta-lote-ou-certificacao-incerta'] += 1
@@ -235,7 +269,7 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     if not identity_matches(card, listing.title):
         review.append('carta-colecao-numero-a-confirmar')
     for value in listing.item_aspects.get('Set', []):
-        if normalized(str(value)) != normalized(card.set_name):
+        if normalized(set_label(value)) != normalized(set_label(card.set_name)):
             review.append('colecao-do-aspecto-a-confirmar')
     for value in listing.item_aspects.get('Card Number', []):
         expected = [title_parser._norm_num_token(n) for n in str(card.number).split('/')]
@@ -267,7 +301,7 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         review.append('certificacao-potencial-ou-qualificada')
     if grade and (grade.qualifier in ('BLACK', 'PRISTINE') or re.search(r'\bpristine\b', listing.title, re.I)):
         review.append('categoria-especial-sem-regra')
-    flags = title_parser.risk_flags(listing.title, listing)
+    flags = title_parser.risk_flags(risk_title(card, listing.title), listing)
     for flag in flags:
         (reject if flag.startswith(('REJEITAR', 'LOTE')) else review).append(flag)
     price = money(listing.price)
@@ -384,7 +418,11 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         details['costs']['comc_storage_usd'] = amount(fixed[1])
     sell, cashout = [money(costs.get(key)) for key in ('selling_fee_percent', 'cashout_fee_percent')]
     if any(v is None for v in fixed) or sell is None or cashout is None:
-        review.append('custos-COMC-indefinidos')
+        if (fixed[0] is not None and fixed[1] is None and sell is not None and cashout is not None
+                and costs.get('storage_horizon_days') is not None and (not resale or resale['price'] is None)):
+            review.append('armazenamento-sem-base-de-revenda')
+        else:
+            review.append('custos-COMC-indefinidos')
     if sell is not None and sell >= 100 or cashout is not None and cashout >= 100:
         review.append('taxas-percentuais-invalidas')
         sell = cashout = None

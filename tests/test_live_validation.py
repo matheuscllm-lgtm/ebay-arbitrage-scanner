@@ -46,6 +46,9 @@ def test_live_result_never_claims_success_without_both_sources(monkeypatch,tmp_p
     assert live.validate(out_dir=tmp_path)==code
     summary=json.loads((tmp_path/'validation.json').read_text())
     assert summary['status']==status
+    if status == 'partial':
+        assert summary['execution_status'] == 'completed'
+        assert summary['evidence_status'] == 'insufficient_sample'
     assert (tmp_path/'scan.json').exists()
     assert (tmp_path/'report.md').exists()
 
@@ -54,13 +57,15 @@ def test_workflow_secrets_only_in_live_step():
     import yaml
     workflow=yaml.safe_load(Path('.github/workflows/validate-ebay.yml').read_text())
     trigger=workflow.get('on', workflow.get(True))
-    assert 'schedule' not in trigger and 'pull_request' not in trigger
-    assert trigger['push']['branches']==['feat/ebay-psa-slab-policy']
+    assert set(trigger) == {'workflow_dispatch'}
+    assert trigger['workflow_dispatch']['inputs']['limit']['options'] == ['1','2','3']
     steps=workflow['jobs']['validate']['steps']
     with_secrets=[s for s in steps if 'env' in s]
     assert len(with_secrets)==1
-    assert set(with_secrets[0]['env'])=={'EBAY_CLIENT_ID','EBAY_CLIENT_SECRET'}
-    assert 'validate_live.py --group 3 --limit 3 --psa-grade 9' in with_secrets[0]['run']
+    secret_env = {key for key,value in with_secrets[0]['env'].items() if 'secrets.' in value}
+    assert secret_env == {'EBAY_CLIENT_ID','EBAY_CLIENT_SECRET'}
+    assert '--group "$SCAN_GROUP" --limit "$SCAN_LIMIT" --psa-grade "$SCAN_GRADE"' in with_secrets[0]['run']
+    assert '${{' not in with_secrets[0]['run']  # inputs travel as quoted env, never shell code
 
 
 @pytest.mark.parametrize('grade', [8, 9, 10])

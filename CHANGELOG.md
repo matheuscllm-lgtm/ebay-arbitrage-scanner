@@ -1,3 +1,19 @@
+## 2026-09-05 — revisão de execução, política 2026-09-05.4
+
+- Corrigida identidade de coleções com códigos de catálogo e grafias com apóstrofos/LV.X.
+- Mantidas as separações por número, subconjunto, variante, idioma e nota.
+- Separado estado de execução do estado de evidência; parâmetros operacionais no JSON.
+- Validação manual parametrizada por grupo/nota/amostra, sem rotina recorrente.
+- CSV de execução parcial preserva o último completo; aviso abre o relatório.
+- 646 testes locais; validação real com sucesso: 188 anúncios, 83 referências
+  suficientes e nenhuma aprovação artificial (lucro não positivo).
+- Outra amostra moderna: 29 anúncios, 24 referências suficientes. Auditoria
+  independente dos 107 cálculos reais: zero divergências. Grupo antigo mantém
+  resultado parcial por dados insuficientes, sem erro de fonte.
+- Nomes oficiais com Collection não são lotes; lotes pequenos (x2, set of 2,
+  2 cards) e quantidades maiores continuam excluídos de anúncios e comparáveis.
+- Diagnóstico e evidências em `docs/RUNTIME_REVIEW.md`.
+
 ## 2026-09-05 — autonomia delegada, política 2026-09-05.3
 
 - Dispersão máxima 30%; BGS 9,5 sem acumular os dois acréscimos de 5%.

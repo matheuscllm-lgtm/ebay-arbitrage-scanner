@@ -161,7 +161,11 @@ def main(argv=None):
     if opportunities:
         print("## Candidatos avaliados — APROVAR / REJEITAR / REVISAR\n")
         print(report.to_markdown(opportunities))
-        path = report.to_csv(opportunities, args.csv)
+        csv_path = args.csv
+        if aborted:
+            base, ext = os.path.splitext(csv_path)
+            csv_path = f"{base}.aborted{ext or '.csv'}"
+        path = report.to_csv(opportunities, csv_path)
         print(f"\nRegistro local: {path} ({len(opportunities)} linhas)")
     print("Funil: " + " · ".join(report.funnel_lines(stats)))
 

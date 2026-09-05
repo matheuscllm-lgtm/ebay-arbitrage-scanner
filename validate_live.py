@@ -12,6 +12,7 @@ import yaml
 from main import _load_config
 from src import report, scanner
 from src.ebay_api import EbayClient
+from src.slab_strategy import discovery_query
 
 
 def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=True, psa_grade=10):
@@ -28,9 +29,11 @@ def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=
     summary = {'commit': os.environ.get('GITHUB_SHA'), 'group': group,
                'max_cards': limit, 'max_pages_per_card': 1,
                'credentials_present': EbayClient().configured,
-               'status': 'blocked', 'reason': '', 'funnel': {}, 'verdicts': {}}
+               'status': 'blocked', 'execution_status': 'blocked',
+               'evidence_status': 'not_evaluated', 'reason': '', 'funnel': {}, 'verdicts': {}}
     summary['validation_scope'] = f'PSA {psa_grade} com idioma explícito' if focus_psa10 else 'consulta geral'
     summary['max_item_details_per_card'] = config.get('max_item_details_per_card', 10)
+    summary['max_ebay_calls'] = config.get('max_ebay_calls', 500)
     payload = None
     code = 1
     if not summary['credentials_present']:
@@ -48,7 +51,7 @@ def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=
                 # Catalog year narrows discovery (e.g. Base Set vs Celebrations
                 # reprints). It never replaces identity/variant checks on sales.
                 year_term = f' {card.year}' if card.year else ''
-                entry['ebay_query'] = f'{card.default_query()}{year_term} {language_term} PSA {psa_grade}'
+                entry['ebay_query'] = f'{discovery_query(card)}{year_term} {language_term} PSA {psa_grade}'
             entries.append(entry)
         summary['queries'] = [entry.get('ebay_query', '') for entry in entries]
         diagnostics = []
@@ -69,15 +72,18 @@ def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=
         source_failed = any(stats[k] for k in ('pc_error','pc_breaker','ebay_error','card_error','item_details_error'))
         usable_psa = sum(o.strategy.get('psa_evidence', {}).get('n_used', 0) >= config['slab_strategy']['evidence']['min_sales'] for o in opps)
         summary['rows_with_psa_sales'] = usable_psa
+        summary['rows_with_any_psa_sales'] = sum(bool(o.strategy.get('psa_sales')) for o in opps)
+        summary['execution_status'] = 'failed' if aborted or pricing_only or source_failed else 'completed'
+        summary['evidence_status'] = 'sufficient_sample' if usable_psa else 'insufficient_sample'
         summary['candidate_review_reasons'] = dict(Counter(reason for o in opps for reason in o.strategy.get('review_reasons', [])))
         summary['candidate_rejection_reasons'] = dict(Counter(reason for o in opps for reason in o.strategy.get('rejection_reasons', [])))
         summary['policy_version'] = config['slab_strategy']['version']
         if stats['ebay_budget_exhausted']:
             summary['reason'] = 'ebay_request_budget_exhausted'
-        elif aborted or pricing_only:
-            summary['reason'] = 'authentication_or_api_failure'
         elif source_failed:
             summary['reason'] = 'source_or_processing_failure'
+        elif aborted or pricing_only:
+            summary['reason'] = 'authentication_or_api_failure'
         elif not stats['seen']:
             summary['reason'] = 'no_live_listings_returned'
         elif not usable_psa:

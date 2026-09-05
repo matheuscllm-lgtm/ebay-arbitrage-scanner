@@ -1,5 +1,16 @@
 # Registro de validação — EBAY PSA
 
+## Estado atual — política 2026-09-05.4
+
+A comparação de coleções com códigos administrativos e a normalização de grafia
+foram corrigidas. [Execução real 33949437501](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/runs/33949437501):
+**success**, 188 anúncios, 33 chamadas, 83 candidatos com amostra PSA suficiente,
+105 REVISAR e 83 REJEITAR; nenhum APROVAR devido aos custos e preços observados.
+A validação completa do fluxo foi obtida sem reduzir as exigências. 646 testes
+locais passaram. Detalhes em [RUNTIME_REVIEW.md](RUNTIME_REVIEW.md).
+
+Os registros abaixo permanecem como histórico; não representam o resultado mais recente.
+
 ## Estado atual — política 2026-09-05.3
 
 As definições pendentes nos registros históricos abaixo foram resolvidas sob
