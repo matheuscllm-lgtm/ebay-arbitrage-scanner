@@ -68,6 +68,13 @@ scan completo dos 12 grupos. O relatório registra os motivos de exclusão de ve
 Código 0 exige anúncios reais e ao menos 3 vendas PSA aceitas; 2 indica evidência
 parcial; 1 indica bloqueio/falha. Sucesso técnico não equivale a aprovação de compra.
 
+No GitHub Actions, `Validate eBay credentials and sample` permite escolher grupo,
+nota PSA e até três cartas em Run workflow. É execução manual, sem agendamento.
+O JSON distingue `execution_status` e `evidence_status`; ausência de comparáveis
+não é rotulada como erro de credencial. A correção dos nomes de coleção foi
+validada com 188 anúncios reais e 83 linhas com amostra PSA suficiente;
+ver [revisão de execução](docs/RUNTIME_REVIEW.md).
+
 A watchlist é gerada por `build_watchlist.py`: não editar manualmente. A presença
 de idiomas na configuração não significa que todas as coleções regionais tenham
 catálogo validado. Anúncios sem idioma no título ou atributos explícitos ficam em REVISAR.

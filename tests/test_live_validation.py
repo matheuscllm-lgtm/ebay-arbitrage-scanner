@@ -46,6 +46,9 @@ def test_live_result_never_claims_success_without_both_sources(monkeypatch,tmp_p
     assert live.validate(out_dir=tmp_path)==code
     summary=json.loads((tmp_path/'validation.json').read_text())
     assert summary['status']==status
+    if status == 'partial':
+        assert summary['execution_status'] == 'completed'
+        assert summary['evidence_status'] == 'insufficient_sample'
     assert (tmp_path/'scan.json').exists()
     assert (tmp_path/'report.md').exists()
 

@@ -1,4 +1,4 @@
-# Estratégia EBAY PSA — versão 2026-09-05.3
+# Estratégia EBAY PSA — versão 2026-09-05.4
 
 O código, a configuração e os testes demonstram a implementação. As decisões do
 operador nesta revisão substituem os filtros antigos. Base revisada: `86b8324`.
@@ -72,6 +72,11 @@ cartas ex/V/GX etc. não casam com nomes sem esses sufixos. Base Set 2 não é B
 Variantes devem ter os mesmos modificadores em anúncio e venda. Lotes, réplicas,
 acessórios e certificação apenas potencial não podem aprovar.
 
+Códigos administrativos de catálogo (SV10:, SWSH09: etc.) não são parte do nome
+da coleção. São removidos para descoberta e comparação, sem remover nomes de
+subconjuntos. Apóstrofos e LV.X/LVX são normalizados; número e sufixo da carta
+continuam obrigatórios. Evidência de execução em [RUNTIME_REVIEW.md](RUNTIME_REVIEW.md).
+
 Idioma deve ser explícito no título ou no atributo Language retornado pelo eBay;
 não assumir inglês por ausência de informação ou pela
 localização do vendedor. EN, JP, KO, PT, DE, FR, IT, ES, ZH-HANS (simplificado) e
@@ -112,6 +117,7 @@ Falhas de fonte ou processamento tornam a execução parcial, inclusive quando o
 cartas puderam ser processadas. JSON é gravado de modo atômico e rejeita NaN/Infinity.
 Busca parcial não sobrescreve o último resultado completo. Ausência de credenciais
 não executa consulta nem sobrescreve o último resultado. `--include-raw` é rejeitado.
+CSV parcial também usa arquivo `.aborted.csv`; o aviso de busca parcial abre o relatório.
 
 A validação pontual usa uma carta, uma página e query PSA 10 com idioma e ano do catálogo,
 para exercitar ambos os coletores. Não representa o universo inteiro do scanner.

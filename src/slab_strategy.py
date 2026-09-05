@@ -403,7 +403,11 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         details['costs']['comc_storage_usd'] = amount(fixed[1])
     sell, cashout = [money(costs.get(key)) for key in ('selling_fee_percent', 'cashout_fee_percent')]
     if any(v is None for v in fixed) or sell is None or cashout is None:
-        review.append('custos-COMC-indefinidos')
+        if (fixed[0] is not None and fixed[1] is None and sell is not None and cashout is not None
+                and costs.get('storage_horizon_days') is not None and (not resale or resale['price'] is None)):
+            review.append('armazenamento-sem-base-de-revenda')
+        else:
+            review.append('custos-COMC-indefinidos')
     if sell is not None and sell >= 100 or cashout is not None and cashout >= 100:
         review.append('taxas-percentuais-invalidas')
         sell = cashout = None

@@ -29,4 +29,23 @@ com cobertura baixa; essa limitação deve permanecer visível.
 
 Os testes cobrem casos positivos e negativos, Base Set vs Base Set 2/Sword &
 Shield, subconjuntos, número divergente, Mew vs Mewtwo e sufixos ex/LV.X.
-Resultados reais remotos serão registrados após execução do commit revisado.
+## Validação real da correção
+
+[Execução 33949437501](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/runs/33949437501),
+commit aaac3e1: grupo 1, três cartas PSA 10, uma página por carta. Resultado
+**success**, execução completa e amostra suficiente; **188 anúncios, 33 chamadas,
+83 linhas com pelo menos três vendas PSA aceitas**, 105 REVISAR e 83 REJEITAR.
+Zero APROVAR: nos 83 candidatos com referência, o lucro após custos era não positivo.
+Este é o primeiro teste real desta revisão que completou coleta, identificação,
+referência, custos, cálculo e decisão com evidência suficiente.
+
+## Proteção e apresentação de resultados
+
+- Corrigido o CSV da CLI: execuções abortadas agora gravam `.aborted.csv`, assim
+  como o JSON, preservando os últimos resultados completos.
+- Aviso de execução parcial aparece antes da tabela; vendas PSA compartilhadas
+  entre comparação e revenda são detalhadas uma única vez no relatório.
+- Sem preço de revenda, a impossibilidade de estimar armazenamento é distinguida
+  de tarifa COMC ainda não configurada. Dados e cálculos continuam pendentes.
+- 632 testes locais passaram, incluindo preservação de arquivos e limites de
+  identidade. Os limites econômicos permanecem os confirmados anteriormente.

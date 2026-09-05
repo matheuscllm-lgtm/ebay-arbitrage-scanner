@@ -14,6 +14,8 @@ def render(payload):
              'APROVAR é aprovação na análise; nenhuma compra é executada.', '',
              '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem líquida % | ROI líquido % | Decisão |',
              '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|']
+    if payload.get('meta', {}).get('aborted'):
+        lines[2:2] = ['**EXECUÇÃO ABORTADA: resultado parcial; não representa busca completa.**', '']
     for r in rows:
         s=r['strategy']
         label=escape_md(f'{r["card"]} #{r["number"]} / {r["set"]} / {s.get("listing_language") or "idioma não confirmado"} / {r["grade"]}')
@@ -48,6 +50,9 @@ def render(payload):
         if s['costs'].get('storage_forecast'):
             lines.append('Projeção de armazenamento e segurança: '+escape_md(json.dumps(s['costs']['storage_forecast'], ensure_ascii=False))+'.')
         for kind in ('psa','resale'):
+            if kind == 'resale' and s['psa_sales'] and s['resale_sales'] == s['psa_sales']:
+                lines += ['', 'Estimativa de revenda: usa a mesma amostra PSA detalhada acima.']
+                continue
             evidence=s.get(kind+'_evidence',{})
             label='Referência PSA' if kind=='psa' else 'Estimativa de revenda'
             lines += ['', f'{label}: {evidence.get("n_sales",0)} vendas; {evidence.get("n_used",0)} usadas na mediana; janela {evidence.get("window_days","—")} dias; dispersão {num(evidence.get("dispersion_percent"))}%.', '']
