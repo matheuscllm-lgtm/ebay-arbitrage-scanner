@@ -72,7 +72,7 @@ COLUMN_DEVIATION_MAX = 0.30
 MIN_COMPARABLE_SALES = pc_sales.MIN_COMPARABLE_SALES
 
 # Contado pelo scanner DEPOIS da anotacao de referencia (veredito final).
-VERDICT_STAT = {"OPORTUNIDADE": "rows_opportunity", "REVISAR": "rows_review",
+VERDICT_STAT = {"APROVAR": "rows_opportunity", "REJEITAR": "rows_rejected", "OPORTUNIDADE": "rows_opportunity", "REVISAR": "rows_review",
                 "SUSPEITO": "rows_suspect", "REJEITADO": "rows_rejected"}
 
 
@@ -184,6 +184,9 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
     (`refs.slab(grade, variants)` / `refs.lp(variants)`), `refs.available`
     False quando a fonte PriceCharting falhou para a carta.
     """
+    if config and "slab_strategy" in config:
+        from .slab_strategy import evaluate as evaluate_slab
+        return evaluate_slab(card, listing, fair, config, refs=refs, stats=stats)
     cfg = dict(DEFAULT_CONFIG, **(config or {}))
     min_discount = float(cfg.get("min_discount_percent") or 0.0)
     suspicious = float(cfg["suspicious_margin_percent"])
@@ -424,3 +427,4 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
         listing_type=(f"Raw {condition}" if grade == "RAW" else grade_label),
         pc_url=pc_url, reasons=reasons,
     )
+

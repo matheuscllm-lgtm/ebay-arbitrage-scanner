@@ -1,40 +1,57 @@
-# Configuracao do scanner (padrao COMC, operador 2026-09-03).
-# Convencao deste repo: percentuais INTEIROS (20 = 20%).
-# Metricas AJUSTAVEIS por run, sem editar este arquivo:
-#   --min-discount N   sobrescreve min_discount_percent (diagnostico: 10)
-#   --min-price X      sobrescreve min_price_usd        (diagnostico: 5)
-#   --max-pages N      sobrescreve max_pages
-
-# GATE do scan: Desconto% = (referencia - preco eBay) / referencia.
-# 20 = candidato comercial. O antigo `min_gross_margin_percent` (ROI bruto =
-# (ref - preco)/preco) deixou de ser o gate; ROI bruto segue como coluna.
-min_discount_percent: 20
-min_price_usd: 10.0            # piso de preco (~R$50): abaixo disso, ignora
-suspicious_margin_percent: 60  # ROI bruto acima disto vira SUSPEITO (bom demais = conferir)
-
-# Decisao do operador 2026-09-03: SO preco fixo (lance atual de leilao nao e preco).
+# EBAY PSA — configuração canônica. Percentuais inteiros: 20 = 20%.
+# Null significa pendência e bloqueia APROVAR; nunca significa custo zero.
+min_discount_percent: 20          # filtro anterior preservado, independente do lucro
+min_price_usd: 10.0
+suspicious_margin_percent: 60      # ROI bruto elevado exige REVISAR
 fixed_price_only: true
-
-# Escopo (decisao 2026-06-10): SO graded por default. Raw entra por run
-# (--include-raw): NM = TCGplayer market; LP = mediana de >=3 vendas LP explicitas
-# (nunca LP vs NM). lp_with_reference: false desliga o caminho LP.
-graded_only: true
-lp_with_reference: true
-
-# Notas aceitas (chaves do src/grading.py). Descomente para restringir; default =
-# PSA 8/9/10, CGC 9/9.5/10 Gem/10 Pristine, BGS 9/9.5/10/10 Black, SGC 9/9.5/10,
-# TAG 9.5/10. A referencia de cada nota e SEMPRE a mediana de vendas da mesma
-# certificadora+nota+variante -- nota vizinha/coluna generica nunca.
-# graded_allow: ["PSA 10", "PSA 9", "CGC 10 GEM", "CGC 10 PRISTINE", "BGS 10", "BGS 10 BLACK", "TAG 10"]
-
-# Browse API: 1 busca generica por carta, paginas de 200 (cota gratis 5.000/dia).
+graded_only: true                 # obrigatório; --include-raw é rejeitado
 max_pages: 3
-
-# Modo confiavel (--confiavel). Decisao 2026-06-10: 50/98 em vez de 100/99
-# (abre funil p/ vendedor medio honesto; golpista tem 0-9 avals, nao 96-98%).
 trusted_min_feedback: 50
 trusted_min_feedback_pct: 98.0
-
-# Entrega na COMC -- Algona, WA 98001-7409, EUA (mailbox de armazenamento).
-# Logo: SO vendedor com item localizado nos EUA (filtro na API + cinto no scorer).
 required_location_country: US
+# CGC fica visível como REVISAR enquanto sua regra estiver indefinida.
+graded_allow: ["PSA 8", "PSA 9", "PSA 10", "BGS 9", "BGS 9.5", "BGS 10", "BGS 10 BLACK", "TAG 9.5", "TAG 10", "CGC 9", "CGC 9.5", "CGC 10 GEM", "CGC 10 PRISTINE"]
+
+slab_strategy:
+  version: '2026-09-05.1'
+  languages: [EN, JP, ZH, KO, PT, DE, FR, IT, ES]
+  graders:
+    PSA:
+      grades:
+        '8': {psa_grade: 8, factor: 1}
+        '9': {psa_grade: 9, factor: 1}
+        '10': {psa_grade: 10, factor: 1}
+    BGS:
+      max_premium_percent: 5
+      combine_9_5_premium: null
+      grades:
+        '9': {psa_grade: 9, factor: 1}
+        '9.5': {psa_grade: 9, factor: 1.05}
+        '10': {psa_grade: 10, factor: 1}
+    TAG:
+      grades:
+        '9.5': {psa_grade: 9, factor: 1.05}
+        '10': {psa_grade: 10, factor: 1}
+    CGC: null
+  evidence:
+    min_sales: 3                    # regra anterior preservada
+    windows_days: [180, 365]        # 365d sinaliza dificuldade de revenda
+    median_sample_limit: 10         # regra anterior preservada
+    max_dispersion_percent: null    # precisa de definição; dispersão é reportada
+  costs:
+    per_slab_usd: 10
+    covers: [shipping, taxes]       # reserva agregada; frete observado não é somado
+    coverage_confirmed: false      # confirmar quais trechos/taxas cabem na reserva
+    comc_processing_usd: null
+    comc_storage_usd: null
+    selling_fee_percent: null
+    cashout_fee_percent: null
+    fee_basis: null                 # suportado: sale_then_cashout
+  economics:
+    min_profit_usd: null
+    min_net_margin_percent: null
+    min_net_roi_percent: null
+  logistics:
+    prefer_vault: true
+    resale_route: COMC
+    direct_vault_listing: false

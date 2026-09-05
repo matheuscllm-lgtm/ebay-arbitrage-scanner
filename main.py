@@ -56,7 +56,8 @@ def _load_config(path):
     # O gate efetivo vai SEMPRE explicito no config (e no artefato JSON), nunca
     # implicito no default do scorer -- a entrega mostra o valor real usado.
     config.setdefault("min_discount_percent", scanner.scorer.DEFAULT_CONFIG["min_discount_percent"])
-    return config
+    from src.slab_strategy import policy_config
+    return policy_config(config)
 
 
 def main(argv=None):
@@ -73,9 +74,7 @@ def main(argv=None):
                          "avaliacoes, >=98%%) e ROI abaixo do teto de suspeita; "
                          "tabela 100%% acionavel")
     ap.add_argument("--include-raw", action="store_true",
-                    help="inclui cartas soltas NESTE run: NM = TCGplayer market "
-                         "(tcgcsv); LP = mediana de >=3 vendas LP (PriceCharting), "
-                         "nunca LP vs NM. Nao altera o default graded-only do config")
+                    help="opcao legada: rejeitada; o projeto aceita apenas cartas certificadas")
     ap.add_argument("--grades", default="",
                     help='restringe o funil DESTE run a notas especificas, separadas '
                          'por virgula (ex.: --grades "PSA 10, CGC 10 Pristine, BGS 10 '
@@ -108,9 +107,7 @@ def main(argv=None):
     if args.confiavel:
         config["trusted_mode"] = True
     if args.include_raw:
-        # Habilita raw SO neste run (o default `graded_only: true` do config e
-        # decisao de escopo do operador e continua intacto).
-        config["graded_only"] = False
+        ap.error("EBAY PSA aceita apenas cartas certificadas; --include-raw foi removido da estrategia")
     if args.min_discount is not None:
         config["min_discount_percent"] = int(args.min_discount)
     if args.min_price is not None:
@@ -144,7 +141,7 @@ def main(argv=None):
             print(report.fair_value_markdown(card, fair))
             print()
     if opportunities:
-        print("## Linhas acima do desconto minimo (ordem do ranking)\n")
+        print("## Candidatos avaliados — APROVAR / REJEITAR / REVISAR\n")
         print(report.to_markdown(opportunities))
         path = report.to_csv(opportunities, args.csv)
         print(f"\nRegistro local: {path} ({len(opportunities)} linhas)")
@@ -154,7 +151,7 @@ def main(argv=None):
         # Scan degradou (EBAY_CLIENT_ID/SECRET ausentes): gravar um artefato
         # com 0 rows aqui sobrescreveria o ultimo scan REAL no path default e
         # a entrega sairia "verde mas vazia". Nao gravar e avisar alto.
-        print("AVISO: o scan degradou para pricing-only (chaves eBay ausentes) "
+        print("AVISO: busca real indisponivel (chaves eBay ausentes; pricing-only nao executado) "
               f"-- artefato JSON NAO gravado ({args.out} preservado). "
               "Configure EBAY_CLIENT_ID/SECRET e rode de novo.")
     if not effective_pricing_only:
@@ -173,13 +170,15 @@ def main(argv=None):
         out_path = report.write_json(payload, out)
         print(f"Artefato JSON: {out_path} ({len(payload['rows'])} rows) -- "
               f"entrega: python ebay_summary.py {out_path} -o results/ebay-<data>.md")
-    if aborted:
+    if aborted and not effective_pricing_only:
         print("RUN ABORTADO antes do fim -- as cartas restantes NAO foram varridas "
               f"(artefato parcial gravado a parte, marcado aborted=true; {args.out} "
               "preservado).")
+    if aborted:
         return EXIT_ABORTED
     return 0
 
 
 if __name__ == "__main__":
     sys.exit(main())
+

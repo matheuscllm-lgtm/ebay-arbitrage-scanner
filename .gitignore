@@ -20,3 +20,7 @@ METODO.md
 
 # fixtures reais de teste (JSON da Browse API) precisam entrar no repo
 !tests/fixtures/*.json
+
+# Public generator inputs required in a fresh clone (not scan results).
+!src/catalog/set_catalog.json
+!src/catalog/iconic_pokemon.csv

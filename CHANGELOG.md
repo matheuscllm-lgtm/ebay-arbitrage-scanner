@@ -1,3 +1,18 @@
+# EBAY PSA — 2026-09-05 (proposto em PR)
+
+- Nova política versionada de slabs: PSA como referência, BGS +5%, nota 9,5
+  como PSA 9 +5%, TAG 10 equivalente na comparação e CGC indefinido em REVISAR.
+- Referência PSA separada de revenda da certificadora, custos Decimal,
+  investimento/lucro/margem/ROI e US$10 sem cobrança duplicada de frete.
+- Identidade das vendas e idiomas explícitos; datas, links, amostra e dispersão
+  no JSON e relatório. Sem referência permanece visível como REVISAR.
+- Três decisões APROVAR/REJEITAR/REVISAR. CLI raw rejeitada; ausência de
+  credenciais encerra com código 1 sem sobrescrever resultados.
+- Configuração e instruções antigas reconciliadas com o projeto EBAY PSA.
+- Dependência do catálogo do PR #28 incorporada (`07f11a8`); não há merge.
+- 541 testes locais passaram (46 novos de estratégia + regressão de catálogo).
+  Busca real bloqueada por credenciais ausentes; ver docs/VALIDATION_EBAY_PSA.md.
+
 # Changelog
 
 Todas as mudanças relevantes deste repo. Formato inspirado em
@@ -268,3 +283,4 @@ Histórico reconstruído a partir da documentação; a fonte de verdade era o
   grade, eBay Browse API (scraping direto do eBay dá 403), scorer com
   vereditos OPORTUNIDADE/REVISAR/SUSPEITO/REJEITADO, filtro só EUA (entrega na
   COMC), sanitização de segredo (BOM/zero-width).
+

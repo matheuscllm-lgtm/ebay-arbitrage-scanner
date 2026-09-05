@@ -116,6 +116,12 @@ def _f(row, key):
 def sort_key(row):
     """Chave para sorted(): menor = melhor (negativos nas metricas).
     JSON antigo (sem `roi_pct`) usa `margin_pct`, que e a mesma grandeza."""
+    if row.get("strategy"):
+        s = row["strategy"]
+        return ({"APROVAR": 0, "REVISAR": 1, "REJEITAR": 2}.get(row.get("verdict"), 1),
+                0 if row.get("grade", "").startswith("PSA ") else 1,
+                -(s.get("net_roi_percent") or 0),
+                0 if s.get("vault_confirmed") is True else 1)
     roi = _f(row, "roi_pct") if row.get("roi_pct") is not None else _f(row, "margin_pct")
     try:
         rank = int(row.get("pokemon_rank") or UNRANKED)
@@ -340,6 +346,10 @@ def render_rejected_table(rows):
 
 
 def to_markdown(opportunities):
+    if any(o.strategy for o in opportunities):
+        from .slab_report import render
+        return render({"rows": sort_rows([opportunity_row(o) for o in opportunities])})
+
     """Modo console: TODAS as linhas na tabela canonica, ordem do ranking."""
     if not opportunities:
         return "_Nenhum anuncio passou do desconto minimo neste scan._"
@@ -355,6 +365,17 @@ def sort_rows_opps(opportunities):
 
 
 def to_csv(opportunities, path):
+    if any(o.strategy for o in opportunities):
+        import json
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        rows = [opportunity_row(o) for o in opportunities]
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+            writer.writeheader()
+            for row in rows:
+                writer.writerow({k: json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v for k,v in row.items()})
+        return path
+
     """Registro local em CSV (nao e a entrega; entrega = tabela no chat)."""
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     fields = [
@@ -396,6 +417,7 @@ def opportunity_row(o):
     protections = [b for b, on in (("AG", lst.authenticity_guarantee),
                                    ("TR", lst.top_rated)) if on]
     return {
+        **({"strategy": o.strategy} if o.strategy else {}),
         "card": c.name,
         "set": c.set_name,
         "number": c.number,
@@ -456,6 +478,7 @@ def scan_payload(opportunities, watchlist_count, config, include_raw=False,
         "trusted_mode": bool(config.get("trusted_mode", False)),
         "aborted": bool(aborted),
         "config": {
+            "slab_strategy": config.get("slab_strategy"),
             "min_discount_percent": config.get("min_discount_percent"),
             "min_gross_margin_percent": config.get("min_gross_margin_percent"),
             "min_price_usd": config.get("min_price_usd", 10.0),
@@ -509,3 +532,4 @@ def fair_value_markdown(card, fair):
             f"| {sales if sales is not None else '-'} | {tier} |"
         )
     return "\n".join(lines)
+

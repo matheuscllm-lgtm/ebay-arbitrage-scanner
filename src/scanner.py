@@ -80,7 +80,7 @@ def load_watchlist(path="watchlist.yaml"):
             name=entry["name"],
             set_name=entry["set"],
             number=str(entry.get("number", "")),
-            language=entry.get("language", "EN"),
+            language=entry.get("language", ""),
             pc_url=entry["pc_url"],
             ebay_query=entry.get("ebay_query", ""),
             exclude_keywords=entry.get("exclude_keywords", []) or [],
@@ -279,7 +279,7 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
     if refs is None or fair is None:
         fair, refs = load_card_page(card, config, stats=stats, breaker=breaker, log=log)
 
-    tcg_ref = tcg_reference.get_tcg_reference(card)
+    tcg_ref = None if "slab_strategy" in config else tcg_reference.get_tcg_reference(card)
     if tcg_ref is None and not config.get("graded_only", True):
         log(f"  (sem referencia TCGplayer p/ {card.name} -- raw NM usara "
             "PriceCharting rotulado)")
@@ -325,7 +325,8 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
         opp = scorer.evaluate(card, listing, fair, config, tcg_ref=tcg_ref,
                               refs=refs, stats=stats)
         if opp is not None:
-            _annotate_ref_alignment(opp, asks)
+            if not opp.strategy:
+                _annotate_ref_alignment(opp, asks)
             # Veredito FINAL (apos rebaixamento por referencia desalinhada) e o
             # que conta no funil -- review Codex 2026-09-03.
             stats[scorer.VERDICT_STAT.get(opp.verdict, "rows_review")] += 1
@@ -347,7 +348,8 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
     `aborted` True quando o run parou antes do fim (autenticacao eBay,
     `EBAY_MAX_CONSECUTIVE_ERRORS` erros seguidos da API) -- o caller NAO pode
     tratar o resultado como scan completo."""
-    config = config or {}
+    from .slab_strategy import policy_config
+    config = policy_config(config)
     cards = filter_group(load_watchlist(watchlist_path), group)
     stats = Counter()
     stats["cards"] = len(cards)
@@ -363,9 +365,9 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
     if not pricing_only:
         ebay = EbayClient()
         if not ebay.configured:
-            log("EBAY_CLIENT_ID/SECRET ausentes -> rodando em modo pricing-only.")
-            log("(Setup gratis em ~5 min: veja README.md, secao 'Chaves do eBay'.)")
-            pricing_only = True
+            log("EBAY_CLIENT_ID/SECRET ausentes: busca real indisponivel; nenhuma carta consultada.")
+            stats["aborted"] = 1
+            return {}, [], True, stats, True
 
     breaker = PcBreaker()
     fair_values = {}
@@ -404,3 +406,4 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
             log(f"  ERRO em {card.name} #{card.number}: {type(e).__name__}: {e} "
                 "-- carta pulada (contada no funil)")
     return fair_values, all_opportunities, pricing_only, stats, aborted
+

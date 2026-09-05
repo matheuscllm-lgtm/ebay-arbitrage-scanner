@@ -246,6 +246,9 @@ def build_markdown(payload, sensitivity=None):
     """JSON do scan -> markdown de entrega (todas as linhas, todos os buckets)."""
     meta = payload.get("meta") or {}
     rows = payload.get("rows") or []
+    if meta.get("config", {}).get("slab_strategy") or any(r.get("strategy") for r in rows):
+        from src.slab_report import render
+        return render(payload)
     by_verdict = split_verdicts(rows)
     lines = _header(meta, rows, by_verdict, sensitivity)
     if sensitivity:
@@ -284,3 +287,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     main()
+

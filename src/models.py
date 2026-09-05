@@ -84,6 +84,7 @@ class Listing:
     # - Top Rated: selo do eBay p/ vendedor com historico + devolucao 30d.
     authenticity_guarantee: bool = False
     top_rated: bool = False
+    vault_confirmed: bool | None = None  # only verified metadata, never inferred from title
     country: str = ""         # pais onde o item esta (itemLocation.country)
 
 
@@ -133,3 +134,6 @@ class Opportunity:
     listing_type: str = ""     # "Raw NM" | "Raw LP" | grade_label
     pc_url: str = ""           # página da carta no PriceCharting (link [referência])
     reasons: list = field(default_factory=list)  # tags curtas do Status (vendas<3(n=1)…)
+
+
+    strategy: dict = field(default_factory=dict)  # versioned EBAY PSA calculation/evidence
