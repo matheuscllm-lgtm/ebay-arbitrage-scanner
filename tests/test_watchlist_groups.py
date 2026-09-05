@@ -93,7 +93,7 @@ def test_run_scan_pricing_only_respects_group(tmp_path, monkeypatch):
 
     def fake_fetch(url, cache_dir=None):
         asked.append(url)
-        return ""
+        return '<table id="price_data"></table>'
 
     monkeypatch.setattr(scanner.pc_sales, "fetch_page", fake_fetch)
     fair_values, opps, effective_pricing_only, stats, aborted = scanner.run_scan(
@@ -126,7 +126,7 @@ def test_degraded_scan_never_overwrites_artifact(tmp_path, monkeypatch, capsys):
     monkeypatch.delenv("EBAY_CLIENT_SECRET", raising=False)
     _no_pc(monkeypatch)
     monkeypatch.setattr(sys, "argv", ["main.py", "--watchlist", path, "--out", str(out)])
-    assert main_mod.main() == 0
+    assert main_mod.main() == 1
     console = capsys.readouterr().out
     assert "NAO gravado" in console
     assert '"real": true' in out.read_text(encoding="utf-8")
@@ -143,4 +143,3 @@ def test_filter_group_accepts_numeric_spec(tmp_path):
     assert [c.name for c in scanner.filter_group(cards, "all")] == ["Charizard", "Umbreon VMAX", "Pikachu"]
     with pytest.raises(ValueError, match="grupos presentes: 3, 4"):
         scanner.filter_group(cards, "1,2")  # spec valida, mas sem cartas = erro, nao scan vazio
-

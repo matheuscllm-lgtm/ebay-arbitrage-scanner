@@ -23,6 +23,7 @@ Fixture real (offline) do payload de busca:
 """
 import base64
 import json
+import math
 import os
 import time
 import urllib.error
@@ -62,6 +63,10 @@ class EbayApiError(RuntimeError):
 
     O chamador decide: o scanner registra o erro da carta e segue adiante.
     """
+
+
+class EbayBudgetExceeded(EbayApiError):
+    """Configured per-run Browse request budget exhausted; stop without retry."""
 
 
 def _clean_secret(value):
@@ -104,29 +109,34 @@ def parse_search_payload(payload):
     listings = []
     for item in (payload or {}).get("itemSummaries", []) or []:
         price_obj = item.get("price", {}) or {}
-        price = float(price_obj.get("value", 0) or 0)
-        shipping = 0.0
+        def numeric(value):
+            try:
+                n = float(value)
+                return n if math.isfinite(n) and n >= 0 else None
+            except (ValueError, TypeError, OverflowError):
+                return None
+        price = numeric(price_obj.get("value"))
+        shipping = None
         for opt in item.get("shippingOptions", []) or []:
             cost = opt.get("shippingCost", {}) or {}
             if cost.get("value") is not None:
-                shipping = float(cost["value"])
+                shipping = numeric(cost["value"]) if cost.get('currency') == 'USD' else None
                 break
         seller = item.get("seller", {}) or {}
         buying = item.get("buyingOptions", []) or []
         programs = item.get("qualifiedPrograms", []) or []
         country = (item.get("itemLocation", {}) or {}).get("country", "")
-        ag = ("AUTHENTICITY_GUARANTEE" in programs
-              or (country == "US" and price >= AG_MIN_PRICE_USD))
+        ag = "AUTHENTICITY_GUARANTEE" in programs
         listings.append(Listing(
             item_id=item.get("itemId", "") or "",
             title=item.get("title", "") or "",
             price=price,
             shipping=shipping,
-            currency=price_obj.get("currency", "USD") or "USD",
-            buying_option="FIXED_PRICE" if "FIXED_PRICE" in buying else "AUCTION",
+            currency=price_obj.get("currency", "") or "",
+            buying_option="FIXED_PRICE" if "FIXED_PRICE" in buying else "AUCTION" if 'AUCTION' in buying else "",
             condition=item.get("condition", "") or "",
-            seller_feedback_pct=float(seller.get("feedbackPercentage", 0) or 0),
-            seller_feedback_score=int(seller.get("feedbackScore", 0) or 0),
+            seller_feedback_pct=numeric(seller.get("feedbackPercentage")) or 0,
+            seller_feedback_score=int(numeric(seller.get("feedbackScore")) or 0),
             url=item.get("itemWebUrl", "") or "",
             image_url=(item.get("image", {}) or {}).get("imageUrl", "") or "",
             authenticity_guarantee=ag,
@@ -147,6 +157,7 @@ class EbayClient:
         # (token nao conta). Tentativa repetida por 429/5xx tambem conta --
         # ela gastou cota do mesmo jeito.
         self.calls = 0
+        self.max_calls = 500
         self.dedup_dropped = 0  # itens repetidos entre paginas (vao pro funil)
         # `total` reportado pela API na ultima busca (None antes da 1a).
         self.last_total = None
@@ -195,6 +206,8 @@ class EbayClient:
 
     def _request_search_json(self, url):
         """Uma pagina de busca, com retry em 429/5xx/rede. Conta em `calls`."""
+        if self.calls >= self.max_calls:
+            raise EbayBudgetExceeded(f'Limite de {self.max_calls} chamadas eBay atingido')
         req = urllib.request.Request(
             url,
             headers={
@@ -204,6 +217,8 @@ class EbayClient:
         )
         last_error = None
         for attempt in range(SEARCH_ATTEMPTS):
+            if self.calls >= self.max_calls:
+                raise EbayBudgetExceeded(f'Limite de {self.max_calls} chamadas eBay atingido')
             if attempt:
                 time.sleep(RETRY_BACKOFF_SECONDS * attempt)   # 2s, 4s
             self.calls += 1
@@ -229,8 +244,17 @@ class EbayClient:
             f"eBay Browse API falhou {SEARCH_ATTEMPTS}x em {url}: "
             f"{last_error}") from last_error
 
+    def get_item(self, item_id):
+        """Read-only item details, counted in the same API call budget."""
+        url = 'https://api.ebay.com/buy/browse/v1/item/' + urllib.parse.quote(item_id, safe='')
+        payload = self._request_search_json(url)
+        if payload.get('itemId') != item_id:
+            raise EbayApiError('getItem returned a different or missing itemId')
+        return payload, url
+
     def search(self, query, min_price=10.0, max_price=None, limit=MAX_LIMIT,
-               fixed_price_only=True, location_country="US", max_pages=3):
+               fixed_price_only=True, location_country="US", max_pages=3,
+               graded_only=False):
         """Busca anuncios ativos. Retorna lista de models.Listing.
 
         - fixed_price_only: DEFAULT True (decisao do operador 2026-09-03: so
@@ -261,6 +285,8 @@ class EbayClient:
             filters.append(f"itemLocationCountry:{location_country}")
         if fixed_price_only:
             filters.append("buyingOptions:{FIXED_PRICE}")
+        if graded_only:
+            filters.append("conditionIds:{2750}")
 
         listings = []
         seen_ids = set()

@@ -1,0 +1,377 @@
+{
+  "_meta": {
+    "source_repository": "matheuscllm-lgtm/scanner-comc",
+    "source_path": "comc_scanner/comc_set_slugs.json",
+    "source_commit": "dd952bad4020c72943e0d00c2b5f5e0a46a586f9",
+    "description": "Canonical set names and years only. Empty years retain the generator's publishedOn fallback."
+  },
+  "Base Set": {
+    "year": "1999"
+  },
+  "Jungle": {
+    "year": "1999"
+  },
+  "Fossil": {
+    "year": "1999"
+  },
+  "Base Set 2": {
+    "year": "2000"
+  },
+  "Team Rocket": {
+    "year": "2000"
+  },
+  "Gym Heroes": {
+    "year": "2000"
+  },
+  "Gym Challenge": {
+    "year": "2000"
+  },
+  "Neo Genesis": {
+    "year": "2000"
+  },
+  "Neo Discovery": {
+    "year": "2001"
+  },
+  "Neo Revelation": {
+    "year": "2001"
+  },
+  "Neo Destiny": {
+    "year": "2002"
+  },
+  "Legendary Collection": {
+    "year": "2002"
+  },
+  "Expedition": {
+    "year": "2002"
+  },
+  "Aquapolis": {
+    "year": "2003"
+  },
+  "Skyridge": {
+    "year": "2003"
+  },
+  "SV: Scarlet & Violet 151": {
+    "year": ""
+  },
+  "SV02: Paldea Evolved": {
+    "year": ""
+  },
+  "SV03: Obsidian Flames": {
+    "year": ""
+  },
+  "SV04: Paradox Rift": {
+    "year": ""
+  },
+  "SV: Paldean Fates": {
+    "year": ""
+  },
+  "SV05: Temporal Forces": {
+    "year": ""
+  },
+  "SV06: Twilight Masquerade": {
+    "year": ""
+  },
+  "SV: Shrouded Fable": {
+    "year": ""
+  },
+  "SV07: Stellar Crown": {
+    "year": ""
+  },
+  "SV08: Surging Sparks": {
+    "year": ""
+  },
+  "SV: Prismatic Evolutions": {
+    "year": ""
+  },
+  "SV09: Journey Together": {
+    "year": ""
+  },
+  "SV10: Destined Rivals": {
+    "year": ""
+  },
+  "EX Team Magma vs Team Aqua": {
+    "year": "2004"
+  },
+  "EX Hidden Legends": {
+    "year": "2004"
+  },
+  "EX FireRed & LeafGreen": {
+    "year": "2004"
+  },
+  "EX Team Rocket Returns": {
+    "year": "2004"
+  },
+  "EX Deoxys": {
+    "year": "2005"
+  },
+  "EX Emerald": {
+    "year": "2005"
+  },
+  "EX Unseen Forces": {
+    "year": "2005"
+  },
+  "EX Delta Species": {
+    "year": "2005"
+  },
+  "EX Legend Maker": {
+    "year": "2006"
+  },
+  "EX Holon Phantoms": {
+    "year": "2006"
+  },
+  "EX Crystal Guardians": {
+    "year": "2006"
+  },
+  "EX Dragon Frontiers": {
+    "year": "2006"
+  },
+  "EX Power Keepers": {
+    "year": "2007"
+  },
+  "Diamond and Pearl": {
+    "year": "2007"
+  },
+  "Mysterious Treasures": {
+    "year": "2007"
+  },
+  "Secret Wonders": {
+    "year": "2007"
+  },
+  "Great Encounters": {
+    "year": "2008"
+  },
+  "Majestic Dawn": {
+    "year": "2008"
+  },
+  "Legends Awakened": {
+    "year": "2008"
+  },
+  "Stormfront": {
+    "year": "2008"
+  },
+  "Platinum": {
+    "year": "2009"
+  },
+  "Rising Rivals": {
+    "year": "2009"
+  },
+  "Supreme Victors": {
+    "year": "2009"
+  },
+  "Arceus": {
+    "year": "2009"
+  },
+  "HeartGold SoulSilver": {
+    "year": "2010"
+  },
+  "Unleashed": {
+    "year": "2010"
+  },
+  "Undaunted": {
+    "year": "2010"
+  },
+  "Triumphant": {
+    "year": "2010"
+  },
+  "Call of Legends": {
+    "year": "2011"
+  },
+  "Black and White": {
+    "year": "2011"
+  },
+  "Emerging Powers": {
+    "year": "2011"
+  },
+  "Noble Victories": {
+    "year": "2011"
+  },
+  "Next Destinies": {
+    "year": "2012"
+  },
+  "Dark Explorers": {
+    "year": "2012"
+  },
+  "Dragons Exalted": {
+    "year": "2012"
+  },
+  "Boundaries Crossed": {
+    "year": "2012"
+  },
+  "Plasma Storm": {
+    "year": "2012"
+  },
+  "Plasma Freeze": {
+    "year": "2013"
+  },
+  "Plasma Blast": {
+    "year": "2013"
+  },
+  "Legendary Treasures": {
+    "year": "2013"
+  },
+  "XY Base Set": {
+    "year": "2014"
+  },
+  "XY - Flashfire": {
+    "year": "2014"
+  },
+  "XY - Furious Fists": {
+    "year": "2014"
+  },
+  "XY - Phantom Forces": {
+    "year": "2014"
+  },
+  "XY - Primal Clash": {
+    "year": "2015"
+  },
+  "XY - Roaring Skies": {
+    "year": "2015"
+  },
+  "XY - Ancient Origins": {
+    "year": "2015"
+  },
+  "XY - BREAKthrough": {
+    "year": "2015"
+  },
+  "XY - BREAKpoint": {
+    "year": "2016"
+  },
+  "Generations": {
+    "year": "2016"
+  },
+  "XY - Fates Collide": {
+    "year": "2016"
+  },
+  "Shining Legends": {
+    "year": "2017"
+  },
+  "Dragon Majesty": {
+    "year": "2018"
+  },
+  "Detective Pikachu": {
+    "year": "2019"
+  },
+  "Hidden Fates": {
+    "year": "2019"
+  },
+  "SWSH01: Sword & Shield Base Set": {
+    "year": "2020"
+  },
+  "Shining Fates": {
+    "year": "2021"
+  },
+  "Celebrations": {
+    "year": "2021"
+  },
+  "SM - Guardians Rising": {
+    "year": "2017"
+  },
+  "SM - Burning Shadows": {
+    "year": "2017"
+  },
+  "SM - Crimson Invasion": {
+    "year": "2017"
+  },
+  "SM - Celestial Storm": {
+    "year": "2018"
+  },
+  "SM - Lost Thunder": {
+    "year": "2018"
+  },
+  "SM - Team Up": {
+    "year": "2019"
+  },
+  "SM - Unbroken Bonds": {
+    "year": "2019"
+  },
+  "SM - Unified Minds": {
+    "year": "2019"
+  },
+  "SWSH02: Rebel Clash": {
+    "year": "2020"
+  },
+  "SWSH03: Darkness Ablaze": {
+    "year": "2020"
+  },
+  "SWSH04: Vivid Voltage": {
+    "year": "2020"
+  },
+  "SWSH05: Battle Styles": {
+    "year": "2021"
+  },
+  "SWSH06: Chilling Reign": {
+    "year": "2021"
+  },
+  "SWSH07: Evolving Skies": {
+    "year": "2021"
+  },
+  "SWSH08: Fusion Strike": {
+    "year": "2021"
+  },
+  "SWSH09: Brilliant Stars": {
+    "year": "2022"
+  },
+  "SWSH10: Astral Radiance": {
+    "year": "2022"
+  },
+  "SWSH11: Lost Origin": {
+    "year": "2022"
+  },
+  "SWSH12: Silver Tempest": {
+    "year": "2022"
+  },
+  "SWSH: Crown Zenith": {
+    "year": "2023"
+  },
+  "XY - Steam Siege": {
+    "year": "2016"
+  },
+  "XY - Evolutions": {
+    "year": "2016"
+  },
+  "SM Base Set": {
+    "year": "2017"
+  },
+  "SM - Ultra Prism": {
+    "year": "2018"
+  },
+  "SM - Forbidden Light": {
+    "year": "2018"
+  },
+  "SM - Cosmic Eclipse": {
+    "year": "2019"
+  },
+  "Pokemon GO": {
+    "year": "2022"
+  },
+  "Legendary Treasures: Radiant Collection": {
+    "year": "2013"
+  },
+  "Generations: Radiant Collection": {
+    "year": "2016"
+  },
+  "Hidden Fates: Shiny Vault": {
+    "year": "2019"
+  },
+  "Shining Fates: Shiny Vault": {
+    "year": "2021"
+  },
+  "Celebrations: Classic Collection": {
+    "year": "2021"
+  },
+  "SWSH09: Brilliant Stars Trainer Gallery": {
+    "year": "2022"
+  },
+  "SWSH10: Astral Radiance Trainer Gallery": {
+    "year": "2022"
+  },
+  "SWSH11: Lost Origin Trainer Gallery": {
+    "year": "2022"
+  },
+  "SWSH12: Silver Tempest Trainer Gallery": {
+    "year": "2022"
+  },
+  "SWSH: Crown Zenith: Galarian Gallery": {
+    "year": "2023"
+  }
+}

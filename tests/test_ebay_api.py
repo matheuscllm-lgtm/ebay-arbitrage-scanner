@@ -149,22 +149,19 @@ def test_parse_fixture_all_us_fixed_price_graded():
     assert len({l.item_id for l in listings}) == 25
 
 
-def test_parse_fixture_ag_policy_by_price():
-    # Politica eBay: carta >= $250 nos EUA entra no Authenticity Guarantee.
+def test_parse_fixture_ag_requires_explicit_metadata():
     listings = parse_search_payload(load_fixture())
     for l in listings:
-        assert l.authenticity_guarantee is (l.price >= 250.0)
-    assert sum(l.authenticity_guarantee for l in listings) == 20
+        assert l.authenticity_guarantee is False
 
 
-def test_parse_shipping_missing_cost_is_zero():
-    # Frete CALCULATED vem sem shippingCost na busca -> 0.0 (desconhecido).
+def test_parse_shipping_missing_cost_stays_unknown():
     listings = parse_search_payload(load_fixture())
     no_cost = [i for i in load_fixture()["itemSummaries"]
                if not (i["shippingOptions"][0].get("shippingCost") or {}).get("value")]
     assert len(no_cost) == 6
     by_id = {l.item_id: l for l in listings}
-    assert all(by_id[i["itemId"]].shipping == 0.0 for i in no_cost)
+    assert all(by_id[i["itemId"]].shipping is None for i in no_cost)
 
 
 def test_parse_ag_from_qualified_programs_or_policy():
@@ -177,7 +174,7 @@ def test_parse_ag_from_qualified_programs_or_policy():
     ], total=4)
     ag = {l.item_id: l.authenticity_guarantee
           for l in parse_search_payload(payload)}
-    assert ag == {"us-cheap": False, "us-expensive": True,
+    assert ag == {"us-cheap": False, "us-expensive": False,
                   "gb-expensive": False, "us-flagged": True}
 
 

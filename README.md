@@ -1,103 +1,82 @@
-# Price Comparison Tool
+# EBAY PSA — scanner de cartas certificadas
 
-A small personal Python utility. It reads a local list of items, looks up a
-reference price for each from public sources, fetches current active
-fixed-price listings via an official marketplace API, and produces a ranked
-table with three plain metrics per row:
+Busca cartas certificadas no eBay e compara com vendas concluídas PSA da mesma
+carta, variante, idioma e nota. Mostra compra, custos, investimento, revenda, lucro,
+desconto, margem e ROI. Classifica APROVAR / REJEITAR / REVISAR sem executar compra.
 
-- **Discount %** = (reference − listing price) / reference — the filter ("gate")
-  that decides whether a row is shown (default 20; override per run);
-- **Gross ROI %** = (reference − listing price) / listing price — shown as a column;
-- **Spread $** = reference − listing price — raw difference, no fees included.
+## Estratégia vigente
 
-Reference prices are never invented: graded items use the median of completed
-sales of the same item/grade; ungraded items use a public market price with a
-labeled fallback. When a source fails, the row is counted in a "funnel"
-summary instead of silently disappearing.
+- Regra econômica: **lucro estimado acima de US$40 OU desconto superior a 30%**
+  sobre a referência PSA ajustada. Lucro deve ser positivo e os custos conhecidos.
+- BGS até PSA +5%; CGC até 40% da PSA; TAG 10 equivale a PSA 10 na comparação.
+  Os limites por certificadora são sobre o preço do item e continuam obrigatórios.
+- Nota 9,5 usa PSA 9 ×1,05. BGS 9,5 não acumula outro adicional. PSA 9,5 não existe.
+- US$10 estimados para envios/impostos até COMC, incluindo saída do vault; uma vez.
+- COMC: Elite US$2,50, venda 5%, saque informado 10%, armazenamento/segurança por
+  120 dias (extremo superior do prazo informado de 90–120 dias).
+- Revenda de outra certificadora exige vendas próprias.
+- Idiomas e variantes separados, incluindo chinês simplificado/tradicional.
+- Preço fixo, item nos EUA, somente certificado. Vault preferencial quando confirmado.
+- Falta de evidência não aprova. Categorias especiais sem regra ficam em REVISAR.
 
-Single-user project. No paid services. The target list ships with the repo
-(it is generated from a public catalog, see below); the notes on the comparison
-method are kept locally and are not part of this published repository.
+As regras detalhadas estão em [docs/EBAY_PSA.md](docs/EBAY_PSA.md), as tarifas
+consultadas em [docs/COMC_COSTS.md](docs/COMC_COSTS.md), os parâmetros em
+[config.yaml](config.yaml), e as mudanças em [CHANGELOG.md](CHANGELOG.md).
 
-## Setup
+## Executar
 
-```bash
-python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements.txt   # Windows
-# source .venv/bin/activate && pip install -r requirements.txt   # Linux/macOS
-```
-
-Some features call an external marketplace API and need credentials provided as
-environment variables (`EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`). Without them the
-tool still runs in reference-price-only mode. Never commit credentials — see
-[SECURITY.md](SECURITY.md).
-
-The target list (`watchlist.yaml`) is **generated** by `build_watchlist.py`
-and committed, so a fresh clone runs as-is. It is built from the catalog under
-`src/catalog/`: 123 sets split into 12 fixed groups (`src/groups.py`), crossed
-with the 100 most sought-after subjects (`iconic_pokemon.csv`), keeping only
-rarity Holo Rare or higher and at most `--cap 30` items per set (ranked by
-market price). Each item keeps an exact reference-page URL resolved by
-name + number + set; an item with no reference page is left out and listed in
-the script's report — a URL is never guessed. Regenerate only when the catalog
-changes (the generated file says so in its header; do not edit it by hand):
+Python 3.12:
 
 ```bash
-python build_watchlist.py                        # all groups -> watchlist.yaml
-python build_watchlist.py --groups 3-4 --cap 30  # a subset of groups
-python build_watchlist.py --no-pc                # catalog only, no reference URLs (scan will not run on it)
-```
-
-`watchlist.example.yaml` remains as a template for a hand-made alternative
-list (`python main.py --watchlist <file>`).
-
-## Usage
-
-```bash
-python main.py --pricing-only                    # reference prices only (no credentials needed)
-python main.py --list-groups                     # list the groups with their titles (no credentials needed)
-python main.py --group 3                         # scan one group (default: discount >= 20%)
-python main.py --group 3 --min-discount 10 --min-price 5 --include-raw --out results/last_scan_g3.json
-                                                 # diagnostic run: lower gate, lower floor, ungraded included
-python main.py --grades "PSA 10, CGC 10 Pristine"   # restrict this run to specific grades
-python main.py --max-pages 2                     # fewer API pages per item (200 listings each)
-```
-
-A full run writes a JSON artifact with every evaluated row plus the funnel
-counters (default `results/last_scan.json`, kept out of the repo). If the run
-has to stop early (authentication failure or repeated API errors) the artifact
-is marked `aborted: true` and the process exits with code 1. The report table
-is then generated from that artifact by the summary tool:
-
-```bash
-python ebay_summary.py results/last_scan.json -o results/report-<date>.md
-python ebay_summary.py results/last_scan.json -o results/report-<date>.md --sensitivity 10,15,20
-```
-
-It prints the markdown report (all rows, grouped by verdict, each row with the
-listing link and the price-reference link, plus the funnel and a reference
-coverage line) and saves it to `-o`. With `--sensitivity`, the highest
-threshold is the operational one; the lower bands are printed as diagnostics
-only, with a per-threshold count table.
-
-`--group` takes a group spec — `N`, `N-M`, `1,3,10-12` or `all` (the 12
-numbered groups; an unknown number is an error, never an empty scan) — or a
-free-text group name from a hand-made list. Scanning one group per run keeps
-the daily marketplace API quota in check (5,000 calls/day; roughly 1–3 calls
-per item).
-
-Run `python main.py --help` and `python ebay_summary.py --help` for all options.
-
-## Tests
-
-```bash
+python -m pip install -r requirements.txt
+python main.py --check-config
+python main.py --list-groups
+python main.py --group 3 --max-pages 1 --out results/last_scan.json
+python ebay_summary.py results/last_scan.json -o results/report.md
 python -m pytest -q
 ```
 
-The suite (494 tests) is offline — no network, no credentials; real payloads
-and pages are stored under `tests/fixtures/` — and runs in CI on every push and
-pull request.
+`--check-config` não acessa a rede: código 0 sem pendências, 2 com pendências;
+configuração malformada falha. Null não significa custo zero; no armazenamento,
+aciona a projeção parametrizada. Dispersão máxima: 30%; BGS 9,5 sem acumulação.
+As escolhas conservadoras foram feitas sob [autonomia delegada](docs/AUTONOMOUS_REVIEW.md).
+`--min-discount N` altera o braço de desconto da regra OR daquela execução;
+`--min-price`, `--grades`, `--group` e `--max-pages` restringem a busca.
+`--include-raw` é rejeitado. `--pricing-only` mostra colunas informativas,
+sem validar oportunidades. Não usar o modo de colunas como evidência de venda.
 
-## Changelog
+`max_ebay_calls: 500` limita cada execução, incluindo busca, detalhes e novas
+tentativas. Esgotar o limite interrompe a execução, preserva resultados anteriores
+e grava um JSON parcial. Não equivale à cota diária da conta.
 
-See [CHANGELOG.md](CHANGELOG.md).
+Credenciais: `EBAY_CLIENT_ID` e `EBAY_CLIENT_SECRET` no ambiente; nunca versionar.
+No GitHub, a validação utiliza os secrets já cadastrados. Falta de credencial ou
+falha de fonte retorna código diferente de zero e preserva o último scan completo.
+Ver [SECURITY.md](SECURITY.md).
+
+## Validação real e limites de cobertura
+
+```bash
+python validate_live.py --group 3 --limit 1
+python validate_live.py --group 3 --limit 1 --general-query
+python validate_live.py --group 3 --limit 3 --psa-grade 9
+```
+
+A primeira consulta foca PSA 10 com idioma e ano do catálogo para testar anúncio e vendas.
+A segunda usa a query geral do scanner. São buscas pequenas de validação, não um
+scan completo dos 12 grupos. O relatório registra os motivos de exclusão de vendas.
+Código 0 exige anúncios reais e ao menos 3 vendas PSA aceitas; 2 indica evidência
+parcial; 1 indica bloqueio/falha. Sucesso técnico não equivale a aprovação de compra.
+
+A watchlist é gerada por `build_watchlist.py`: não editar manualmente. A presença
+de idiomas na configuração não significa que todas as coleções regionais tenham
+catálogo validado. Anúncios sem idioma no título ou atributos explícitos ficam em REVISAR.
+Os atuais comparáveis vêm das tabelas públicas do PriceCharting e exigem títulos
+explícitos. Não se busca outra língua para preencher lacunas.
+
+O JSON preserva configuração, cálculo, amostra, janela, links, datas e decisões.
+O Markdown mostra todos os candidatos. Relatórios históricos continuam legíveis;
+parâmetros antigos de sensibilidade não reclassificam o motor atual.
+
+Estado de testes e busca real: [docs/VALIDATION_EBAY_PSA.md](docs/VALIDATION_EBAY_PSA.md).
+Desenvolvimento em branch + PR. Não há compra, merge ou novo agendamento automático.

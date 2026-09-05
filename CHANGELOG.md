@@ -1,3 +1,52 @@
+## 2026-09-05 — autonomia delegada, política 2026-09-05.3
+
+- Dispersão máxima 30%; BGS 9,5 sem acumular os dois acréscimos de 5%.
+- Configuração completa, com escolhas do agente e autorização registradas.
+- Teto de 500 chamadas eBay por execução, inclusive detalhes e retentativas;
+  esgotamento interrompe com resultado parcial e preserva cartas já concluídas.
+- 620 testes locais passaram. Amostra ampliada PSA 9: 115 anúncios, 104 REVISAR,
+  11 REJEITAR e zero APROVAR. Duas vendas estritas sustentam o cálculo de nove
+  anúncios, mas não atendem ao mínimo de três. Validação de evidência parcial.
+
+## 2026-09-05 — revisão consolidada, política 2026-09-05.2
+
+- Regra econômica: lucro líquido estimado >US$40 OU desconto >30%, com lucro
+  positivo, custos completos e limites independentes por certificadora.
+- CGC até 40% da PSA; US$10 cobrem envio/impostos até COMC uma única vez.
+- Elite US$2,50, saque informado 10%, venda 5%, projeção de armazenamento e
+  segurança por 120 dias (prazo informado de 90–120 dias).
+- Comparações Decimal, identidade e idiomas mais estritos, diagnósticos de
+  exclusão, configuração validada e gravação atômica dos resultados.
+- Busca apenas Graded e consulta limitada de atributos getItem; a validação
+  usa idioma e ano do catálogo para reduzir reimpressões na amostra.
+- 612 testes locais e remotos passaram. Busca real final: 13 anúncios, 8 chamadas,
+  13 REVISAR e zero APROVAR; evidência PSA insuficiente, resultado parcial.
+- Dispersão máxima e combinação BGS 9,5 continuam pendentes. Sem novo agendamento.
+  Evidências completas em `docs/VALIDATION_EBAY_PSA.md`.
+
+## Histórico anterior — ligar validação aos secrets existentes
+
+- Workflow de validação pontual no GitHub usa EBAY_CLIENT_ID/SECRET apenas
+  na etapa de busca; nenhum valor é copiado para a conversa.
+- Limite de uma carta/uma página; relatório em artefato, sem agendamento.
+- Distingue sucesso técnico, falta de comparáveis e falhas de fonte/autenticação.
+- Sete regressões novas para isolamento dos secrets e estados da validação.
+
+# EBAY PSA — 2026-09-05 (proposto em PR)
+
+- Nova política versionada de slabs: PSA como referência, BGS +5%, nota 9,5
+  como PSA 9 +5%, TAG 10 equivalente na comparação e CGC indefinido em REVISAR.
+- Referência PSA separada de revenda da certificadora, custos Decimal,
+  investimento/lucro/margem/ROI e US$10 sem cobrança duplicada de frete.
+- Identidade das vendas e idiomas explícitos; datas, links, amostra e dispersão
+  no JSON e relatório. Sem referência permanece visível como REVISAR.
+- Três decisões APROVAR/REJEITAR/REVISAR. CLI raw rejeitada; ausência de
+  credenciais encerra com código 1 sem sobrescrever resultados.
+- Configuração e instruções antigas reconciliadas com o projeto EBAY PSA.
+- Dependência do catálogo do PR #28 incorporada (`07f11a8`); não há merge.
+- 541 testes locais passaram (46 novos de estratégia + regressão de catálogo).
+  Busca real bloqueada por credenciais ausentes; ver docs/VALIDATION_EBAY_PSA.md.
+
 # Changelog
 
 Todas as mudanças relevantes deste repo. Formato inspirado em
@@ -268,3 +317,24 @@ Histórico reconstruído a partir da documentação; a fonte de verdade era o
   grade, eBay Browse API (scraping direto do eBay dá 403), scorer com
   vereditos OPORTUNIDADE/REVISAR/SUSPEITO/REJEITADO, filtro só EUA (entrega na
   COMC), sanitização de segredo (BOM/zero-width).
+
+
+## Revisão de precisão — 2026-09-05 (esta branch)
+
+- Base revisada: `86b8324`. CGC até 40% confirmado; lucro >US$40 OU desconto >30%
+  substitui filtro global antigo. Margem e ROI permanecem informativos.
+- Cobertura dos US$10 confirmada até COMC, incluindo eventual saída do vault.
+  Elite US$2,50, venda 5%, saque 10% informado; armazenamento estimado para
+  120 dias, incluindo carência e segurança sem carência. Fontes versionadas.
+- Busca aplica Graded 2750; anúncios com IDs distintos não são descartados só
+  porque têm preço/título iguais. Garantia de autenticidade não é presumida.
+- Moeda/frete/preço desconhecidos continuam desconhecidos; erros não produzem
+  execução completa. JSON atômico impede sobrescrever resultado com NaN/Infinity.
+- Comparação distingue regiões chinesas, nomes/sufixos, denominadores, categorias
+  especiais e ofertas sem preço efetivo. Medianas não são arredondadas antes dos limites.
+- Relatórios exibem idioma observado, vault, projeção COMC e exclusões de vendas.
+- Validação local e remota documentada em docs/VALIDATION_EBAY_PSA.md.
+
+- Busca real de 3deee2b isolou títulos sem idioma como gargalo. getItem agora
+  fornece Language explícito com limite de 10 detalhes por carta. Conflitos
+  entre título e atributos continuam em REVISAR, com proveniência no relatório.

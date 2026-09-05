@@ -98,7 +98,7 @@ def test_scan_card_dedupe_ignores_empty_item_id(monkeypatch):
         L("Charizard 4/102 Base Set PSA 9", 2000.0, condition="Graded", item_id="1"),
         # id duplicado -> dropado
         L("Charizard 4/102 Base Set PSA 9 mint", 1990.0, condition="Graded", item_id="1"),
-        # fingerprint (titulo+preco) duplicado -> dropado
+        # Outro ID representa outra oferta, mesmo com título/preço iguais.
         L("Charizard 4/102 Base Set PSA 9", 2000.0, condition="Graded", item_id="2"),
         # sem item_id, conteudos DISTINTOS -> ambos devem sobreviver
         L("Charizard #4 Base Set PSA 9 slabbed", 2100.0, condition="Graded", item_id=""),
@@ -107,7 +107,7 @@ def test_scan_card_dedupe_ignores_empty_item_id(monkeypatch):
     stats = Counter()
     _, opps = scanner.scan_card(CARD_CHZ, _FakeEbay(batch), {"graded_only": True},
                                 log=lambda *a: None, stats=stats, refs=refs, fair=fair)
-    assert sorted(o.listing.price for o in opps) == [2000.0, 2050.0, 2100.0]
-    assert stats["dedup_dropped"] == 2
-    assert stats["seen"] == 3
+    assert sorted(o.listing.price for o in opps) == [2000.0, 2000.0, 2050.0, 2100.0]
+    assert stats["dedup_dropped"] == 1
+    assert stats["seen"] == 4
     assert stats["ebay_calls"] == 1

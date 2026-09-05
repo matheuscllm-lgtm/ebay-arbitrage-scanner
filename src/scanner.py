@@ -19,12 +19,13 @@ falha de autenticacao no eBay ou erros seguidos da API ABORTAM o run
 """
 import dataclasses
 import logging
+import re
 import statistics
 from collections import Counter
 
 from .models import FairValue, WatchCard
 from . import grading, groups, pc_sales, pricecharting, scorer, tcg_reference, title_parser
-from .ebay_api import EbayApiError, EbayAuthError, EbayClient
+from .ebay_api import EbayApiError, EbayAuthError, EbayBudgetExceeded, EbayClient
 
 log = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ def load_watchlist(path="watchlist.yaml"):
             name=entry["name"],
             set_name=entry["set"],
             number=str(entry.get("number", "")),
-            language=entry.get("language", "EN"),
+            language=entry.get("language", ""),
             pc_url=entry["pc_url"],
             ebay_query=entry.get("ebay_query", ""),
             exclude_keywords=entry.get("exclude_keywords", []) or [],
@@ -212,6 +213,13 @@ def load_card_page(card, config=None, stats=None, breaker=None, log=print):
             breaker.record_error()
         log(f"  AVISO: PriceCharting falhou para {card.name} #{card.number}: {exc}")
         return FairValue(source_url=card.pc_url), CardRefs(card, error=str(exc))
+    if not re.search(r'(?:completed-auctions-|id=[\"\']price_data[\"\'])', body):
+        if stats is not None:
+            stats['pc_error'] += 1
+        if breaker is not None:
+            breaker.record_error()
+        log('  AVISO: PriceCharting sem tabelas reconhecidas')
+        return FairValue(source_url=card.pc_url), CardRefs(card, error='layout-sem-tabelas')
     if breaker is not None:
         breaker.record_ok()
     fair = pricecharting.parse_product_page(body, source_url=card.pc_url)
@@ -279,7 +287,7 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
     if refs is None or fair is None:
         fair, refs = load_card_page(card, config, stats=stats, breaker=breaker, log=log)
 
-    tcg_ref = tcg_reference.get_tcg_reference(card)
+    tcg_ref = None if "slab_strategy" in config else tcg_reference.get_tcg_reference(card)
     if tcg_ref is None and not config.get("graded_only", True):
         log(f"  (sem referencia TCGplayer p/ {card.name} -- raw NM usara "
             "PriceCharting rotulado)")
@@ -299,13 +307,14 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
             # scorer repete a checagem como cinto de seguranca.
             fixed_price_only=bool(config.get("fixed_price_only", True)),
             location_country=str(config.get("required_location_country", "US") or ""),
+            **({'graded_only': True} if 'slab_strategy' in config else {}),
         )
         for listing in listings:
             fingerprint = (listing.title.strip().lower(), listing.price)
             # item_id vazio nao identifica nada: se entrasse no set, o 1o
             # anuncio sem id faria TODOS os seguintes sem id sumirem do scan.
             if (listing.item_id and listing.item_id in seen_ids) \
-                    or fingerprint in seen_ids:
+                    or (not listing.item_id and fingerprint in seen_ids):
                 stats["dedup_dropped"] += 1
                 continue
             if listing.item_id:
@@ -318,21 +327,60 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
         stats["dedup_dropped"] += max(0, int(getattr(ebay, "dedup_dropped", 0) or 0) - dups_before)
     stats["seen"] += len(unique_listings)
 
-    asks = _clean_ask_prices(card, unique_listings)
+    asks = {} if 'slab_strategy' in config else _clean_ask_prices(card, unique_listings)
 
     opportunities = []
+    details_used = 0
     for listing in unique_listings:
+        if 'slab_strategy' in config and callable(getattr(ebay, 'get_item', None)):
+            from .slab_strategy import identity_matches, language
+            parsed_grade = grading.grade_from_title(listing.title)
+            eligible = (listing.item_id and parsed_grade.status == 'graded'
+                        and identity_matches(card, listing.title) and language(listing.title) is None
+                        and not title_parser.risk_flags(listing.title))
+            if eligible and details_used < config.get('max_item_details_per_card', 10):
+                details_used += 1
+                before = ebay.calls
+                try:
+                    item, detail_url = ebay.get_item(listing.item_id)
+                    aspects = {}
+                    for aspect in item.get('localizedAspects', []):
+                        name = aspect.get('name')
+                        if name in ('Language', 'Set', 'Card Number', 'Professional Grader', 'Grade', 'Certification Number'):
+                            aspects.setdefault(name, []).append(aspect.get('value', ''))
+                    changes = {'item_aspects': aspects, 'details_url': detail_url}
+                    # Refresh only provided fields, preserving unknowns instead of guessing.
+                    if 'price' in item:
+                        from .ebay_api import parse_search_payload
+                        fresh = parse_search_payload({'itemSummaries': [item]})[0]
+                        changes.update(price=fresh.price, currency=fresh.currency)
+                    if 'title' in item:
+                        changes['title'] = item['title']
+                    if 'condition' in item:
+                        changes['condition'] = item['condition']
+                    if 'qualifiedPrograms' in item:
+                        changes['authenticity_guarantee'] = 'AUTHENTICITY_GUARANTEE' in item['qualifiedPrograms']
+                    listing = dataclasses.replace(listing, **changes)
+                    stats['item_details_fetched'] += 1
+                except (EbayAuthError, EbayBudgetExceeded):
+                    raise
+                except EbayApiError:
+                    listing = dataclasses.replace(listing, details_error='detalhes-do-anuncio-indisponiveis')
+                    stats['item_details_error'] += 1
+                finally:
+                    stats['ebay_calls'] += max(0, ebay.calls - before)
         opp = scorer.evaluate(card, listing, fair, config, tcg_ref=tcg_ref,
                               refs=refs, stats=stats)
         if opp is not None:
-            _annotate_ref_alignment(opp, asks)
+            if not opp.strategy:
+                _annotate_ref_alignment(opp, asks)
             # Veredito FINAL (apos rebaixamento por referencia desalinhada) e o
             # que conta no funil -- review Codex 2026-09-03.
             stats[scorer.VERDICT_STAT.get(opp.verdict, "rows_review")] += 1
             opportunities.append(opp)
 
     log(f"  {card.name} #{card.number}: {len(unique_listings)} anuncios vistos, "
-        f"{len(opportunities)} acima do desconto minimo"
+        f"{len(opportunities)} candidatos avaliados"
         + ("" if refs.available else " (PriceCharting indisponivel p/ esta carta)"))
     return fair, opportunities
 
@@ -347,7 +395,8 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
     `aborted` True quando o run parou antes do fim (autenticacao eBay,
     `EBAY_MAX_CONSECUTIVE_ERRORS` erros seguidos da API) -- o caller NAO pode
     tratar o resultado como scan completo."""
-    config = config or {}
+    from .slab_strategy import policy_config
+    config = policy_config(config)
     cards = filter_group(load_watchlist(watchlist_path), group)
     stats = Counter()
     stats["cards"] = len(cards)
@@ -362,10 +411,11 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
     ebay = None
     if not pricing_only:
         ebay = EbayClient()
+        ebay.max_calls = config.get('max_ebay_calls', 500)
         if not ebay.configured:
-            log("EBAY_CLIENT_ID/SECRET ausentes -> rodando em modo pricing-only.")
-            log("(Setup gratis em ~5 min: veja README.md, secao 'Chaves do eBay'.)")
-            pricing_only = True
+            log("EBAY_CLIENT_ID/SECRET ausentes: busca real indisponivel; nenhuma carta consultada.")
+            stats["aborted"] = 1
+            return {}, [], True, stats, True
 
     breaker = PcBreaker()
     fair_values = {}
@@ -384,6 +434,12 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
                 fair_values[(card.name, card.number)] = (card, fair)
                 all_opportunities.extend(opps)
                 ebay_errors_in_a_row = 0
+        except EbayBudgetExceeded as e:
+            log(f'{e} -- execução parcial; cartas restantes não consultadas')
+            stats['ebay_budget_exhausted'] = 1
+            stats['aborted'] = 1
+            aborted = True
+            break
         except EbayAuthError as e:
             log(f"ERRO de autenticacao eBay: {e} -- RUN ABORTADO")
             stats["aborted"] = 1
@@ -403,4 +459,7 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
             stats["card_error"] += 1
             log(f"  ERRO em {card.name} #{card.number}: {type(e).__name__}: {e} "
                 "-- carta pulada (contada no funil)")
+    if any(stats[k] for k in ('pc_error', 'pc_breaker', 'ebay_error', 'card_error', 'item_details_error')):
+        aborted = True
+        stats['aborted'] = 1
     return fair_values, all_opportunities, pricing_only, stats, aborted
