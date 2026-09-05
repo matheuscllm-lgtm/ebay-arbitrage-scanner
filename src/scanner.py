@@ -25,7 +25,7 @@ from collections import Counter
 
 from .models import FairValue, WatchCard
 from . import grading, groups, pc_sales, pricecharting, scorer, tcg_reference, title_parser
-from .ebay_api import EbayApiError, EbayAuthError, EbayClient
+from .ebay_api import EbayApiError, EbayAuthError, EbayBudgetExceeded, EbayClient
 
 log = logging.getLogger(__name__)
 
@@ -362,7 +362,7 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                         changes['authenticity_guarantee'] = 'AUTHENTICITY_GUARANTEE' in item['qualifiedPrograms']
                     listing = dataclasses.replace(listing, **changes)
                     stats['item_details_fetched'] += 1
-                except EbayAuthError:
+                except (EbayAuthError, EbayBudgetExceeded):
                     raise
                 except EbayApiError:
                     listing = dataclasses.replace(listing, details_error='detalhes-do-anuncio-indisponiveis')
@@ -411,6 +411,7 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
     ebay = None
     if not pricing_only:
         ebay = EbayClient()
+        ebay.max_calls = config.get('max_ebay_calls', 500)
         if not ebay.configured:
             log("EBAY_CLIENT_ID/SECRET ausentes: busca real indisponivel; nenhuma carta consultada.")
             stats["aborted"] = 1
@@ -433,6 +434,12 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
                 fair_values[(card.name, card.number)] = (card, fair)
                 all_opportunities.extend(opps)
                 ebay_errors_in_a_row = 0
+        except EbayBudgetExceeded as e:
+            log(f'{e} -- execução parcial; cartas restantes não consultadas')
+            stats['ebay_budget_exhausted'] = 1
+            stats['aborted'] = 1
+            aborted = True
+            break
         except EbayAuthError as e:
             log(f"ERRO de autenticacao eBay: {e} -- RUN ABORTADO")
             stats["aborted"] = 1

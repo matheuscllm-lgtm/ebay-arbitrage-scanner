@@ -6,6 +6,7 @@ suspicious_margin_percent: 60      # legado; não atua no modo profit_or_discoun
 fixed_price_only: true
 graded_only: true                 # obrigatório; --include-raw é rejeitado
 max_pages: 3
+max_ebay_calls: 500               # teto por execução, incluindo detalhes e retentativas; parada parcial
 max_item_details_per_card: 10      # consultas pontuais de idioma, incluídas na contagem da API
 trusted_min_feedback: 50
 trusted_min_feedback_pct: 98.0

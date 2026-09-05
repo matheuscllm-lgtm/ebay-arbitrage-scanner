@@ -1,3 +1,13 @@
+## 2026-09-05 — autonomia delegada, política 2026-09-05.3
+
+- Dispersão máxima 30%; BGS 9,5 sem acumular os dois acréscimos de 5%.
+- Configuração completa, com escolhas do agente e autorização registradas.
+- Teto de 500 chamadas eBay por execução, inclusive detalhes e retentativas;
+  esgotamento interrompe com resultado parcial e preserva cartas já concluídas.
+- 620 testes locais passaram. Amostra ampliada PSA 9: 115 anúncios, 104 REVISAR,
+  11 REJEITAR e zero APROVAR. Duas vendas estritas sustentam o cálculo de nove
+  anúncios, mas não atendem ao mínimo de três. Validação de evidência parcial.
+
 ## 2026-09-05 — revisão consolidada, política 2026-09-05.2
 
 - Regra econômica: lucro líquido estimado >US$40 OU desconto >30%, com lucro

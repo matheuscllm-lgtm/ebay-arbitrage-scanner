@@ -65,6 +65,10 @@ class EbayApiError(RuntimeError):
     """
 
 
+class EbayBudgetExceeded(EbayApiError):
+    """Configured per-run Browse request budget exhausted; stop without retry."""
+
+
 def _clean_secret(value):
     """Remove BOM/zero-width/espacos de uma credencial lida do ambiente.
 
@@ -153,6 +157,7 @@ class EbayClient:
         # (token nao conta). Tentativa repetida por 429/5xx tambem conta --
         # ela gastou cota do mesmo jeito.
         self.calls = 0
+        self.max_calls = 500
         self.dedup_dropped = 0  # itens repetidos entre paginas (vao pro funil)
         # `total` reportado pela API na ultima busca (None antes da 1a).
         self.last_total = None
@@ -201,6 +206,8 @@ class EbayClient:
 
     def _request_search_json(self, url):
         """Uma pagina de busca, com retry em 429/5xx/rede. Conta em `calls`."""
+        if self.calls >= self.max_calls:
+            raise EbayBudgetExceeded(f'Limite de {self.max_calls} chamadas eBay atingido')
         req = urllib.request.Request(
             url,
             headers={
@@ -210,6 +217,8 @@ class EbayClient:
         )
         last_error = None
         for attempt in range(SEARCH_ATTEMPTS):
+            if self.calls >= self.max_calls:
+                raise EbayBudgetExceeded(f'Limite de {self.max_calls} chamadas eBay atingido')
             if attempt:
                 time.sleep(RETRY_BACKOFF_SECONDS * attempt)   # 2s, 4s
             self.calls += 1

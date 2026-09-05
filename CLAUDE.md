@@ -18,7 +18,8 @@ está implementado; a documentação registra a intenção.
 - US$10 cobrem envios/impostos até COMC. Elite US$2,50; venda 5%; saque 10%
   informado pelo operador; horizonte 120 dias (faixa solicitada 90–120).
 - Armazenamento calculado com carência; segurança adicional sem carência.
-- Limite de dispersão e combinação BGS 9,5 indefinidos ficam em REVISAR.
+- Dispersão máxima 30%; BGS 9,5 sem acumulação (PSA 9 ×1,05). Decisões delegadas
+  pelo operador, registradas em docs/AUTONOMOUS_REVIEW.md. Null externo exige REVISAR.
 - Idiomas separados; não presumir inglês nem equivalência entre idiomas asiáticos.
 - Reserva US$10 por carta, contabilizada uma vez, com cobertura explícita.
 - Separar compra, custos, investimento, referência, revenda e lucro; distinguir
@@ -43,6 +44,7 @@ está implementado; a documentação registra a intenção.
 - Percentuais inteiros: 20 significa 20%; null é pendência, nunca zero.
 - Credenciais são `EBAY_CLIENT_ID` e `EBAY_CLIENT_SECRET`, somente no ambiente.
 - CI offline: `python -m pytest -q`. Busca real: `python main.py --group 3`.
+- Limite de 500 chamadas eBay por execução; esgotamento interrompe com resultado parcial.
 - Gerar relatório com `python ebay_summary.py results/last_scan.json -o results/report.md`.
 - Orientações antigas em comandos/skills históricos não podem reativar raw,
   retirar custos ou substituir as regras desta versão. Consulte o README atual.

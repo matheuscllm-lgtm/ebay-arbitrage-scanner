@@ -1,5 +1,19 @@
 # Registro de validação — EBAY PSA
 
+## Estado atual — política 2026-09-05.3
+
+As definições pendentes nos registros históricos abaixo foram resolvidas sob
+autonomia delegada: dispersão máxima 30%, BGS 9,5 sem acumulação. Configuração
+válida e sem pendências. Revisão local: 620 testes passaram, incluindo o limite
+de chamadas da API. Ver [AUTONOMOUS_REVIEW.md](AUTONOMOUS_REVIEW.md).
+
+Amostra ampliada em [33948543640](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/runs/33948543640):
+115 anúncios, 33 chamadas, 104 REVISAR e 11 REJEITAR. Nove candidatos chegaram ao
+cálculo com duas vendas PSA 9 estritas, ainda abaixo das três exigidas. Zero
+APROVAR; resultado parcial por evidência insuficiente, sem falha das fontes.
+
+## Histórico da revisão
+
 Data: 2026-09-05. Base auditada: `2ed6cc7`.
 
 ## Testes locais

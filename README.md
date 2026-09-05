@@ -10,7 +10,7 @@ desconto, margem e ROI. Classifica APROVAR / REJEITAR / REVISAR sem executar com
   sobre a referência PSA ajustada. Lucro deve ser positivo e os custos conhecidos.
 - BGS até PSA +5%; CGC até 40% da PSA; TAG 10 equivale a PSA 10 na comparação.
   Os limites por certificadora são sobre o preço do item e continuam obrigatórios.
-- Nota 9,5 usa PSA 9 ×1,05. PSA 9,5 não existe. Não acumular adicional BGS sem regra.
+- Nota 9,5 usa PSA 9 ×1,05. BGS 9,5 não acumula outro adicional. PSA 9,5 não existe.
 - US$10 estimados para envios/impostos até COMC, incluindo saída do vault; uma vez.
 - COMC: Elite US$2,50, venda 5%, saque informado 10%, armazenamento/segurança por
   120 dias (extremo superior do prazo informado de 90–120 dias).
@@ -38,11 +38,16 @@ python -m pytest -q
 
 `--check-config` não acessa a rede: código 0 sem pendências, 2 com pendências;
 configuração malformada falha. Null não significa custo zero; no armazenamento,
-aciona a projeção parametrizada. Dispersão máxima e combinação BGS 9,5 estão pendentes.
+aciona a projeção parametrizada. Dispersão máxima: 30%; BGS 9,5 sem acumulação.
+As escolhas conservadoras foram feitas sob [autonomia delegada](docs/AUTONOMOUS_REVIEW.md).
 `--min-discount N` altera o braço de desconto da regra OR daquela execução;
 `--min-price`, `--grades`, `--group` e `--max-pages` restringem a busca.
 `--include-raw` é rejeitado. `--pricing-only` mostra colunas informativas,
 sem validar oportunidades. Não usar o modo de colunas como evidência de venda.
+
+`max_ebay_calls: 500` limita cada execução, incluindo busca, detalhes e novas
+tentativas. Esgotar o limite interrompe a execução, preserva resultados anteriores
+e grava um JSON parcial. Não equivale à cota diária da conta.
 
 Credenciais: `EBAY_CLIENT_ID` e `EBAY_CLIENT_SECRET` no ambiente; nunca versionar.
 No GitHub, a validação utiliza os secrets já cadastrados. Falta de credencial ou
@@ -54,6 +59,7 @@ Ver [SECURITY.md](SECURITY.md).
 ```bash
 python validate_live.py --group 3 --limit 1
 python validate_live.py --group 3 --limit 1 --general-query
+python validate_live.py --group 3 --limit 3 --psa-grade 9
 ```
 
 A primeira consulta foca PSA 10 com idioma e ano do catálogo para testar anúncio e vendas.

@@ -72,7 +72,9 @@ def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=
         summary['candidate_review_reasons'] = dict(Counter(reason for o in opps for reason in o.strategy.get('review_reasons', [])))
         summary['candidate_rejection_reasons'] = dict(Counter(reason for o in opps for reason in o.strategy.get('rejection_reasons', [])))
         summary['policy_version'] = config['slab_strategy']['version']
-        if aborted or pricing_only:
+        if stats['ebay_budget_exhausted']:
+            summary['reason'] = 'ebay_request_budget_exhausted'
+        elif aborted or pricing_only:
             summary['reason'] = 'authentication_or_api_failure'
         elif source_failed:
             summary['reason'] = 'source_or_processing_failure'

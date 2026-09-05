@@ -1,4 +1,4 @@
-# Estratégia EBAY PSA — versão 2026-09-05.2
+# Estratégia EBAY PSA — versão 2026-09-05.3
 
 O código, a configuração e os testes demonstram a implementação. As decisões do
 operador nesta revisão substituem os filtros antigos. Base revisada: `86b8324`.
@@ -10,8 +10,8 @@ operador nesta revisão substituem os filtros antigos. Base revisada: `86b8324`.
 - Referência: vendas concluídas PSA da mesma carta, coleção, número, variante,
   idioma e nota. Preços pedidos e colunas de estimativas não substituem vendas.
 - PSA não possui 9,5. Outras notas 9,5 usam PSA 9 ×1,05, sem conversão a PSA 10.
-- BGS: preço do item até PSA ajustado +5%. A combinação BGS 9,5 permanece
-  pendente até decisão explícita; não acumular percentuais silenciosamente.
+- BGS: preço do item até PSA +5%. BGS 9,5 usa PSA 9 ×1,05 como referência e teto,
+  sem acumular outro adicional, conforme decisão sob autonomia delegada.
 - CGC: preço do item até 40% da referência PSA ajustada, confirmado pelo operador.
 - TAG 10: comparação 1:1 com PSA 10; TAG 9,5 usa a regra geral PSA 9 ×1,05.
 - Pristine e Black Label permanecem REVISAR sem regra específica. A identificação
@@ -122,9 +122,11 @@ Ordem: consolidar regras → implementar → testar → validar busca real → a
 Não há novo agendamento nem merge automático. O PR registra separadamente testes
 locais, CI e validação real em [VALIDATION_EBAY_PSA.md](VALIDATION_EBAY_PSA.md).
 
-## Definições ainda ausentes
+## Decisões sob autonomia delegada
 
-`max_dispersion_percent` segue null e impede APROVAR até definição do operador.
-A combinação dos percentuais BGS 9,5 também segue null; afeta essa nota, sem
-autorizar acumular os dois acréscimos. Casos sem referência de revenda continuam
-sem base para estimar segurança e lucro, mesmo com as tarifas já configuradas.
+Dispersão máxima de 30% e BGS 9,5 sem acumular acréscimos foram escolhidos pelo
+agente sob a autorização posterior do operador. Justificativa e resultados em
+[AUTONOMOUS_REVIEW.md](AUTONOMOUS_REVIEW.md). A configuração padrão está completa;
+dados ausentes de anúncios/vendas continuam exigindo REVISAR. O teto operacional
+é 500 chamadas eBay por execução, incluindo detalhes e retentativas. Ao esgotar,
+a execução fica parcial, sem substituir o último JSON completo.
