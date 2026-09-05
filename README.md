@@ -61,7 +61,7 @@ parcial; 1 indica bloqueio/falha. Sucesso técnico não equivale a aprovação d
 
 A watchlist é gerada por `build_watchlist.py`: não editar manualmente. A presença
 de idiomas na configuração não significa que todas as coleções regionais tenham
-catálogo validado. Títulos sem idioma ou identidade suficiente ficam em REVISAR.
+catálogo validado. Anúncios sem idioma no título ou atributos explícitos ficam em REVISAR.
 Os atuais comparáveis vêm das tabelas públicas do PriceCharting e exigem títulos
 explícitos. Não se busca outra língua para preencher lacunas.
 

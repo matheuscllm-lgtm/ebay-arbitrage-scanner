@@ -28,6 +28,7 @@ def render(payload):
                   'Motivos: '+escape_md('; '.join(r['reasons']) or 'regras e evidências atendidas')+'.',
                   'Variante: '+escape_md(', '.join(s['variant']) or 'sem modificadores identificados')+'.',
                   'Idioma do alvo: '+escape_md(r['language'])+'; idioma identificado no anúncio: '+escape_md(s.get('listing_language') or 'não confirmado')+'.',
+                  'Evidência do idioma: '+escape_md(s.get('language_source', 'titulo'))+'.',
                   'Anúncio: '+escape_md(r.get('title', ''))+'.',
                   f'[Oferta]({md_url(r["url"])}) · [Fonte das vendas]({md_url(r.get("pc_url", ""))})',
                   'Rota: COMC; compra no vault preferencial quando confirmada. Listagem direta no vault: não.',

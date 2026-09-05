@@ -308,3 +308,7 @@ Histórico reconstruído a partir da documentação; a fonte de verdade era o
   especiais e ofertas sem preço efetivo. Medianas não são arredondadas antes dos limites.
 - Relatórios exibem idioma observado, vault, projeção COMC e exclusões de vendas.
 - Validação local e remota documentada em docs/VALIDATION_EBAY_PSA.md.
+
+- Busca real de 3deee2b isolou títulos sem idioma como gargalo. getItem agora
+  fornece Language explícito com limite de 10 detalhes por carta. Conflitos
+  entre título e atributos continuam em REVISAR, com proveniência no relatório.

@@ -84,6 +84,8 @@ def validate_config(config):
     number(config.get('min_discount_percent', 20), 'min_discount_percent', low=-100, high=100)
     if type(config.get('max_pages', 3)) is not int or config.get('max_pages', 3) < 1:
         fail('max_pages')
+    if type(config.get('max_item_details_per_card', 10)) is not int or config.get('max_item_details_per_card', 10) < 0:
+        fail('max_item_details_per_card')
     return config
 
 

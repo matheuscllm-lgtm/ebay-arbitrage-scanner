@@ -86,6 +86,9 @@ class Listing:
     top_rated: bool = False
     vault_confirmed: bool | None = None  # only verified metadata, never inferred from title
     country: str = ""         # pais onde o item esta (itemLocation.country)
+    item_aspects: dict = field(default_factory=dict)  # selected seller attributes from getItem
+    details_url: str = ""
+    details_error: str = ""
 
 
 @dataclass

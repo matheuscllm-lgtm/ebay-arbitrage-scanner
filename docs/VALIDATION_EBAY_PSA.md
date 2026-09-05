@@ -102,3 +102,16 @@ anteriores, e não representam execução da versão revisada.
 Validação local: suíte completa, compilação e git diff --check serão conferidos
 antes do commit. A validação remota desta revisão será registrada após a execução;
 não presumir sucesso a partir dos registros de 38005d0.
+
+### Validação real de 3deee2b e correção derivada
+
+[Execução 33947693117](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/runs/33947693117):
+597 testes passaram; 1 chamada de busca, 50 anúncios, 39 REVISAR, 11 REJEITAR,
+zero APROVAR e zero linhas com referência PSA suficiente. 43 títulos não
+informavam idioma. Resultado parcial, código 2. A fonte pública de vendas
+funcionou; a identificação dos anúncios impediu chegar à comparação.
+
+Correção implementada: consultar o atributo Language de getItem para anúncios
+certificados com identidade compatível e idioma ausente. Até 10 consultas por
+carta, contadas na API; nenhuma inferência de inglês. Divergências entre título
+e atributos geram REVISAR. A nova validação será registrada após executada.

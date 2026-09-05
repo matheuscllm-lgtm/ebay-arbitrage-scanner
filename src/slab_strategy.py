@@ -65,6 +65,25 @@ def language(title):
     return next(iter(found)) if len(found) == 1 else None
 
 
+def listing_language(listing):
+    """Explicit title or explicit Language aspect; conflict is never resolved by guessing."""
+    title_lang = language(listing.title)
+    aspect_values = listing.item_aspects.get('Language', [])
+    codes = {language(str(value)) for value in aspect_values}
+    if aspect_values and (None in codes or len(codes) != 1):
+        return None, 'conflito-ou-aspecto-ambiguo'
+    aspect_lang = next(iter(codes)) if codes else None
+    if title_lang and aspect_lang and title_lang != aspect_lang:
+        return None, 'conflito-titulo-aspecto'
+    if aspect_lang:
+        # A title naming multiple languages or unqualified Chinese remains uncertain.
+        mentions = sum(bool(re.search(pattern, listing.title, re.I)) for pattern in _LANGS.values())
+        if mentions > 1 or (title_lang is None and re.search(r'\b(?:chinese|china|mandarin)\b', listing.title, re.I)):
+            return None, 'titulo-ambiguo'
+        return aspect_lang, 'ebay-getItem-localizedAspects.Language'
+    return title_lang, 'titulo-explicito' if title_lang else 'nao-confirmado'
+
+
 def normalized(text):
     return ' '.join(re.findall(r'[a-z0-9]+', unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode().lower()))
 
@@ -170,6 +189,7 @@ def reference_sales(card, refs, grade, variants, policy, today=None):
 def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     cfg = policy_config(config)
     p = cfg['slab_strategy']
+    observed_language, language_source = listing_language(listing)
     review, reject = [], []
     gr = grading.grade_from_title(listing.title, allow=frozenset(cfg['graded_allow']))
     grade = gr.grade
@@ -183,7 +203,10 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                'costs': {}, 'route': p['logistics']['resale_route'],
                'vault_preferred': p['logistics']['prefer_vault'],
                'vault_confirmed': listing.vault_confirmed,
-               'listing_language': language(listing.title),
+               'listing_language': observed_language,
+               'language_source': language_source,
+               'item_aspects': listing.item_aspects,
+               'details_url': listing.details_url,
                'variant': sorted(pc_sales.variant_tokens(listing.title))}
     opp.strategy = details
     opp.discount_pct = opp.gross_margin_pct = opp.spread_usd = None
@@ -207,8 +230,29 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         reject.append('pais-fora-do-escopo')
     if not listing.url or not listing.item_id:
         review.append('link-ou-identificador-ausente')
+    if listing.details_error:
+        review.append(listing.details_error)
     if not identity_matches(card, listing.title):
         review.append('carta-colecao-numero-a-confirmar')
+    for value in listing.item_aspects.get('Set', []):
+        if normalized(str(value)) != normalized(card.set_name):
+            review.append('colecao-do-aspecto-a-confirmar')
+    for value in listing.item_aspects.get('Card Number', []):
+        expected = [title_parser._norm_num_token(n) for n in str(card.number).split('/')]
+        observed = [title_parser._norm_num_token(n) for n in str(value).split('/')]
+        if observed[0] != expected[0] or (len(expected) > 1 and len(observed) > 1 and observed != expected):
+            review.append('numero-conflitante-no-aspecto')
+    if grade:
+        for value in listing.item_aspects.get('Professional Grader', []):
+            known = {'PSA': r'\bpsa\b|professional sports authenticator', 'CGC': r'\bcgc\b',
+                     'BGS': r'\bbgs\b|beckett', 'TAG': r'\btag\b|technical authentication'}
+            found = {g for g, pattern in known.items() if re.search(pattern, str(value), re.I)}
+            if found != {grade.grader}:
+                review.append('certificadora-conflitante-no-aspecto')
+        for value in listing.item_aspects.get('Grade', []):
+            numbers = re.findall(r'(?<![\d.])(?:10|[1-9](?:[.,]5)?)(?![\d.])', str(value))
+            if len(numbers) != 1 or Decimal(numbers[0].replace(',', '.')) != Decimal(str(grade.value)):
+                review.append('nota-conflitante-no-aspecto')
     if details['listing_language'] is None:
         review.append('idioma-nao-confirmado')
     elif details['listing_language'] != card.language:

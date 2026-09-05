@@ -28,6 +28,7 @@ def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=
                'credentials_present': EbayClient().configured,
                'status': 'blocked', 'reason': '', 'funnel': {}, 'verdicts': {}}
     summary['validation_scope'] = 'PSA 10 com idioma explícito' if focus_psa10 else 'consulta geral'
+    summary['max_item_details_per_card'] = config.get('max_item_details_per_card', 10)
     payload = None
     code = 1
     if not summary['credentials_present']:
@@ -59,7 +60,7 @@ def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=
         summary['ebay_live_listings_received'] = bool(stats['seen'])
         summary['funnel'] = dict(stats)
         summary['verdicts'] = dict(Counter(o.verdict for o in opps))
-        source_failed = any(stats[k] for k in ('pc_error','pc_breaker','ebay_error','card_error'))
+        source_failed = any(stats[k] for k in ('pc_error','pc_breaker','ebay_error','card_error','item_details_error'))
         usable_psa = sum(o.strategy.get('psa_evidence', {}).get('n_used', 0) >= config['slab_strategy']['evidence']['min_sales'] for o in opps)
         summary['rows_with_psa_sales'] = usable_psa
         summary['candidate_review_reasons'] = dict(Counter(reason for o in opps for reason in o.strategy.get('review_reasons', [])))

@@ -235,6 +235,14 @@ class EbayClient:
             f"eBay Browse API falhou {SEARCH_ATTEMPTS}x em {url}: "
             f"{last_error}") from last_error
 
+    def get_item(self, item_id):
+        """Read-only item details, counted in the same API call budget."""
+        url = 'https://api.ebay.com/buy/browse/v1/item/' + urllib.parse.quote(item_id, safe='')
+        payload = self._request_search_json(url)
+        if payload.get('itemId') != item_id:
+            raise EbayApiError('getItem returned a different or missing itemId')
+        return payload, url
+
     def search(self, query, min_price=10.0, max_price=None, limit=MAX_LIMIT,
                fixed_price_only=True, location_country="US", max_pages=3,
                graded_only=False):

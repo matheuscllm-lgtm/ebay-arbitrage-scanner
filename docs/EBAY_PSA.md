@@ -71,7 +71,8 @@ cartas ex/V/GX etc. não casam com nomes sem esses sufixos. Base Set 2 não é B
 Variantes devem ter os mesmos modificadores em anúncio e venda. Lotes, réplicas,
 acessórios e certificação apenas potencial não podem aprovar.
 
-Idioma deve ser explícito; não assumir inglês por ausência de informação ou pela
+Idioma deve ser explícito no título ou no atributo Language retornado pelo eBay;
+não assumir inglês por ausência de informação ou pela
 localização do vendedor. EN, JP, KO, PT, DE, FR, IT, ES, ZH-HANS (simplificado) e
 ZH-HANT (tradicional) são identidades distintas. Chinês genérico é ambíguo.
 A configuração não garante cobertura do catálogo: a watchlist atual e os títulos
@@ -87,6 +88,13 @@ Mínimo de 3 vendas em 180 dias; na falta delas, janela de 365 dias com REVISAR 
 baixa liquidez. Uma ou duas vendas também exigem REVISAR. A mediana usa até 10
 vendas mais recentes. Dispersão = (máximo − mínimo)/mediana ×100, calculada antes
 do arredondamento. Limite de dispersão indefinido exige REVISAR.
+
+Anúncios elegíveis sem idioma no título recebem consulta getItem limitada a 10
+por carta (limite operacional configurável). Todas as chamadas contam na cota.
+Somente atributos selecionados são guardados. Conflitos de idioma, coleção,
+número, certificadora ou nota exigem REVISAR. Os atributos são declarações do
+vendedor; não são verificação independente do certificado. O idioma das vendas
+continua exigindo título explícito; não se presume idioma pela página agregadora.
 
 O JSON registra vendas incluídas, IDs, links, datas, amostra, janela, dispersão,
 data de avaliação e contagens por motivo de exclusão. O relatório mostra todos os

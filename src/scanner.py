@@ -330,7 +330,45 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
     asks = {} if 'slab_strategy' in config else _clean_ask_prices(card, unique_listings)
 
     opportunities = []
+    details_used = 0
     for listing in unique_listings:
+        if 'slab_strategy' in config and callable(getattr(ebay, 'get_item', None)):
+            from .slab_strategy import identity_matches, language
+            parsed_grade = grading.grade_from_title(listing.title)
+            eligible = (listing.item_id and parsed_grade.status == 'graded'
+                        and identity_matches(card, listing.title) and language(listing.title) is None
+                        and not title_parser.risk_flags(listing.title))
+            if eligible and details_used < config.get('max_item_details_per_card', 10):
+                details_used += 1
+                before = ebay.calls
+                try:
+                    item, detail_url = ebay.get_item(listing.item_id)
+                    aspects = {}
+                    for aspect in item.get('localizedAspects', []):
+                        name = aspect.get('name')
+                        if name in ('Language', 'Set', 'Card Number', 'Professional Grader', 'Grade', 'Certification Number'):
+                            aspects.setdefault(name, []).append(aspect.get('value', ''))
+                    changes = {'item_aspects': aspects, 'details_url': detail_url}
+                    # Refresh only provided fields, preserving unknowns instead of guessing.
+                    if 'price' in item:
+                        from .ebay_api import parse_search_payload
+                        fresh = parse_search_payload({'itemSummaries': [item]})[0]
+                        changes.update(price=fresh.price, currency=fresh.currency)
+                    if 'title' in item:
+                        changes['title'] = item['title']
+                    if 'condition' in item:
+                        changes['condition'] = item['condition']
+                    if 'qualifiedPrograms' in item:
+                        changes['authenticity_guarantee'] = 'AUTHENTICITY_GUARANTEE' in item['qualifiedPrograms']
+                    listing = dataclasses.replace(listing, **changes)
+                    stats['item_details_fetched'] += 1
+                except EbayAuthError:
+                    raise
+                except EbayApiError:
+                    listing = dataclasses.replace(listing, details_error='detalhes-do-anuncio-indisponiveis')
+                    stats['item_details_error'] += 1
+                finally:
+                    stats['ebay_calls'] += max(0, ebay.calls - before)
         opp = scorer.evaluate(card, listing, fair, config, tcg_ref=tcg_ref,
                               refs=refs, stats=stats)
         if opp is not None:
@@ -414,7 +452,7 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
             stats["card_error"] += 1
             log(f"  ERRO em {card.name} #{card.number}: {type(e).__name__}: {e} "
                 "-- carta pulada (contada no funil)")
-    if any(stats[k] for k in ('pc_error', 'pc_breaker', 'ebay_error', 'card_error')):
+    if any(stats[k] for k in ('pc_error', 'pc_breaker', 'ebay_error', 'card_error', 'item_details_error')):
         aborted = True
         stats['aborted'] = 1
     return fair_values, all_opportunities, pricing_only, stats, aborted
