@@ -46,3 +46,30 @@ A suíte do GitHub Actions verifica push na main e pull requests, sem credenciai
 Este registro descreve execução local; a execução remota deve ser conferida no PR.
 As pendências da configuração continuam bloqueando APROVAR, mesmo com CI verde.
 Não foi criado agendamento, executada compra ou feito merge na main.
+
+## Uso dos secrets já cadastrados no GitHub
+
+O operador confirmou por imagem que `EBAY_CLIENT_ID` e `EBAY_CLIENT_SECRET`
+já existem como repository secrets. A ausência constatada anteriormente era
+somente no ambiente local da conversa, não uma verificação de ausência no GitHub.
+
+O workflow `.github/workflows/validate-ebay.yml` passa esses dois secrets apenas
+à etapa `python validate_live.py --group 3 --limit 1`. Instalação e testes não
+recebem as chaves. Permissão do token GitHub: somente leitura de conteúdo.
+
+A validação inicial é disparada por alteração desta ligação na branch
+`feat/ebay-psa-slab-policy`; não há cron, execução periódica ou trigger de PR com
+secrets. O workflow também declara disparo manual para uso após estar disponível
+na branch padrão. Uma carta e uma página (até 200 anúncios, fora retentativas)
+limitam o consumo. `EBAY_DEV_ID`, `EBAY_ENV`, `EBAY_MARKETPLACE_ID` e `EBAY_SCOPE`
+não são necessários ao código atual, que usa Production/EBAY_US/scope de leitura.
+
+O resultado fica no artefato `ebay-live-validation-<run_id>` por 7 dias. Somente
+presença das chaves, contagens, códigos HTTP e relatório de anúncios são
+registrados; não há valores de secrets, tokens ou dump do ambiente.
+
+Código 0 exige anúncios reais e vendas PSA comparáveis processados; código 2
+indica anúncios reais sem referência PSA estrita; código 1 indica bloqueio,
+falha de fonte ou ausência de anúncios. Sucesso técnico não aprova uma compra
+nem elimina as pendências econômicas. O resultado remoto deve ser conferido na
+execução do GitHub Actions, não presumido a partir da presença dos secrets.

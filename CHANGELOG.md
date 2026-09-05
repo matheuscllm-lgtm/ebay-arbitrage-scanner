@@ -1,3 +1,11 @@
+## 2026-09-05 — ligar validação aos secrets existentes
+
+- Workflow de validação pontual no GitHub usa EBAY_CLIENT_ID/SECRET apenas
+  na etapa de busca; nenhum valor é copiado para a conversa.
+- Limite de uma carta/uma página; relatório em artefato, sem agendamento.
+- Distingue sucesso técnico, falta de comparáveis e falhas de fonte/autenticação.
+- Sete regressões novas para isolamento dos secrets e estados da validação.
+
 # EBAY PSA — 2026-09-05 (proposto em PR)
 
 - Nova política versionada de slabs: PSA como referência, BGS +5%, nota 9,5
