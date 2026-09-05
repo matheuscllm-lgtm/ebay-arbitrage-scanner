@@ -56,9 +56,10 @@ Não representam gasto efetivamente realizado. Frete observado é informativo e 
 é somado novamente; ausência de frete é `null`, nunca frete grátis.
 
 Processamento, armazenamento/segurança, venda e saque COMC ficam separados dessa
-estimativa. A venda de preço fixo usa 5% conforme fonte oficial; detalhes e limites
-em [COMC_COSTS.md](COMC_COSTS.md). Demais custos necessários sem valor confirmado
-permanecem null. Não presumir saque doméstico de 10% para conta internacional.
+estimativa. Elite custa US$2,50 por slab comum; o operador informou saque de 10%.
+A venda de preço fixo usa 5% conforme fonte oficial. O prazo informado de 90–120
+dias é calculado pelo extremo superior, 120 dias, incluindo segurança adicional.
+Detalhes, hipóteses e fontes em [COMC_COSTS.md](COMC_COSTS.md).
 
 O subtotal conhecido é exibido mesmo com pendências. Investimento completo só é
 exibido com todos os custos de entrada; lucro só com revenda e custos de saída.
@@ -112,7 +113,7 @@ cartas puderam ser processadas. JSON é gravado de modo atômico e rejeita NaN/I
 Busca parcial não sobrescreve o último resultado completo. Ausência de credenciais
 não executa consulta nem sobrescreve o último resultado. `--include-raw` é rejeitado.
 
-A validação pontual usa uma carta, uma página e query PSA 10 com idioma explícito,
+A validação pontual usa uma carta, uma página e query PSA 10 com idioma e ano do catálogo,
 para exercitar ambos os coletores. Não representa o universo inteiro do scanner.
 `--general-query` testa a consulta geral. Sucesso técnico exige anúncios reais e pelo
 menos 3 vendas PSA aceitas em uma linha; não significa oportunidade aprovada.
@@ -121,12 +122,9 @@ Ordem: consolidar regras → implementar → testar → validar busca real → a
 Não há novo agendamento nem merge automático. O PR registra separadamente testes
 locais, CI e validação real em [VALIDATION_EBAY_PSA.md](VALIDATION_EBAY_PSA.md).
 
-## Atualização de custos confirmada pelo operador
+## Definições ainda ausentes
 
-Nesta revisão o operador confirmou Elite (US$2,50 por slab) e saque de 10%.
-O período solicitado é 90–120 dias; foi adotado 120 dias para a estimativa. A taxa
-COMC de venda em preço fixo é 5%. O processamento é fixo; o custo de armazenamento
-é calculado em `src/comc_costs.py`, incluindo as cobranças mensais após a carência
-mais a segurança diária sobre preço listado projetado. Ver os detalhes e fontes
-em [COMC_COSTS.md](COMC_COSTS.md). Estes parâmetros substituem as pendências
-anteriores desses custos, mantendo casos sem referência de revenda em REVISAR.
+`max_dispersion_percent` segue null e impede APROVAR até definição do operador.
+A combinação dos percentuais BGS 9,5 também segue null; afeta essa nota, sem
+autorizar acumular os dois acréscimos. Casos sem referência de revenda continuam
+sem base para estimar segurança e lucro, mesmo com as tarifas já configuradas.

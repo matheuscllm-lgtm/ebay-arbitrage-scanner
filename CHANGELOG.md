@@ -1,4 +1,20 @@
-## 2026-09-05 — ligar validação aos secrets existentes
+## 2026-09-05 — revisão consolidada, política 2026-09-05.2
+
+- Regra econômica: lucro líquido estimado >US$40 OU desconto >30%, com lucro
+  positivo, custos completos e limites independentes por certificadora.
+- CGC até 40% da PSA; US$10 cobrem envio/impostos até COMC uma única vez.
+- Elite US$2,50, saque informado 10%, venda 5%, projeção de armazenamento e
+  segurança por 120 dias (prazo informado de 90–120 dias).
+- Comparações Decimal, identidade e idiomas mais estritos, diagnósticos de
+  exclusão, configuração validada e gravação atômica dos resultados.
+- Busca apenas Graded e consulta limitada de atributos getItem; a validação
+  usa idioma e ano do catálogo para reduzir reimpressões na amostra.
+- 612 testes locais e remotos passaram. Busca real final: 13 anúncios, 8 chamadas,
+  13 REVISAR e zero APROVAR; evidência PSA insuficiente, resultado parcial.
+- Dispersão máxima e combinação BGS 9,5 continuam pendentes. Sem novo agendamento.
+  Evidências completas em `docs/VALIDATION_EBAY_PSA.md`.
+
+## Histórico anterior — ligar validação aos secrets existentes
 
 - Workflow de validação pontual no GitHub usa EBAY_CLIENT_ID/SECRET apenas
   na etapa de busca; nenhum valor é copiado para a conversa.

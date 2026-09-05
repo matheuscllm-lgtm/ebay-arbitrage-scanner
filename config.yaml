@@ -1,8 +1,8 @@
 # EBAY PSA — configuração canônica. Percentuais inteiros: 20 = 20%.
-# Null significa pendência e bloqueia APROVAR; nunca significa custo zero.
+# Null não significa zero; armazenamento null usa a projeção parametrizada abaixo.
 min_discount_percent: 30          # espelho CLI; regra efetiva em economics abaixo
 min_price_usd: 10.0
-suspicious_margin_percent: 60      # ROI bruto elevado exige REVISAR
+suspicious_margin_percent: 60      # legado; não atua no modo profit_or_discount
 fixed_price_only: true
 graded_only: true                 # obrigatório; --include-raw é rejeitado
 max_pages: 3

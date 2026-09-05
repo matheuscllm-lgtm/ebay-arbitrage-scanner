@@ -99,9 +99,9 @@ A revisão amplia os testes e substitui as regras econômicas anteriores conform
 as novas respostas do operador. Os registros acima são históricos, de commits
 anteriores, e não representam execução da versão revisada.
 
-Validação local: suíte completa, compilação e git diff --check serão conferidos
-antes do commit. A validação remota desta revisão será registrada após a execução;
-não presumir sucesso a partir dos registros de 38005d0.
+Validação local concluída: 612 testes passaram, e `git diff --check` não apontou
+erros. Os resultados remotos desta revisão estão abaixo; os registros anteriores
+permanecem apenas como histórico.
 
 ### Validação real de 3deee2b e correção derivada
 
@@ -114,4 +114,41 @@ funcionou; a identificação dos anúncios impediu chegar à comparação.
 Correção implementada: consultar o atributo Language de getItem para anúncios
 certificados com identidade compatível e idioma ausente. Até 10 consultas por
 carta, contadas na API; nenhuma inferência de inglês. Divergências entre título
-e atributos geram REVISAR. A nova validação será registrada após executada.
+e atributos geram REVISAR. A validação seguinte está registrada abaixo.
+
+### Resultado de 0c3a52b — consulta dos detalhes
+
+[Execução 33947960679](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/runs/33947960679):
+611 testes passaram; 50 anúncios, 11 chamadas eBay (1 busca e 10 detalhes),
+39 REVISAR, 11 REJEITAR, zero APROVAR. Os detalhes confirmaram idioma em 10
+anúncios, mas eram reimpressões Celebrations/Classic, incompatíveis com as vendas
+da variante original. Resultado parcial, código 2, sem falha de autenticação.
+
+### Resultado final da revisão de código — a084652, 05:50 UTC
+
+[Execução 33948217352](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/runs/33948217352):
+consulta `pokemon Charizard 4 Base Set 1999 English PSA 10`. O ano vem do catálogo;
+não substitui as verificações de identidade, idioma ou variante.
+
+- **612 testes passaram** no job e na [CI separada](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/runs/33948218791).
+- **13 anúncios, 8 chamadas eBay** (1 busca e 7 detalhes).
+- **13 REVISAR, zero REJEITAR, zero APROVAR**.
+- Os anúncios da variante comum que chegaram aos detalhes não continham Language.
+  Os dois com idioma confirmado eram Shadowless/1st Edition; nenhuma venda do
+  conjunto público atendia à combinação estrita de variante, idioma e nota.
+- A página pública foi processada com **375 registros de vendas**. Isso não
+  equivale a 375 comparáveis: o JSON explica as exclusões em cada candidato.
+- **Zero candidatos com ao menos três vendas PSA aceitas**; status `partial`,
+  código 2. O workflow aparece com falha por evidência insuficiente, sem erro de API.
+- Relatório e JSON preservados no artefato `ebay-live-validation-33948217352`.
+
+Conclusão: implementação e testes concluídos nesta revisão; a validação de ponta
+a ponta permanece parcial por ausência de identificação/comparáveis suficientes
+na amostra. Não representa validação dos 12 grupos, nem oportunidade de compra.
+Não se alteraram critérios para obter sucesso artificial.
+
+`--check-config` confirma estrutura válida e duas definições pendentes:
+`evidence.max_dispersion_percent` e `graders.BGS.combine_9_5_premium` (somente BGS
+9,5). Elite, saque de 10%, prazo de 120 dias e cobertura dos US$10 estão definidos.
+Sem limite de dispersão, APROVAR permanece bloqueado. Nenhum novo agendamento foi
+criado; a ativação deve vir após fechar as regras e obter validação suficiente.

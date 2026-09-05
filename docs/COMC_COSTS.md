@@ -24,10 +24,9 @@ Fontes oficiais:
 - [Saque internacional](https://comc.zendesk.com/hc/en-us/articles/10425159147035-Fee-Chart-for-International-Users): adicional sobre 10%.
 - [PayPal e moeda de recebimento](https://comc.zendesk.com/hc/en-us/articles/9820353778459-Requesting-COMC-Credit-as-a-PayPal-Deposit): eventual adicional de moeda mostrado na conta.
 
-Para fechar uma avaliação: definir serviço e custo de processamento por carta,
-custo total de armazenamento **incluindo segurança adicional durante o prazo
-estimado**, e taxa efetiva de saque/recebimento. Os US$10 confirmados pelo operador
-cobrem envios/impostos de compra até a COMC, e não essas despesas COMC.
+Serviço, processamento, prazo e saque já foram informados pelo operador, conforme
+as decisões abaixo. O armazenamento inclui segurança durante o prazo estimado.
+Os US$10 cobrem envios/impostos de compra até a COMC; as despesas COMC são separadas.
 
 As fórmulas trabalham em USD. Conversão posterior a BRL e obrigações tributárias
 pessoais não são conhecidas pelo scanner; não rotular o resultado como valor final

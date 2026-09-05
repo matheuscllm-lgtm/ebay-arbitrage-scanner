@@ -12,7 +12,9 @@ desconto, margem e ROI. Classifica APROVAR / REJEITAR / REVISAR sem executar com
   Os limites por certificadora são sobre o preço do item e continuam obrigatórios.
 - Nota 9,5 usa PSA 9 ×1,05. PSA 9,5 não existe. Não acumular adicional BGS sem regra.
 - US$10 estimados para envios/impostos até COMC, incluindo saída do vault; uma vez.
-- Custos COMC separados. Revenda de outra certificadora exige vendas próprias.
+- COMC: Elite US$2,50, venda 5%, saque informado 10%, armazenamento/segurança por
+  120 dias (extremo superior do prazo informado de 90–120 dias).
+- Revenda de outra certificadora exige vendas próprias.
 - Idiomas e variantes separados, incluindo chinês simplificado/tradicional.
 - Preço fixo, item nos EUA, somente certificado. Vault preferencial quando confirmado.
 - Falta de evidência não aprova. Categorias especiais sem regra ficam em REVISAR.
@@ -35,7 +37,8 @@ python -m pytest -q
 ```
 
 `--check-config` não acessa a rede: código 0 sem pendências, 2 com pendências;
-configuração malformada falha. Null significa desconhecido, nunca custo zero.
+configuração malformada falha. Null não significa custo zero; no armazenamento,
+aciona a projeção parametrizada. Dispersão máxima e combinação BGS 9,5 estão pendentes.
 `--min-discount N` altera o braço de desconto da regra OR daquela execução;
 `--min-price`, `--grades`, `--group` e `--max-pages` restringem a busca.
 `--include-raw` é rejeitado. `--pricing-only` mostra colunas informativas,
@@ -53,7 +56,7 @@ python validate_live.py --group 3 --limit 1
 python validate_live.py --group 3 --limit 1 --general-query
 ```
 
-A primeira consulta foca PSA 10 com idioma explícito para testar anúncio e vendas.
+A primeira consulta foca PSA 10 com idioma e ano do catálogo para testar anúncio e vendas.
 A segunda usa a query geral do scanner. São buscas pequenas de validação, não um
 scan completo dos 12 grupos. O relatório registra os motivos de exclusão de vendas.
 Código 0 exige anúncios reais e ao menos 3 vendas PSA aceitas; 2 indica evidência
