@@ -73,3 +73,22 @@ indica anúncios reais sem referência PSA estrita; código 1 indica bloqueio,
 falha de fonte ou ausência de anúncios. Sucesso técnico não aprova uma compra
 nem elimina as pendências econômicas. O resultado remoto deve ser conferido na
 execução do GitHub Actions, não presumido a partir da presença dos secrets.
+
+## Resultado confirmado no GitHub Actions — 2026-09-05 04:47 UTC
+
+Commit executado: `38005d0957eae5d9fb84ada9af2b1d2219987dbe`.
+Execução: https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/runs/33945477409
+
+- Secrets disponíveis no job: sim (somente presença verificada).
+- Autenticação e consulta eBay funcionaram: **1 chamada, 198 anúncios**.
+- Carta da amostra: Charizard #4, Base Set, EN.
+- **197 REJEITAR, 1 REVISAR, 0 APROVAR**.
+- **0 candidatos com referência PSA estrita**. O processo retornou código 2,
+  status `partial`, motivo `live_listings_received_but_no_strict_psa_comparables`.
+- O workflow aparece com falha porque exige validação completa; isso NÃO indica
+  falha das credenciais. O relatório foi preservado como artefato da execução.
+- Os **548 testes offline passaram**, também na CI separada (run 33945479315).
+
+A pendência de acesso às chaves está resolvida para o GitHub Actions. Falta obter
+comparáveis PSA que atendam aos critérios e concluir as definições econômicas.
+Esta amostra não valida a qualidade de todas as referências nem autoriza compras.
