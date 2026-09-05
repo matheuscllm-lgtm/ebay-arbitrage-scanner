@@ -12,4 +12,3 @@ Source: matheuscllm-lgtm/scanner-comc at commit `dd952bad4020c72943e0d00c2b5f5e0
   1,669-card watchlist.
 
 Regenerate these inputs only as part of an intentional catalog update.
-

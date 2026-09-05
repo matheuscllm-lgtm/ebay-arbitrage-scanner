@@ -540,4 +540,3 @@ def fair_value_markdown(card, fair):
             f"| {sales if sales is not None else '-'} | {tier} |"
         )
     return "\n".join(lines)
-

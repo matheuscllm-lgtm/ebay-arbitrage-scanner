@@ -427,4 +427,3 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
         listing_type=(f"Raw {condition}" if grade == "RAW" else grade_label),
         pc_url=pc_url, reasons=reasons,
     )
-

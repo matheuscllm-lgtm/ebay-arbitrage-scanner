@@ -463,4 +463,3 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
         aborted = True
         stats['aborted'] = 1
     return fair_values, all_opportunities, pricing_only, stats, aborted
-

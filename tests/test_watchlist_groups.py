@@ -143,5 +143,3 @@ def test_filter_group_accepts_numeric_spec(tmp_path):
     assert [c.name for c in scanner.filter_group(cards, "all")] == ["Charizard", "Umbreon VMAX", "Pikachu"]
     with pytest.raises(ValueError, match="grupos presentes: 3, 4"):
         scanner.filter_group(cards, "1,2")  # spec valida, mas sem cartas = erro, nao scan vazio
-
-
