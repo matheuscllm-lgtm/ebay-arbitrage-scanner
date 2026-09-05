@@ -336,11 +336,11 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
     details_used = 0
     for listing in unique_listings:
         if 'slab_strategy' in config and callable(getattr(ebay, 'get_item', None)):
-            from .slab_strategy import identity_matches, language
+            from .slab_strategy import identity_matches, language, risk_title
             parsed_grade = grading.grade_from_title(listing.title)
             eligible = (listing.item_id and parsed_grade.status == 'graded'
                         and identity_matches(card, listing.title) and language(listing.title) is None
-                        and not title_parser.risk_flags(listing.title))
+                        and not title_parser.risk_flags(risk_title(card, listing.title)))
             if eligible and details_used < config.get('max_item_details_per_card', 10):
                 details_used += 1
                 before = ebay.calls

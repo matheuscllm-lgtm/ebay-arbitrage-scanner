@@ -53,3 +53,33 @@ def test_production_evidence_accepts_label_without_catalog_code():
     assert o.verdict == 'APROVAR'
     assert o.strategy['psa_evidence']['n_used'] == 3
     assert discovery_query(card) == 'pokemon Gengar ex 193 Temporal Forces'
+
+
+@pytest.mark.parametrize('set_name', ['Legendary Collection', 'Celebrations: Classic Collection', 'Radiant Collection'])
+def test_collection_in_catalog_name_is_not_a_lot_but_real_lots_stay_rejected(set_name):
+    card = replace(CARD, set_name=set_name)
+    title = f'Charizard #4/102 {set_name} English PSA 10'
+    pool = sales(price=200)
+    for sale in pool:
+        sale['title'] = title
+    c = policy_config()
+    o = evaluate(card, listing(price=50, title=title), config=c, refs=refs(pool))
+    assert o.verdict == 'APROVAR'
+    o = evaluate(card, listing(price=50, title='Lot of 3 '+title), config=c, refs=refs(pool))
+    assert o.verdict == 'REJEITAR'
+    for sale in pool:
+        sale['title'] = 'Lot of 3 ' + title
+    o = evaluate(card, listing(price=50, title=title), config=c, refs=refs(pool))
+    assert o.strategy['psa_evidence']['n_used'] == 0 and o.verdict == 'REVISAR'
+
+
+@pytest.mark.parametrize('prefix', ['Set of 2', '2 cards', '3 slabs', 'x2', '2x', 'x10', '10x', '100 cards'])
+def test_small_multi_card_offers_and_sales_never_approve(prefix):
+    title = f'{prefix} Charizard #4/102 Base Set English PSA 10'
+    o = evaluate(CARD, listing(price=50, title=title), config=policy_config(), refs=refs(sales()))
+    assert o.verdict == 'REJEITAR'
+    pool = sales()
+    for sale in pool:
+        sale['title'] = title
+    o = evaluate(CARD, listing(price=50), config=policy_config(), refs=refs(pool))
+    assert o.strategy['psa_evidence']['n_used'] == 0

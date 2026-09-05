@@ -41,8 +41,8 @@ _REJECT_KEYWORDS = re.compile(
     r"wood(?:en)?|plush|figure|keychain|pin|patch|playmat|sleeve)\b", re.I
 )
 _LOT_KEYWORDS = re.compile(
-    r"\b(lot|bundle|x\s*\d{2,}|\d{2,}\s*x\b|collection|bulk|choose|pick|"
-    r"complete\s+set)\b", re.I
+    r"\b(lot|bundle|x\s*(?:[2-9]|[1-9]\d+)|(?:[2-9]|[1-9]\d+)\s*x\b|collection|bulk|choose|pick|"
+    r"complete\s+set|set\s+of\s+\d+|(?:[2-9]|[1-9]\d+)\s+(?:cards|slabs))\b", re.I
 )
 
 # --- Idioma ----------------------------------------------------------------

@@ -47,7 +47,7 @@ referência, custos, cálculo e decisão com evidência suficiente.
   entre comparação e revenda são detalhadas uma única vez no relatório.
 - Sem preço de revenda, a impossibilidade de estimar armazenamento é distinguida
   de tarifa COMC ainda não configurada. Dados e cálculos continuam pendentes.
-- 635 testes locais passaram, incluindo preservação de arquivos e limites de
+- 646 testes locais passaram, incluindo preservação de arquivos e limites de
   identidade. Os limites econômicos permanecem os confirmados anteriormente.
 
 ## Verificação adicional
@@ -66,3 +66,11 @@ referência, custos, cálculo e decisão com evidência suficiente.
 Critério de entrega: testes e execução técnica aprovados, custos reproduzíveis,
 regras respeitadas e limites de evidência explícitos. Isso não garante cobertura
 integral do mercado, disponibilidade futura das fontes nem oportunidades lucrativas.
+
+## Revisão do filtro de lotes
+
+Nomes oficiais com Collection (Legendary Collection, Classic Collection etc.)
+não indicam lote por si só. O filtro remove apenas a expressão da coleção-alvo
+antes de verificar risco; mantém os demais indícios. Ofertas/vendas com `set of 2`,
+`2 cards`, `x2`, `2x` e quantidades maiores são excluídas. Testes cobrem a carta
+única legítima e o lote da mesma coleção, sem misturar variantes ou números.

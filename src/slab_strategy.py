@@ -104,6 +104,14 @@ def discovery_query(card):
                   card.default_query(), flags=re.I)
 
 
+def risk_title(card, title):
+    """A named catalog collection is not a lot; other lot words stay visible."""
+    label = set_label(card.set_name)
+    if re.search(r'\bcollection\b', label, re.I):
+        return re.sub(r'(?<!\w)' + re.escape(label) + r'(?!\w)', ' ', title, flags=re.I)
+    return title
+
+
 def identity_matches(card, title):
     """Name + numerator + explicit set; missing identity cannot approve."""
     from dataclasses import replace
@@ -180,7 +188,8 @@ def reference_sales(card, refs, grade, variants, policy, today=None):
         if pc_sales.variant_tokens(title) != variants:
             excluded['variante-diferente'] += 1
             continue
-        if (pc_sales._NOISE_SALE_RE.search(title) or title_parser.risk_flags(title)
+        noise_title = risk_title(card, title)
+        if (pc_sales._NOISE_SALE_RE.search(noise_title) or title_parser.risk_flags(noise_title)
                 or re.search(r'best offer|or best|accepted offer|offer accepted|\b(?:potential|candidate|possibly|qualifiers?|OC|MC|ST|MK|PD)\b', title, re.I)
                 or pc_sales._is_ambiguous_black_sale(title)):
             excluded['oferta-lote-ou-certificacao-incerta'] += 1
@@ -292,7 +301,7 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         review.append('certificacao-potencial-ou-qualificada')
     if grade and (grade.qualifier in ('BLACK', 'PRISTINE') or re.search(r'\bpristine\b', listing.title, re.I)):
         review.append('categoria-especial-sem-regra')
-    flags = title_parser.risk_flags(listing.title, listing)
+    flags = title_parser.risk_flags(risk_title(card, listing.title), listing)
     for flag in flags:
         (reject if flag.startswith(('REJEITAR', 'LOTE')) else review).append(flag)
     price = money(listing.price)
