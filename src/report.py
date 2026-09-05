@@ -20,6 +20,7 @@ popular (rank menor na lista dos 100 chases). Nunca "lucro".
 import csv
 import json
 import os
+import tempfile
 from datetime import datetime, timezone
 from urllib.parse import quote
 
@@ -498,8 +499,15 @@ def scan_payload(opportunities, watchlist_count, config, include_raw=False,
 def write_json(payload, path):
     """Grava o artefato JSON do scan (registro local, gitignored)."""
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+    text = json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False)
+    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=os.path.dirname(path) or '.', delete=False) as f:
+        temp_path = f.name
+        f.write(text)
+    try:
+        os.replace(temp_path, path)
+    finally:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
     return path
 
 

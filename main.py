@@ -45,8 +45,8 @@ def _load_config(path):
     try:
         with open(path, encoding="utf-8") as f:
             config = yaml.safe_load(f) or {}
-    except FileNotFoundError:
-        config = {}
+    except FileNotFoundError as exc:
+        raise ValueError(f'Configuração não encontrada: {path}') from exc
     if "min_discount_percent" not in config and "min_gross_margin_percent" in config:
         # Config antigo (gate por ROI bruto): o gate agora e Desconto% (padrao
         # COMC). Nao converter em silencio -- avisar alto e usar o default.
@@ -67,6 +67,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="eBay Pokemon TCG arbitrage scanner")
     ap.add_argument("--watchlist", default="watchlist.yaml")
     ap.add_argument("--config", default="config.yaml")
+    ap.add_argument('--check-config', action='store_true', help='verifica regras e lista pendências sem consultar fontes')
     ap.add_argument("--pricing-only", action="store_true",
                     help="so referencias da watchlist (PriceCharting); nao consulta eBay")
     ap.add_argument("--confiavel", action="store_true",
@@ -103,21 +104,40 @@ def main(argv=None):
         _print_groups(scanner.load_watchlist(args.watchlist))
         return 0
 
-    config = _load_config(args.config)
+    try:
+        config = _load_config(args.config)
+    except (ValueError, yaml.YAMLError) as exc:
+        ap.error(str(exc))
+    if args.check_config:
+        from src.policy_validation import pending_config
+        pending = pending_config(config)
+        print(f'Política {config["slab_strategy"]["version"]}: estrutura válida.')
+        for item in pending:
+            print(f'REVISAR: {item}')
+        return 2 if pending else 0
     if args.confiavel:
         config["trusted_mode"] = True
     if args.include_raw:
         ap.error("EBAY PSA aceita apenas cartas certificadas; --include-raw foi removido da estrategia")
     if args.min_discount is not None:
         config["min_discount_percent"] = int(args.min_discount)
+        if config['slab_strategy']['economics'].get('gate_mode') == 'profit_or_discount':
+            config['slab_strategy']['economics']['min_discount_percent'] = int(args.min_discount)
     if args.min_price is not None:
         config["min_price_usd"] = float(args.min_price)
     if args.max_pages is not None:
         config["max_pages"] = int(args.max_pages)
+    from src.policy_validation import validate_config
+    try:
+        validate_config(config)
+    except ValueError as exc:
+        ap.error(str(exc))
     if args.grades:
         try:
             config["allowed_grades"] = scanner.parse_grades_arg(
                 args.grades, config.get("graded_allow"))
+            if 'RAW' in config['allowed_grades']:
+                ap.error('RAW não pertence à estratégia de cartas certificadas')
         except ValueError as e:
             sys.exit(f"ERRO: {e}")
     if not config.get("graded_allow"):

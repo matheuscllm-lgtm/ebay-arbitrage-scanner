@@ -92,3 +92,13 @@ Execução: https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/r
 A pendência de acesso às chaves está resolvida para o GitHub Actions. Falta obter
 comparáveis PSA que atendam aos critérios e concluir as definições econômicas.
 Esta amostra não valida a qualidade de todas as referências nem autoriza compras.
+
+## Revisão atual — base 86b8324, 2026-09-05
+
+A revisão amplia os testes e substitui as regras econômicas anteriores conforme
+as novas respostas do operador. Os registros acima são históricos, de commits
+anteriores, e não representam execução da versão revisada.
+
+Validação local: suíte completa, compilação e git diff --check serão conferidos
+antes do commit. A validação remota desta revisão será registrada após a execução;
+não presumir sucesso a partir dos registros de 38005d0.

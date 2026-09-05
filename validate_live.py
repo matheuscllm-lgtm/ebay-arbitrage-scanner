@@ -14,7 +14,7 @@ from src import report, scanner
 from src.ebay_api import EbayClient
 
 
-def validate(group='3', limit=1, out_dir='results/live-validation'):
+def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=True):
     if limit not in (1, 2, 3):
         raise ValueError('validation supports 1 to 3 cards')
     target = Path(out_dir)
@@ -27,6 +27,7 @@ def validate(group='3', limit=1, out_dir='results/live-validation'):
                'max_cards': limit, 'max_pages_per_card': 1,
                'credentials_present': EbayClient().configured,
                'status': 'blocked', 'reason': '', 'funnel': {}, 'verdicts': {}}
+    summary['validation_scope'] = 'PSA 10 com idioma explícito' if focus_psa10 else 'consulta geral'
     payload = None
     code = 1
     if not summary['credentials_present']:
@@ -39,6 +40,9 @@ def validate(group='3', limit=1, out_dir='results/live-validation'):
         for card in cards:
             entry = asdict(card)
             entry['set'] = entry.pop('set_name')
+            if focus_psa10:
+                language_term = {'EN': 'English', 'JP': 'Japanese', 'KO': 'Korean', 'ZH-HANS': 'Simplified Chinese', 'ZH-HANT': 'Traditional Chinese'}.get(card.language, card.language)
+                entry['ebay_query'] = f'{card.default_query()} {language_term} PSA 10'
             entries.append(entry)
         diagnostics = []
         def source_status(message):
@@ -56,8 +60,11 @@ def validate(group='3', limit=1, out_dir='results/live-validation'):
         summary['funnel'] = dict(stats)
         summary['verdicts'] = dict(Counter(o.verdict for o in opps))
         source_failed = any(stats[k] for k in ('pc_error','pc_breaker','ebay_error','card_error'))
-        usable_psa = sum(bool(o.strategy.get('psa_sales')) for o in opps)
+        usable_psa = sum(o.strategy.get('psa_evidence', {}).get('n_used', 0) >= config['slab_strategy']['evidence']['min_sales'] for o in opps)
         summary['rows_with_psa_sales'] = usable_psa
+        summary['candidate_review_reasons'] = dict(Counter(reason for o in opps for reason in o.strategy.get('review_reasons', [])))
+        summary['candidate_rejection_reasons'] = dict(Counter(reason for o in opps for reason in o.strategy.get('rejection_reasons', [])))
+        summary['policy_version'] = config['slab_strategy']['version']
         if aborted or pricing_only:
             summary['reason'] = 'authentication_or_api_failure'
         elif source_failed:
@@ -88,8 +95,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--group', default='3')
     parser.add_argument('--limit', type=int, choices=(1,2,3), default=1)
+    parser.add_argument('--general-query', action='store_true', help='valida consulta geral, sem foco PSA 10 e idioma')
     args = parser.parse_args(argv)
-    return validate(args.group, args.limit)
+    return validate(args.group, args.limit, focus_psa10=not args.general_query)
 
 
 if __name__ == '__main__':

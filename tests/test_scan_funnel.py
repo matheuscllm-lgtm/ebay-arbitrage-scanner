@@ -225,7 +225,7 @@ def test_run_scan_counts_card_error_and_continues(tmp_path, monkeypatch):
     _patch_scan_card(monkeypatch, behaviour)
     _, _, _, stats, aborted = scanner.run_scan(
         watchlist_path=_watchlist(tmp_path), log=lambda *a, **k: None)
-    assert aborted is False and stats["card_error"] == 1
+    assert aborted is True and stats["card_error"] == 1
     assert seen == ["Charizard", "Blastoise", "Venusaur", "Pikachu"]
 
 

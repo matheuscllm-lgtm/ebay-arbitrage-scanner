@@ -1,109 +1,124 @@
-# Estratégia EBAY PSA — 2026-09-05
+# Estratégia EBAY PSA — versão 2026-09-05.2
 
-Fonte: instruções do projeto fornecidas pelo operador. Implementação inicial
-baseada na main `2ed6cc76027e40ba9c96eea45cf31d4ae3fff6fc` do
-`matheuscllm-lgtm/ebay-arbitrage-scanner`. O scanner PSA-Arbitrage-Scanner citado
-em histórico é outro projeto; não foi alterado.
+O código, a configuração e os testes demonstram a implementação. As decisões do
+operador nesta revisão substituem os filtros antigos. Base revisada: `86b8324`.
 
-## Fontes e identidade
+## Regras confirmadas
 
-O eBay Browse fornece anúncios ativos de preço fixo. O parser existente lê as
-tabelas de vendas concluídas do PriceCharting; o novo motor usa apenas registros
-identificados como vendas eBay, com ID, data não futura e preço positivo finito.
-Preços de anúncios ativos e colunas genéricas não são referência de venda.
-Títulos com indicação de oferta aceita, sem preço efetivo verificável, são excluídos.
-Os links eBay são construídos a partir dos IDs de venda presentes na fonte.
+- Apenas cartas certificadas, com prioridade PSA, preço fixo e item nos EUA.
+- Condição de busca eBay `2750` (Graded), repetindo as verificações no avaliador.
+- Referência: vendas concluídas PSA da mesma carta, coleção, número, variante,
+  idioma e nota. Preços pedidos e colunas de estimativas não substituem vendas.
+- PSA não possui 9,5. Outras notas 9,5 usam PSA 9 ×1,05, sem conversão a PSA 10.
+- BGS: preço do item até PSA ajustado +5%. A combinação BGS 9,5 permanece
+  pendente até decisão explícita; não acumular percentuais silenciosamente.
+- CGC: preço do item até 40% da referência PSA ajustada, confirmado pelo operador.
+- TAG 10: comparação 1:1 com PSA 10; TAG 9,5 usa a regra geral PSA 9 ×1,05.
+- Pristine e Black Label permanecem REVISAR sem regra específica. A identificação
+  da categoria e suas vendas próprias são preservadas; não há prêmio pelo nome.
+- Compra no vault é preferencial quando confirmada. Saída operacional: COMC.
+  O scanner não depende de listar no vault e não executa compras ou transferências.
 
-Cada venda precisa confirmar nome, coleção, número, variante, idioma, certificadora,
-nota e categoria identificável. Página do produto não substitui identidade da venda.
-Coleções mais longas, como Base Set 2, não podem casar com Base Set. Denominadores
-diferentes de uma fração informada não podem casar. Títulos incompletos ou aliases
-não reconhecidos reduzem cobertura e ficam sem referência; não são inferidos.
+## Aprovação econômica: lucro OU desconto
 
-EN, JP, ZH, KO, PT, DE, FR, IT e ES são códigos separados. O idioma tem de ser
-explícito no título tanto do anúncio quanto da venda. Mais de um idioma ou idioma
-ausente não confirma a comparação. Não há equivalência entre idiomas asiáticos
-nem pressuposto de valorização da versão inglesa.
+O operador definiu: lucro estimado **acima de US$40 OU desconto superior a 30%**.
+Os limites são estritos: exatamente US$40 ou 30% não satisfazem aquele braço da regra.
+Margem e ROI são informativos, sem mínimos adicionais. O modo atual é
+`economics.gate_mode: profit_or_discount`.
 
-São preservados da versão anterior: mínimo de 3 vendas, janela primária de 180 dias,
-janela ampliada de 365 dias e mediana das 10 mais recentes. O artefato distingue
-quantidade na janela e quantidade usada na mediana. IDs duplicados contam uma vez.
-A janela ampliada gera REVISAR por baixa liquidez; 1–2 vendas também. Dispersão é
-`(máximo − mínimo)/mediana × 100`, calculada sobre a amostra da mediana. Seu limite
-não foi definido pelo operador: fica null, exige REVISAR e aparece no relatório.
-
-## Referência PSA e revenda
-
-| Certificação | Referência econômica | Limite / ressalva |
-|---|---|---|
-| PSA 8/9/10 | PSA da mesma nota | Vendas da mesma carta, variante e idioma |
-| BGS 9/10 | PSA da mesma nota | Compra ≤ referência ×1,05; filtros econômicos adicionais |
-| BGS 9,5 | PSA 9 ×1,05 | Combinação com adicional BGS indefinida: REVISAR |
-| TAG 10 | PSA 10 | Equivalência estratégica; não garante revenda TAG a esse preço |
-| TAG 9,5 | PSA 9 ×1,05 | Regra geral da nota 9,5 |
-| CGC | Regra ausente | REVISAR |
-| Outras certificadoras/notas | Sem equivalência configurada | REVISAR ou REJEITAR por escopo explícito |
-
-PSA não possui 9,5: esse título recebe REJEITAR. BGS Black Label e categorias
-Pristine são identificadas e reportadas, sem prêmio automático. Black Label exige
-vendas Black Label para estimar revenda; BGS 10 comum não substitui essa categoria.
-
-Para BGS 9,5, `combine_9_5_premium: null` bloqueia aprovação e mantém o teto
-indefinido. Uma decisão futura explícita `false` representa teto PSA 9 ×1,05;
-`true` representa teto PSA 9 ×1,05 ×1,05. Nenhuma das opções foi presumida.
-
-O limite de compra BGS considera o preço do item; custos são tratados à parte.
-TAG/BGS usam vendas da própria certificadora/nota/categoria para estimar revenda.
-O JSON separa PSA original, referência ajustada, teto e vendas de revenda.
-
-## Custos e fórmulas reproduzíveis
-
-A reserva é de US$10 por carta, uma única vez. `covers: [shipping, taxes]` declara
-a categoria agregada definida pelo operador; `coverage_confirmed: false` registra
-que seus trechos de envio e tributos exatos ainda precisam ser confirmados. O frete
-observado no anúncio é mostrado e não somado novamente. Até a confirmação, somente
-um subtotal conhecido é apresentado; investimento completo e lucro ficam pendentes.
-Outra composição de cobertura exige adaptação explícita, nunca soma silenciosa.
-
-Processamento e armazenamento COMC são campos separados, ainda indefinidos.
-Taxas de venda e saque também permanecem null. Zero só é válido quando explicitamente
-configurado. Não foram copiadas taxas Probstein, pois são outra rota operacional.
-
-Quando a cobertura, todos os custos e a incidência estiverem definidos:
-
-- Investimento = compra + reserva de US$10 + processamento + armazenamento.
-- No modelo suportado `sale_then_cashout`: líquido da venda = revenda ×
-  (1 − taxa de venda/100) × (1 − taxa de saque/100).
+- Desconto = (referência PSA ajustada − preço de compra) / referência ×100.
+- Investimento = compra + US$10 + processamento COMC + armazenamento/segurança.
+- Líquido da venda = revenda ×(1 − taxa de venda/100) ×(1 − taxa de saque/100).
 - Lucro = líquido da venda − investimento.
 - Margem líquida sobre a venda = lucro / revenda bruta ×100.
 - ROI líquido = lucro / investimento ×100.
-- Desconto = (referência PSA ajustada − compra) / referência PSA ajustada ×100.
 
-Os cálculos usam Decimal e comparam limites antes do arredondamento de exibição.
-Desconto mínimo de 20%, piso de US$10, país US e preço fixo vêm da configuração
-anterior. Os limites mínimos de lucro, margem líquida e ROI não estão definidos:
-null bloqueia APROVAR. Lucro não positivo é REJEITAR quando todos os custos necessários
-estão presentes. Desconto suficiente sozinho não comprova rentabilidade.
+Os limites entre certificadoras são independentes da regra econômica: um CGC
+acima de 40% da PSA é REJEITAR mesmo se o lucro projetado for alto. Cumprir um
+limite entre certificadoras não satisfaz, sozinho, as exigências de lucro/evidência.
+O filtro global antigo de 20% e o alerta genérico de ROI elevado não atuam no modo
+atual. `--min-discount` altera o braço de desconto da regra OR para aquela execução.
 
-## Operação, resultados e continuidade
+Mesmo passando pelo desconto, lucro não positivo é REJEITAR. Custos ausentes,
+revenda não comprovada ou outra dúvida relevante exigem REVISAR. APROVAR indica
+somente aprovação analítica. Não é promessa de preço futuro nem compra executada.
 
-Compra pode ocorrer no vault, preferencial quando confirmada por metadados confiáveis.
-O adaptador Browse atual não confirma vault; `vault_confirmed` fica null. Um título
-mencionando vault não é prova. O desempate prioriza vault confirmado entre candidatos
-com mesma decisão, prioridade PSA e ROI. A rota de revenda é COMC; não há criação
-de anúncio no vault, compra automática, transferência ou envio de mensagens.
+PSA é referência comparativa; revenda de CGC, BGS ou TAG exige vendas da própria
+certificadora, nota, idioma e categoria. Não usar o valor PSA como revenda automática.
+Valores são comparados em Decimal antes de arredondar. O JSON preserva a mediana e
+a referência ajustada exatas, além dos valores arredondados de exibição.
 
-APROVAR é classificação analítica; REJEITAR tem regra violada; REVISAR tem pendência.
-Uma violação confirmada prevalece sobre dados faltantes, mas ambos os motivos são
-registrados. Candidatos sem referência permanecem na entrega. Não se usa pontuação
-de confiança para aprovar. O limiar anterior de ROI bruto elevado sinaliza REVISAR.
+## Custos confirmados e pendências
 
-O fluxo de produção `main → run_scan → scan_card → scorer.evaluate` recebe sempre
-`slab_strategy`, inclusive com arquivo de configuração alternativo sem essa seção.
-O código antigo de scorer permanece para testes históricos e leitura de artefatos;
-o entrypoint de produção não pode selecionar o método antigo por ausência de política.
-A análise da mediana de preços pedidos do fluxo antigo não modifica o novo motor.
+Os US$10 são **estimativa**, uma única vez, para todos os envios e impostos de compra
+até a COMC, inclusive eventual saída do vault. Cobertura confirmada pelo operador.
+Não representam gasto efetivamente realizado. Frete observado é informativo e não
+é somado novamente; ausência de frete é `null`, nunca frete grátis.
 
-Ordem de evolução: consolidar regras → implementar → testar → validar uma busca real
-→ automatizar. A configuração incompleta não impede desenvolvimento ou revisão do PR;
-impede APROVAR oportunidades. Não há novo agendamento nesta implementação.
+Processamento, armazenamento/segurança, venda e saque COMC ficam separados dessa
+estimativa. A venda de preço fixo usa 5% conforme fonte oficial; detalhes e limites
+em [COMC_COSTS.md](COMC_COSTS.md). Demais custos necessários sem valor confirmado
+permanecem null. Não presumir saque doméstico de 10% para conta internacional.
+
+O subtotal conhecido é exibido mesmo com pendências. Investimento completo só é
+exibido com todos os custos de entrada; lucro só com revenda e custos de saída.
+O resultado é denominado estimativa operacional em USD, não lucro realizado em BRL.
+
+## Identificação e qualidade da evidência
+
+Nome, coleção, número e denominador devem ser compatíveis. Mew não casa com Mewtwo;
+cartas ex/V/GX etc. não casam com nomes sem esses sufixos. Base Set 2 não é Base Set.
+Variantes devem ter os mesmos modificadores em anúncio e venda. Lotes, réplicas,
+acessórios e certificação apenas potencial não podem aprovar.
+
+Idioma deve ser explícito; não assumir inglês por ausência de informação ou pela
+localização do vendedor. EN, JP, KO, PT, DE, FR, IT, ES, ZH-HANS (simplificado) e
+ZH-HANT (tradicional) são identidades distintas. Chinês genérico é ambíguo.
+A configuração não garante cobertura do catálogo: a watchlist atual e os títulos
+disponíveis limitam quais idiomas/cartas realmente podem ser avaliados.
+
+Cada venda precisa ter origem eBay, ID, preço positivo e data válida não futura.
+Oferta aceita sem preço efetivo confirmado fica fora. Vendas repetidas contam uma
+vez. Anúncios com IDs diferentes permanecem visíveis mesmo se título/preço coincidirem.
+Ausência de garantia de autenticidade ou metadados de vault não é confirmação;
+não deduzir esses recursos pelo preço do anúncio.
+
+Mínimo de 3 vendas em 180 dias; na falta delas, janela de 365 dias com REVISAR por
+baixa liquidez. Uma ou duas vendas também exigem REVISAR. A mediana usa até 10
+vendas mais recentes. Dispersão = (máximo − mínimo)/mediana ×100, calculada antes
+do arredondamento. Limite de dispersão indefinido exige REVISAR.
+
+O JSON registra vendas incluídas, IDs, links, datas, amostra, janela, dispersão,
+data de avaliação e contagens por motivo de exclusão. O relatório mostra todos os
+candidatos, idioma do alvo separado do idioma identificado e vault não confirmado.
+
+## Execução e falhas
+
+`main → run_scan → scan_card → evaluate` aplica a política atual. A compatibilidade
+com cálculos históricos existe para testes/artefatos antigos, não é o padrão CLI.
+Configuração malformada falha antes de acessar fontes. Arquivo solicitado inexistente
+não carrega defaults silenciosamente. `python main.py --check-config` lista pendências.
+
+Falhas de fonte ou processamento tornam a execução parcial, inclusive quando outras
+cartas puderam ser processadas. JSON é gravado de modo atômico e rejeita NaN/Infinity.
+Busca parcial não sobrescreve o último resultado completo. Ausência de credenciais
+não executa consulta nem sobrescreve o último resultado. `--include-raw` é rejeitado.
+
+A validação pontual usa uma carta, uma página e query PSA 10 com idioma explícito,
+para exercitar ambos os coletores. Não representa o universo inteiro do scanner.
+`--general-query` testa a consulta geral. Sucesso técnico exige anúncios reais e pelo
+menos 3 vendas PSA aceitas em uma linha; não significa oportunidade aprovada.
+
+Ordem: consolidar regras → implementar → testar → validar busca real → automatizar.
+Não há novo agendamento nem merge automático. O PR registra separadamente testes
+locais, CI e validação real em [VALIDATION_EBAY_PSA.md](VALIDATION_EBAY_PSA.md).
+
+## Atualização de custos confirmada pelo operador
+
+Nesta revisão o operador confirmou Elite (US$2,50 por slab) e saque de 10%.
+O período solicitado é 90–120 dias; foi adotado 120 dias para a estimativa. A taxa
+COMC de venda em preço fixo é 5%. O processamento é fixo; o custo de armazenamento
+é calculado em `src/comc_costs.py`, incluindo as cobranças mensais após a carência
+mais a segurança diária sobre preço listado projetado. Ver os detalhes e fontes
+em [COMC_COSTS.md](COMC_COSTS.md). Estes parâmetros substituem as pendências
+anteriores desses custos, mantendo casos sem referência de revenda em REVISAR.

@@ -23,6 +23,7 @@ Fixture real (offline) do payload de busca:
 """
 import base64
 import json
+import math
 import os
 import time
 import urllib.error
@@ -104,29 +105,34 @@ def parse_search_payload(payload):
     listings = []
     for item in (payload or {}).get("itemSummaries", []) or []:
         price_obj = item.get("price", {}) or {}
-        price = float(price_obj.get("value", 0) or 0)
-        shipping = 0.0
+        def numeric(value):
+            try:
+                n = float(value)
+                return n if math.isfinite(n) and n >= 0 else None
+            except (ValueError, TypeError, OverflowError):
+                return None
+        price = numeric(price_obj.get("value"))
+        shipping = None
         for opt in item.get("shippingOptions", []) or []:
             cost = opt.get("shippingCost", {}) or {}
             if cost.get("value") is not None:
-                shipping = float(cost["value"])
+                shipping = numeric(cost["value"]) if cost.get('currency') == 'USD' else None
                 break
         seller = item.get("seller", {}) or {}
         buying = item.get("buyingOptions", []) or []
         programs = item.get("qualifiedPrograms", []) or []
         country = (item.get("itemLocation", {}) or {}).get("country", "")
-        ag = ("AUTHENTICITY_GUARANTEE" in programs
-              or (country == "US" and price >= AG_MIN_PRICE_USD))
+        ag = "AUTHENTICITY_GUARANTEE" in programs
         listings.append(Listing(
             item_id=item.get("itemId", "") or "",
             title=item.get("title", "") or "",
             price=price,
             shipping=shipping,
-            currency=price_obj.get("currency", "USD") or "USD",
-            buying_option="FIXED_PRICE" if "FIXED_PRICE" in buying else "AUCTION",
+            currency=price_obj.get("currency", "") or "",
+            buying_option="FIXED_PRICE" if "FIXED_PRICE" in buying else "AUCTION" if 'AUCTION' in buying else "",
             condition=item.get("condition", "") or "",
-            seller_feedback_pct=float(seller.get("feedbackPercentage", 0) or 0),
-            seller_feedback_score=int(seller.get("feedbackScore", 0) or 0),
+            seller_feedback_pct=numeric(seller.get("feedbackPercentage")) or 0,
+            seller_feedback_score=int(numeric(seller.get("feedbackScore")) or 0),
             url=item.get("itemWebUrl", "") or "",
             image_url=(item.get("image", {}) or {}).get("imageUrl", "") or "",
             authenticity_guarantee=ag,
@@ -230,7 +236,8 @@ class EbayClient:
             f"{last_error}") from last_error
 
     def search(self, query, min_price=10.0, max_price=None, limit=MAX_LIMIT,
-               fixed_price_only=True, location_country="US", max_pages=3):
+               fixed_price_only=True, location_country="US", max_pages=3,
+               graded_only=False):
         """Busca anuncios ativos. Retorna lista de models.Listing.
 
         - fixed_price_only: DEFAULT True (decisao do operador 2026-09-03: so
@@ -261,6 +268,8 @@ class EbayClient:
             filters.append(f"itemLocationCountry:{location_country}")
         if fixed_price_only:
             filters.append("buyingOptions:{FIXED_PRICE}")
+        if graded_only:
+            filters.append("conditionIds:{2750}")
 
         listings = []
         seen_ids = set()

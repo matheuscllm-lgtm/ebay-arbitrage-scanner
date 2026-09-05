@@ -1,6 +1,6 @@
 # EBAY PSA — configuração canônica. Percentuais inteiros: 20 = 20%.
 # Null significa pendência e bloqueia APROVAR; nunca significa custo zero.
-min_discount_percent: 20          # filtro anterior preservado, independente do lucro
+min_discount_percent: 30          # espelho CLI; regra efetiva em economics abaixo
 min_price_usd: 10.0
 suspicious_margin_percent: 60      # ROI bruto elevado exige REVISAR
 fixed_price_only: true
@@ -9,12 +9,12 @@ max_pages: 3
 trusted_min_feedback: 50
 trusted_min_feedback_pct: 98.0
 required_location_country: US
-# CGC fica visível como REVISAR enquanto sua regra estiver indefinida.
+# Limites sobre o preço do item; custos e lucro são avaliados separadamente.
 graded_allow: ["PSA 8", "PSA 9", "PSA 10", "BGS 9", "BGS 9.5", "BGS 10", "BGS 10 BLACK", "TAG 9.5", "TAG 10", "CGC 9", "CGC 9.5", "CGC 10 GEM", "CGC 10 PRISTINE"]
 
 slab_strategy:
-  version: '2026-09-05.1'
-  languages: [EN, JP, ZH, KO, PT, DE, FR, IT, ES]
+  version: '2026-09-05.2'
+  languages: [EN, JP, ZH-HANS, ZH-HANT, KO, PT, DE, FR, IT, ES]
   graders:
     PSA:
       grades:
@@ -29,10 +29,16 @@ slab_strategy:
         '9.5': {psa_grade: 9, factor: 1.05}
         '10': {psa_grade: 10, factor: 1}
     TAG:
+      max_reference_percent: 100
       grades:
         '9.5': {psa_grade: 9, factor: 1.05}
         '10': {psa_grade: 10, factor: 1}
-    CGC: null
+    CGC:
+      max_reference_percent: 40    # confirmado pelo operador em 2026-09-05
+      grades:
+        '9': {psa_grade: 9, factor: 1}
+        '9.5': {psa_grade: 9, factor: 1.05}
+        '10': {psa_grade: 10, factor: 1}
   evidence:
     min_sales: 3                    # regra anterior preservada
     windows_days: [180, 365]        # 365d sinaliza dificuldade de revenda
@@ -41,16 +47,24 @@ slab_strategy:
   costs:
     per_slab_usd: 10
     covers: [shipping, taxes]       # reserva agregada; frete observado não é somado
-    coverage_confirmed: false      # confirmar quais trechos/taxas cabem na reserva
-    comc_processing_usd: null
-    comc_storage_usd: null
-    selling_fee_percent: null
-    cashout_fee_percent: null
-    fee_basis: null                 # suportado: sale_then_cashout
+    coverage_confirmed: true       # operador: envio/impostos até COMC, inclusive saída do vault
+    comc_service: Elite
+    comc_processing_usd: 2.50
+    comc_storage_usd: null         # null: calcular pela projeção abaixo; sem prazo fica REVISAR
+    storage_horizon_days: 120      # operador: 90–120 dias; usar extremo superior na estimativa
+    storage_free_days: 90
+    storage_monthly_usd: 0.01
+    buyer_shipping_markup_usd: 2   # somente base da segurança; não somar ao envio de US$10
+    security_daily_fraction: 0.00001
+    security_threshold_usd: 50
+    selling_fee_percent: 5         # COMC preço fixo; fonte em docs/COMC_COSTS.md
+    cashout_fee_percent: 10        # taxa informada pelo operador nesta revisão
+    fee_basis: sale_then_cashout    # venda primeiro, saque sobre o saldo restante
   economics:
-    min_profit_usd: null
-    min_net_margin_percent: null
-    min_net_roi_percent: null
+    gate_mode: profit_or_discount
+    min_profit_usd: 40             # estritamente acima, após todos os custos
+    min_discount_percent: 30       # estritamente acima, contra PSA ajustado
+    require_positive_profit: true # desconto não aprova prejuízo
   logistics:
     prefer_vault: true
     resale_route: COMC

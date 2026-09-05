@@ -93,7 +93,7 @@ def test_run_scan_pricing_only_respects_group(tmp_path, monkeypatch):
 
     def fake_fetch(url, cache_dir=None):
         asked.append(url)
-        return ""
+        return '<table id="price_data"></table>'
 
     monkeypatch.setattr(scanner.pc_sales, "fetch_page", fake_fetch)
     fair_values, opps, effective_pricing_only, stats, aborted = scanner.run_scan(

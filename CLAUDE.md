@@ -13,7 +13,12 @@ está implementado; a documentação registra a intenção.
   quando a combinação estiver indefinida. PSA não possui 9,5.
 - TAG 10 equivale a PSA 10 para comparação estratégica. Revenda em outra
   certificadora depende de vendas próprias; categorias especiais ficam separadas.
-- CGC sem regra exige REVISAR. Não inventar parâmetros econômicos ausentes.
+- CGC: preço do item até 40% da referência PSA ajustada (confirmado).
+- Regra econômica: lucro estimado >US$40 OU desconto >30%, preservando lucro positivo.
+- US$10 cobrem envios/impostos até COMC. Elite US$2,50; venda 5%; saque 10%
+  informado pelo operador; horizonte 120 dias (faixa solicitada 90–120).
+- Armazenamento calculado com carência; segurança adicional sem carência.
+- Limite de dispersão e combinação BGS 9,5 indefinidos ficam em REVISAR.
 - Idiomas separados; não presumir inglês nem equivalência entre idiomas asiáticos.
 - Reserva US$10 por carta, contabilizada uma vez, com cobertura explícita.
 - Separar compra, custos, investimento, referência, revenda e lucro; distinguir

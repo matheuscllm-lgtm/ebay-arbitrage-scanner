@@ -4,6 +4,7 @@ Pure evaluation. No purchases, vault listing, or remote writes.
 Legacy scorer remains only for reading/testing pre-policy artifacts.
 """
 from copy import deepcopy
+from collections import Counter
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -18,13 +19,17 @@ from .models import Opportunity
 def policy_config(config=None):
     """Missing custom policy loads the versioned defaults, never the legacy engine."""
     import yaml
-    cfg = dict(config or {})
-    if not isinstance(cfg.get('slab_strategy'), dict):
-        with (Path(__file__).resolve().parents[1] / 'config.yaml').open(encoding='utf-8') as f:
-            defaults = yaml.safe_load(f)
+    if config is not None and not isinstance(config, dict):
+        raise ValueError('Configuração deve ser um objeto YAML')
+    cfg = deepcopy(config or {})
+    with (Path(__file__).resolve().parents[1] / 'config.yaml').open(encoding='utf-8') as f:
+        defaults = yaml.safe_load(f)
+    if 'slab_strategy' not in cfg:
         cfg['slab_strategy'] = deepcopy(defaults['slab_strategy'])
+    cfg.setdefault('graded_allow', defaults['graded_allow'])
     cfg['graded_only'] = True
-    return cfg
+    from .policy_validation import validate_config
+    return validate_config(cfg)
 
 
 def money(value):
@@ -42,7 +47,8 @@ def amount(value):
 _LANGS = {
     'EN': r'\b(?:english|eng|en)\b',
     'JP': r'\b(?:japanese|japan|jpn|jp)\b|日本',
-    'ZH': r'\b(?:chinese|china|mandarin|zh|cn)\b|中文',
+    'ZH-HANS': r'\b(?:simplified chinese|chinese simplified|zh-hans)\b|简体',
+    'ZH-HANT': r'\b(?:traditional chinese|chinese traditional|zh-hant)\b|繁體|繁体',
     'KO': r'\b(?:korean|korea|kor|kr|ko)\b|한국',
     'PT': r'\b(?:portuguese|portugues|português|pt)\b',
     'DE': r'\b(?:german|deutsch|de)\b',
@@ -54,6 +60,8 @@ _LANGS = {
 
 def language(title):
     found = {key for key, pattern in _LANGS.items() if re.search(pattern, title, re.I)}
+    if re.search(r'\b(?:chinese|china|mandarin|zh|cn)\b|中文', title, re.I) and not found.intersection({'ZH-HANS', 'ZH-HANT'}):
+        return None
     return next(iter(found)) if len(found) == 1 else None
 
 
@@ -69,6 +77,14 @@ def identity_matches(card, title):
         return False
     if not title_parser.card_matches_title(replace(card, number=numerator), title):
         return False
+    # 'Mew' must not match 'Mewtwo'; card suffixes are part of identity.
+    name_key = normalized(card.name)
+    if not re.search(r'(?<![a-z0-9])' + re.escape(name_key) + r'(?![a-z0-9])', normalized(title)):
+        return False
+    suffixes = r'(?:ex|gx|vmax|vstar|v|lv\s*x)'
+    if not re.search(r'\b' + suffixes + r'$', name_key) and re.search(
+            r'\b' + re.escape(name_key) + r'\s+' + suffixes + r'\b', normalized(title)):
+        return False
     set_key, title_key = normalized(card.set_name), normalized(title)
     if not re.search(r"(?<![a-z0-9])" + re.escape(set_key) + r"(?![a-z0-9])", title_key):
         return False
@@ -81,8 +97,8 @@ def identity_matches(card, title):
                 return False
     if '/' in str(card.number):
         expected = [pc_sales.norm_number(n) for n in str(card.number).split('/')]
-        fractions = re.findall(r'\b([A-Za-z]*\d+)\s*/\s*(\d+)\b', title)
-        if fractions and not any([pc_sales.norm_number(n) for n in pair] == expected for pair in fractions):
+        fractions = title_parser._FRACTION_RE.findall(title)
+        if fractions and any([pc_sales.norm_number(n) for n in pair] != expected for pair in fractions):
             return False
     return True
 
@@ -90,32 +106,46 @@ def identity_matches(card, title):
 def reference_sales(card, refs, grade, variants, policy, today=None):
     """Individually match sales; a product page alone is not identity evidence."""
     today = today or datetime.now(timezone.utc).date()
-    matches, seen = [], set()
-    for sale in getattr(refs, '_sales', []) if refs is not None and refs.available else []:
+    matches, seen, excluded = [], set(), Counter()
+    pool = getattr(refs, '_sales', []) if refs is not None and refs.available else []
+    for sale in pool:
         title = sale.get('title', '')
         parsed = grading.grade_from_title(title)
         price = money(sale.get('price'))
         sale_id = str(sale.get('sale_id', ''))
         if sale.get('source') != 'ebay' or not sale_id.isdigit() or sale_id in seen:
+            excluded['origem-id-ou-duplicata'] += 1
             continue
         try:
             sold_date = date.fromisoformat(str(sale.get('date', '')))
         except ValueError:
+            excluded['data-invalida'] += 1
             continue
         if sold_date > today or price is None or price <= 0:
+            excluded['data-futura-ou-preco-invalido'] += 1
             continue
         if parsed.status != 'graded' or parsed.grade != grade:
+            excluded['certificadora-nota-ou-categoria'] += 1
             continue
-        if language(title) != card.language or not identity_matches(card, title):
+        if language(title) != card.language:
+            excluded['idioma-ausente-ou-diferente'] += 1
+            continue
+        if not identity_matches(card, title):
+            excluded['carta-colecao-ou-numero'] += 1
             continue
         if pc_sales.variant_tokens(title) != variants:
+            excluded['variante-diferente'] += 1
             continue
-        if pc_sales._NOISE_SALE_RE.search(title) or re.search(r'best offer|or best|accepted offer', title, re.I):
+        if (pc_sales._NOISE_SALE_RE.search(title) or title_parser.risk_flags(title)
+                or re.search(r'best offer|or best|accepted offer|offer accepted|\b(?:potential|candidate|possibly|qualifiers?|OC|MC|ST|MK|PD)\b', title, re.I)
+                or pc_sales._is_ambiguous_black_sale(title)):
+            excluded['oferta-lote-ou-certificacao-incerta'] += 1
             continue
         seen.add(sale_id)
         matches.append({'date': sold_date.isoformat(), 'price': float(price), 'title': title,
                         'url': f'https://www.ebay.com/itm/{sale_id}', 'sale_id': sale_id,
-                        'language': card.language, 'grade': grade.key})
+                        'language': card.language, 'grade': grade.key,
+                        'price_exact': str(price), 'source_url': getattr(refs, 'url', card.pc_url)})
     minimum = policy['evidence']['min_sales']
     windows = policy['evidence']['windows_days']
     selected, window = [], windows[-1]
@@ -125,18 +155,23 @@ def reference_sales(card, refs, grade, variants, policy, today=None):
             break
     selected.sort(key=lambda s: (s['date'], s['sale_id']), reverse=True)
     used = selected[:policy['evidence']['median_sample_limit']]
-    prices = [money(s['price']) for s in used]
+    prices = [money(s['price_exact']) for s in used]
     median = statistics.median(prices) if prices else None
     dispersion = (max(prices) - min(prices)) / median * 100 if prices and median else None
-    return {'price': amount(median), 'sales': used, 'n_sales': len(selected), 'n_used': len(used),
-            'window_days': window, 'dispersion_percent': amount(dispersion)}
+    excluded['fora-da-janela'] += len(matches) - len(selected)
+    return {'price': amount(median), 'price_exact': str(median) if median is not None else None,
+            'sales': used, 'n_sales': len(selected), 'n_used': len(used),
+            'window_days': window, 'dispersion_percent': amount(dispersion),
+            'dispersion_exact': str(dispersion) if dispersion is not None else None,
+            'source_sales_count': len(pool), 'excluded_counts': dict(excluded),
+            'as_of_date': today.isoformat()}
 
 
 def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     cfg = policy_config(config)
     p = cfg['slab_strategy']
     review, reject = [], []
-    gr = grading.grade_from_title(listing.title)
+    gr = grading.grade_from_title(listing.title, allow=frozenset(cfg['graded_allow']))
     grade = gr.grade
     opp = Opportunity(card, listing, grade.key if grade else gr.status.upper(), None,
                       0, 0, 'D', 0, 0, 0, verdict='REVISAR', pc_url=card.pc_url)
@@ -158,6 +193,8 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         reject.append('apenas-cartas-certificadas')
     elif gr.status != 'graded':
         review.append('certificadora-ou-nota-a-confirmar')
+    if gr.status == 'out_of_scope' and 'sem nota' not in gr.reason:
+        reject.append('certificadora-ou-nota-fora-do-escopo')
     if re.search(r'\bPSA\s*9[.,]5\b', listing.title, re.I):
         reject.append('PSA-nao-possui-nota-9.5')
     if listing.currency != 'USD':
@@ -180,6 +217,12 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         review.append('idioma-sem-regra-na-configuracao')
     if 'ungraded' in (listing.condition or '').lower() and grade:
         reject.append('titulo-certificado-condicao-ungraded')
+    elif grade and not listing.condition:
+        review.append('condicao-certificada-a-confirmar')
+    if re.search(r'\b(?:potential|candidate|possibly|qualifiers?|OC|MC|ST|MK|PD)\b', listing.title, re.I):
+        review.append('certificacao-potencial-ou-qualificada')
+    if grade and (grade.qualifier in ('BLACK', 'PRISTINE') or re.search(r'\bpristine\b', listing.title, re.I)):
+        review.append('categoria-especial-sem-regra')
     flags = title_parser.risk_flags(listing.title, listing)
     for flag in flags:
         (reject if flag.startswith(('REJEITAR', 'LOTE')) else review).append(flag)
@@ -213,8 +256,9 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         factor = Decimal(str(mapping.get('factor', 1)))
         details['adjustments'].append({'rule': 'grade_equivalence', 'factor': float(factor)})
         if psa['price'] is not None:
-            comparison = Decimal(str(psa['price'])) * factor
+            comparison = Decimal(psa['price_exact']) * factor
             details['comparison_reference'] = amount(comparison)
+            details['comparison_reference_exact'] = str(comparison)
             opp.fair_value = amount(comparison)
             if grade.grader == 'BGS':
                 premium = rule['max_premium_percent']
@@ -225,15 +269,30 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                     if grade.value != 9.5 or rule.get('combine_9_5_premium') is True:
                         cap *= 1 + Decimal(str(premium)) / 100
                     details['comparison_cap'] = amount(cap)
-                    if price is not None and price > cap:
+                    if price is not None and listing.currency == 'USD' and price > cap:
                         reject.append('preco-acima-do-limite-BGS')
+            elif grade.grader in ('CGC', 'TAG'):
+                max_percent = money(rule.get('max_reference_percent'))
+                if max_percent is None:
+                    review.append('limite-da-certificadora-indefinido')
+                else:
+                    cap = comparison * max_percent / 100
+                    details['comparison_cap'] = amount(cap)
+                    details['comparison_cap_exact'] = str(cap)
+                    details['comparison_cap_exact'] = str(cap)
+                    if price is not None and listing.currency == 'USD' and price > cap:
+                        reject.append(f'preco-acima-do-limite-{grade.grader}')
             if price is not None and listing.currency == "USD":
                 discount = (comparison - price) / comparison * 100
                 opp.discount_pct = float(discount)
                 opp.gross_margin_pct = float((comparison-price)/price*100) if price else 0
                 opp.spread_usd = amount(comparison-price)
-                if discount < Decimal(str(cfg.get('min_discount_percent', 20))):
+                if grade.grader == 'PSA' and p['economics'].get('gate_mode') != 'profit_or_discount' and discount < Decimal(str(cfg.get('min_discount_percent', 20))):
                     reject.append('desconto-abaixo-do-minimo')
+                if grade.grader == 'PSA':
+                    cap = comparison if p['economics'].get('gate_mode') == 'profit_or_discount' else comparison * (1 - Decimal(str(cfg.get('min_discount_percent', 20))) / 100)
+                    details['comparison_cap'] = amount(cap)
+                    details['comparison_cap_exact'] = str(cap)
         else:
             review.append('sem-vendas-PSA-comparaveis')
         resale = psa if grade.grader == 'PSA' else reference_sales(
@@ -251,7 +310,7 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
             limit = p['evidence'].get('max_dispersion_percent')
             if limit is None:
                 review.append('limite-de-dispersao-indefinido')
-            elif ref['dispersion_percent'] is not None and ref['dispersion_percent'] > limit:
+            elif ref['dispersion_exact'] is not None and Decimal(ref['dispersion_exact']) > Decimal(str(limit)):
                 review.append(f'{label}-precos-dispersos')
         opp.ref_n_sales = psa['n_sales']
         opp.ref_window_days = psa['window_days']
@@ -275,6 +334,11 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     if reserve is None:
         review.append('reserva-por-slab-indefinida')
     fixed = [money(costs.get(key)) for key in ('comc_processing_usd', 'comc_storage_usd')]
+    if fixed[1] is None and costs.get('storage_horizon_days') is not None:
+        from .comc_costs import estimate_storage
+        fixed[1], forecast = estimate_storage(costs, money(resale['price_exact']) if resale else None)
+        details['costs']['storage_forecast'] = forecast
+        details['costs']['comc_storage_usd'] = amount(fixed[1])
     sell, cashout = [money(costs.get(key)) for key in ('selling_fee_percent', 'cashout_fee_percent')]
     if any(v is None for v in fixed) or sell is None or cashout is None:
         review.append('custos-COMC-indefinidos')
@@ -291,7 +355,7 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         if all(v is not None for v in fixed) and costs.get('coverage_confirmed') and costs.get('covers') == ['shipping', 'taxes']:
             details['investment_total'] = amount(investment)
             if resale and resale['price'] is not None and sell is not None and cashout is not None and costs.get('fee_basis') == 'sale_then_cashout':
-                gross = Decimal(str(resale['price']))
+                gross = Decimal(resale['price_exact'])
                 net = gross * (1-sell/100) * (1-cashout/100)
                 profit = net-investment
                 details.update(profit_estimate=amount(profit), net_margin_percent=amount(profit/gross*100),
@@ -300,19 +364,32 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                 details['costs']['cashout_fee_usd'] = amount(gross*(1-sell/100)*cashout/100)
                 if profit <= 0:
                     reject.append('lucro-nao-positivo')
-                for key, actual in [('min_profit_usd', profit), ('min_net_margin_percent', profit/gross*100),
-                                    ('min_net_roi_percent', profit/investment*100)]:
-                    threshold = money(p['economics'].get(key))
-                    if threshold is not None and actual < threshold:
-                        reject.append(f'abaixo-de-{key}')
-    for key in ('min_profit_usd', 'min_net_margin_percent', 'min_net_roi_percent'):
+                if p['economics'].get('gate_mode') == 'profit_or_discount':
+                    profit_min = money(p['economics'].get('min_profit_usd'))
+                    discount_min = money(p['economics'].get('min_discount_percent'))
+                    comparison = money(details.get('comparison_reference_exact'))
+                    discount = (comparison - price) / comparison * 100 if comparison else None
+                    profit_pass = profit_min is not None and profit > profit_min
+                    discount_pass = discount_min is not None and discount is not None and discount > discount_min
+                    details['economic_gate'] = {'mode': 'profit_or_discount', 'profit_pass': profit_pass,
+                                                'discount_pass': discount_pass, 'strictly_above': True}
+                    if profit_min is not None and discount_min is not None and not (profit_pass or discount_pass):
+                        reject.append('nao-atende-lucro-ou-desconto-minimo')
+                else:
+                    for key, actual in [('min_profit_usd', profit), ('min_net_margin_percent', profit/gross*100),
+                                        ('min_net_roi_percent', profit/investment*100)]:
+                        threshold = money(p['economics'].get(key))
+                        if threshold is not None and actual < threshold:
+                            reject.append(f'abaixo-de-{key}')
+    economic_keys = ('min_profit_usd', 'min_discount_percent') if p['economics'].get('gate_mode') == 'profit_or_discount' else ('min_profit_usd', 'min_net_margin_percent', 'min_net_roi_percent')
+    for key in economic_keys:
         if money(p['economics'].get(key)) is None:
             review.append(f'{key}-indefinido')
     if p['logistics'].get('resale_route') != 'COMC' or p['logistics'].get('direct_vault_listing') is not False:
         review.append('rota-operacional-incompativel')
     if listing.seller_feedback_score < cfg.get('trusted_min_feedback', 50) or listing.seller_feedback_pct < cfg.get('trusted_min_feedback_pct', 98):
         review.append('historico-do-vendedor-insuficiente')
-    if (opp.gross_margin_pct or 0) > cfg.get('suspicious_margin_percent', 60):
+    if p['economics'].get('gate_mode') != 'profit_or_discount' and grade and grade.grader == 'PSA' and (opp.gross_margin_pct or 0) > cfg.get('suspicious_margin_percent', 60):
         review.append('desconto-elevado-conferir-identidade')
     opp.reasons = list(dict.fromkeys(reject + review))
     opp.verdict = 'REJEITAR' if reject else 'REVISAR' if review else 'APROVAR'

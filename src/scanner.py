@@ -19,6 +19,7 @@ falha de autenticacao no eBay ou erros seguidos da API ABORTAM o run
 """
 import dataclasses
 import logging
+import re
 import statistics
 from collections import Counter
 
@@ -212,6 +213,13 @@ def load_card_page(card, config=None, stats=None, breaker=None, log=print):
             breaker.record_error()
         log(f"  AVISO: PriceCharting falhou para {card.name} #{card.number}: {exc}")
         return FairValue(source_url=card.pc_url), CardRefs(card, error=str(exc))
+    if not re.search(r'(?:completed-auctions-|id=[\"\']price_data[\"\'])', body):
+        if stats is not None:
+            stats['pc_error'] += 1
+        if breaker is not None:
+            breaker.record_error()
+        log('  AVISO: PriceCharting sem tabelas reconhecidas')
+        return FairValue(source_url=card.pc_url), CardRefs(card, error='layout-sem-tabelas')
     if breaker is not None:
         breaker.record_ok()
     fair = pricecharting.parse_product_page(body, source_url=card.pc_url)
@@ -299,13 +307,14 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
             # scorer repete a checagem como cinto de seguranca.
             fixed_price_only=bool(config.get("fixed_price_only", True)),
             location_country=str(config.get("required_location_country", "US") or ""),
+            **({'graded_only': True} if 'slab_strategy' in config else {}),
         )
         for listing in listings:
             fingerprint = (listing.title.strip().lower(), listing.price)
             # item_id vazio nao identifica nada: se entrasse no set, o 1o
             # anuncio sem id faria TODOS os seguintes sem id sumirem do scan.
             if (listing.item_id and listing.item_id in seen_ids) \
-                    or fingerprint in seen_ids:
+                    or (not listing.item_id and fingerprint in seen_ids):
                 stats["dedup_dropped"] += 1
                 continue
             if listing.item_id:
@@ -318,7 +327,7 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
         stats["dedup_dropped"] += max(0, int(getattr(ebay, "dedup_dropped", 0) or 0) - dups_before)
     stats["seen"] += len(unique_listings)
 
-    asks = _clean_ask_prices(card, unique_listings)
+    asks = {} if 'slab_strategy' in config else _clean_ask_prices(card, unique_listings)
 
     opportunities = []
     for listing in unique_listings:
@@ -333,7 +342,7 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
             opportunities.append(opp)
 
     log(f"  {card.name} #{card.number}: {len(unique_listings)} anuncios vistos, "
-        f"{len(opportunities)} acima do desconto minimo"
+        f"{len(opportunities)} candidatos avaliados"
         + ("" if refs.available else " (PriceCharting indisponivel p/ esta carta)"))
     return fair, opportunities
 
@@ -405,5 +414,8 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
             stats["card_error"] += 1
             log(f"  ERRO em {card.name} #{card.number}: {type(e).__name__}: {e} "
                 "-- carta pulada (contada no funil)")
+    if any(stats[k] for k in ('pc_error', 'pc_breaker', 'ebay_error', 'card_error')):
+        aborted = True
+        stats['aborted'] = 1
     return fair_values, all_opportunities, pricing_only, stats, aborted
 

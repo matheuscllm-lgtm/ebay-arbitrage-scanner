@@ -292,3 +292,19 @@ Histórico reconstruído a partir da documentação; a fonte de verdade era o
   vereditos OPORTUNIDADE/REVISAR/SUSPEITO/REJEITADO, filtro só EUA (entrega na
   COMC), sanitização de segredo (BOM/zero-width).
 
+
+## Revisão de precisão — 2026-09-05 (esta branch)
+
+- Base revisada: `86b8324`. CGC até 40% confirmado; lucro >US$40 OU desconto >30%
+  substitui filtro global antigo. Margem e ROI permanecem informativos.
+- Cobertura dos US$10 confirmada até COMC, incluindo eventual saída do vault.
+  Elite US$2,50, venda 5%, saque 10% informado; armazenamento estimado para
+  120 dias, incluindo carência e segurança sem carência. Fontes versionadas.
+- Busca aplica Graded 2750; anúncios com IDs distintos não são descartados só
+  porque têm preço/título iguais. Garantia de autenticidade não é presumida.
+- Moeda/frete/preço desconhecidos continuam desconhecidos; erros não produzem
+  execução completa. JSON atômico impede sobrescrever resultado com NaN/Infinity.
+- Comparação distingue regiões chinesas, nomes/sufixos, denominadores, categorias
+  especiais e ofertas sem preço efetivo. Medianas não são arredondadas antes dos limites.
+- Relatórios exibem idioma observado, vault, projeção COMC e exclusões de vendas.
+- Validação local e remota documentada em docs/VALIDATION_EBAY_PSA.md.

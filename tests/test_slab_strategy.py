@@ -40,7 +40,7 @@ def cfg():
     p=c['slab_strategy']
     p['costs'].update(coverage_confirmed=True,comc_processing_usd=1,comc_storage_usd=0,
                       selling_fee_percent=5,cashout_fee_percent=3,fee_basis='sale_then_cashout')
-    p['economics'].update(min_profit_usd=0,min_net_margin_percent=0,min_net_roi_percent=0)
+    p['economics'].update(gate_mode='all_minima',min_profit_usd=0,min_net_margin_percent=0,min_net_roi_percent=0)
     p['evidence']['max_dispersion_percent']=30
     return c
 
@@ -59,8 +59,9 @@ def test_psa_costs_and_metrics_no_shipping_double_count():
     assert len(s['psa_sales'])==3
 
 
-def test_defaults_never_approve_or_invent_fees():
-    o=evaluate(CARD,listing(),refs=refs(sales()))
+def test_missing_costs_never_approve_or_invent_fees():
+    c=cfg(); c['slab_strategy']['costs'].update(comc_processing_usd=None, comc_storage_usd=None, storage_horizon_days=None, coverage_confirmed=False)
+    o=evaluate(CARD,listing(),config=c,refs=refs(sales()))
     assert o.verdict=='REVISAR'
     assert o.strategy['investment_total'] is None
     assert o.strategy['investment_known_subtotal']==85
@@ -71,6 +72,7 @@ def test_defaults_never_approve_or_invent_fees():
 @pytest.mark.parametrize('key',['comc_processing_usd','comc_storage_usd','selling_fee_percent','cashout_fee_percent','fee_basis'])
 def test_each_missing_cost_blocks_approval(key):
     c=cfg();c['slab_strategy']['costs'][key]=None
+    c['slab_strategy']['costs']['storage_horizon_days']=None
     assert evaluate(CARD,listing(),config=c,refs=refs(sales())).verdict=='REVISAR'
 
 
@@ -108,9 +110,10 @@ def test_bgs_cap_boundary_independent_of_profit(price,exceeds):
     assert ('preco-acima-do-limite-BGS' in o.reasons)==exceeds
 
 
-@pytest.mark.parametrize('grade',['CGC 10','SGC 10','CGC 9.5'])
+@pytest.mark.parametrize('grade',['CGC 10','CGC 9.5'])
 def test_undefined_grader_is_review(grade):
-    o=evaluate(CARD,listing(grade),config=cfg(),refs=refs(sales()))
+    c=cfg();c['slab_strategy']['graders']['CGC']=None
+    o=evaluate(CARD,listing(grade),config=c,refs=refs(sales()))
     assert o.verdict=='REVISAR'
     assert 'certificadora-sem-regra' in o.reasons
 
@@ -129,7 +132,7 @@ def test_uncertain_identity_never_approves(title,verdict):
     assert o.verdict==verdict
 
 
-@pytest.mark.parametrize('lang,code',[('Japanese','JP'),('Chinese','ZH'),('Korean','KO'),('Portuguese','PT'),('English','EN')])
+@pytest.mark.parametrize('lang,code',[('Japanese','JP'),('Simplified Chinese','ZH-HANS'),('Traditional Chinese','ZH-HANT'),('Korean','KO'),('Portuguese','PT'),('English','EN')])
 def test_languages_separate_in_both_listing_and_sales(lang,code):
     c=replace(CARD,language=code)
     pool=refs(sales(lang=lang),sales(lang='French',price=1000,start=200))
@@ -205,7 +208,8 @@ def test_run_scan_injects_policy_even_with_custom_config(monkeypatch):
         return FairValue(),[evaluate(card,listing(),config=config,refs=refs(sales()))]
     monkeypatch.setattr(scanner,'scan_card',scan)
     _,os,_,_,aborted=scanner.run_scan(config={'graded_only':False},log=lambda *a:None)
-    assert not aborted and os[0].verdict=='REVISAR'
+    assert not aborted and os[0].strategy['policy_version'] == policy_config()['slab_strategy']['version']
+    assert os[0].verdict == 'REJEITAR' and 'lucro-nao-positivo' in os[0].reasons
 
 
 def test_scan_card_production_keeps_missing_refs_and_rejections(monkeypatch):
