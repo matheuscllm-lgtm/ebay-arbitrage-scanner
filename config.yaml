@@ -14,7 +14,7 @@ required_location_country: US
 graded_allow: ["PSA 8", "PSA 9", "PSA 10", "BGS 9", "BGS 9.5", "BGS 10", "BGS 10 BLACK", "TAG 9.5", "TAG 10", "CGC 9", "CGC 9.5", "CGC 10 GEM", "CGC 10 PRISTINE"]
 
 slab_strategy:
-  version: '2026-09-05.2'
+  version: '2026-09-05.3'
   languages: [EN, JP, ZH-HANS, ZH-HANT, KO, PT, DE, FR, IT, ES]
   graders:
     PSA:
@@ -24,7 +24,7 @@ slab_strategy:
         '10': {psa_grade: 10, factor: 1}
     BGS:
       max_premium_percent: 5
-      combine_9_5_premium: null
+      combine_9_5_premium: false   # decisão conservadora sob autonomia delegada: teto PSA 9 ×1,05
       grades:
         '9': {psa_grade: 9, factor: 1}
         '9.5': {psa_grade: 9, factor: 1.05}
@@ -44,7 +44,7 @@ slab_strategy:
     min_sales: 3                    # regra anterior preservada
     windows_days: [180, 365]        # 365d sinaliza dificuldade de revenda
     median_sample_limit: 10         # regra anterior preservada
-    max_dispersion_percent: null    # precisa de definição; dispersão é reportada
+    max_dispersion_percent: 30      # decisão delegada: acima disso exige REVISAR
   costs:
     per_slab_usd: 10
     covers: [shipping, taxes]       # reserva agregada; frete observado não é somado

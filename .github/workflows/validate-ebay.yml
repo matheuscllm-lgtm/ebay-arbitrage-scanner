@@ -1,4 +1,4 @@
-name: Validate eBay credentials and one card
+name: Validate eBay credentials and sample
 
 # Initial validation on this implementation branch only when this wiring changes.
 # No schedule; ordinary source pushes and pull requests do not receive secrets.
@@ -34,7 +34,7 @@ jobs:
         env:
           EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
           EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
-        run: python validate_live.py --group 3 --limit 1
+        run: python validate_live.py --group 3 --limit 3 --psa-grade 9
       - name: Preserve validation report
         if: always()
         uses: actions/upload-artifact@v4

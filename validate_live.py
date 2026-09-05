@@ -14,9 +14,11 @@ from src import report, scanner
 from src.ebay_api import EbayClient
 
 
-def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=True):
+def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=True, psa_grade=10):
     if limit not in (1, 2, 3):
         raise ValueError('validation supports 1 to 3 cards')
+    if psa_grade not in (8, 9, 10):
+        raise ValueError('validation supports PSA 8, 9 or 10')
     target = Path(out_dir)
     target.mkdir(parents=True, exist_ok=True)
     config = _load_config('config.yaml')
@@ -27,7 +29,7 @@ def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=
                'max_cards': limit, 'max_pages_per_card': 1,
                'credentials_present': EbayClient().configured,
                'status': 'blocked', 'reason': '', 'funnel': {}, 'verdicts': {}}
-    summary['validation_scope'] = 'PSA 10 com idioma explícito' if focus_psa10 else 'consulta geral'
+    summary['validation_scope'] = f'PSA {psa_grade} com idioma explícito' if focus_psa10 else 'consulta geral'
     summary['max_item_details_per_card'] = config.get('max_item_details_per_card', 10)
     payload = None
     code = 1
@@ -46,7 +48,7 @@ def validate(group='3', limit=1, out_dir='results/live-validation', focus_psa10=
                 # Catalog year narrows discovery (e.g. Base Set vs Celebrations
                 # reprints). It never replaces identity/variant checks on sales.
                 year_term = f' {card.year}' if card.year else ''
-                entry['ebay_query'] = f'{card.default_query()}{year_term} {language_term} PSA 10'
+                entry['ebay_query'] = f'{card.default_query()}{year_term} {language_term} PSA {psa_grade}'
             entries.append(entry)
         summary['queries'] = [entry.get('ebay_query', '') for entry in entries]
         diagnostics = []
@@ -101,8 +103,9 @@ def main(argv=None):
     parser.add_argument('--group', default='3')
     parser.add_argument('--limit', type=int, choices=(1,2,3), default=1)
     parser.add_argument('--general-query', action='store_true', help='valida consulta geral, sem foco PSA 10 e idioma')
+    parser.add_argument('--psa-grade', type=int, choices=(8,9,10), default=10, help='nota da consulta de validação; mantém comparação por nota exata')
     args = parser.parse_args(argv)
-    return validate(args.group, args.limit, focus_psa10=not args.general_query)
+    return validate(args.group, args.limit, focus_psa10=not args.general_query, psa_grade=args.psa_grade)
 
 
 if __name__ == '__main__':

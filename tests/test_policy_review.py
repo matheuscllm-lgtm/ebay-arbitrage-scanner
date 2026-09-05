@@ -23,6 +23,27 @@ def current_config():
     return c
 
 
+def test_delegated_defaults_are_complete_and_do_not_stack_bgs_premiums():
+    c = policy_config()
+    assert pending_config(c) == []
+    assert c['slab_strategy']['graders']['BGS']['combine_9_5_premium'] is False
+    o = evaluate(CARD, listing('BGS 9.5', price=105.01), config=c,
+                 refs=refs(sales('PSA 9'), sales('BGS 9.5', 200, start=200)))
+    assert o.strategy['comparison_cap'] == 105
+    assert o.verdict == 'REJEITAR' and 'preco-acima-do-limite-BGS' in o.reasons
+
+
+@pytest.mark.parametrize('low,verdict', [(80, 'APROVAR'), (79.99, 'REVISAR')])
+def test_default_dispersion_boundary_and_full_comc_costs(low, verdict):
+    pool = sales()
+    for sale, price in zip(pool, (low, 100, 110)):
+        sale['price'] = price
+    o = evaluate(CARD, listing(price=50), config=policy_config(), refs=refs(pool))
+    assert o.verdict == verdict
+    assert o.strategy['profit_estimate'] > 0
+    assert o.strategy['costs']['comc_storage_usd'] > 0
+
+
 @pytest.mark.parametrize('price,reference,expected', [
     (950, 1000, 'REJEITAR'),       # exactly $40 profit, <30% discount
     (949.99, 1000, 'APROVAR'),     # profit route alone; legacy 20% must not reject

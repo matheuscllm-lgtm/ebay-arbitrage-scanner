@@ -60,20 +60,21 @@ def test_workflow_secrets_only_in_live_step():
     with_secrets=[s for s in steps if 'env' in s]
     assert len(with_secrets)==1
     assert set(with_secrets[0]['env'])=={'EBAY_CLIENT_ID','EBAY_CLIENT_SECRET'}
-    assert 'validate_live.py --group 3 --limit 1' in with_secrets[0]['run']
+    assert 'validate_live.py --group 3 --limit 3 --psa-grade 9' in with_secrets[0]['run']
 
 
-def test_catalog_year_narrows_discovery_without_altering_card(monkeypatch, tmp_path):
+@pytest.mark.parametrize('grade', [8, 9, 10])
+def test_catalog_year_narrows_discovery_without_altering_card(monkeypatch, tmp_path, grade):
     setup(monkeypatch)
     card = replace(CARD, year=1999)
     monkeypatch.setattr(live.scanner, 'load_watchlist', lambda *a: [card])
     def run(**kw):
         import yaml
         entry = yaml.safe_load(Path(kw['watchlist_path']).read_text())['cards'][0]
-        assert entry['ebay_query'].endswith('1999 English PSA 10')
+        assert entry['ebay_query'].endswith(f'1999 English PSA {grade}')
         assert entry['set'] == card.set_name and entry['pc_url'] == card.pc_url
         return {}, [], False, Counter(seen=1), False
     monkeypatch.setattr(live.scanner, 'run_scan', run)
-    assert live.validate(out_dir=tmp_path) == 2
+    assert live.validate(out_dir=tmp_path, psa_grade=grade) == 2
     summary = json.loads((tmp_path/'validation.json').read_text())
-    assert summary['queries'][0].endswith('1999 English PSA 10')
+    assert summary['queries'][0].endswith(f'1999 English PSA {grade}')

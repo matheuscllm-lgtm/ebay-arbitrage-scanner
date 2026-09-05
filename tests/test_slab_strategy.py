@@ -94,7 +94,9 @@ def test_tag_equivalence_is_not_resale_value():
 
 
 def test_9_5_uses_psa9_plus_five_not_psa10_or_double_premium():
-    o=evaluate(CARD,listing('BGS 9.5'),config=cfg(),refs=refs(sales('PSA 9'),sales('PSA 10',1000,start=200),sales('BGS 9.5',100,start=300)))
+    c = cfg()
+    c['slab_strategy']['graders']['BGS']['combine_9_5_premium'] = None
+    o=evaluate(CARD,listing('BGS 9.5'),config=c,refs=refs(sales('PSA 9'),sales('PSA 10',1000,start=200),sales('BGS 9.5',100,start=300)))
     assert o.strategy['psa_reference_original']==100
     assert o.strategy['comparison_reference']==105
     assert o.strategy['comparison_cap'] is None
