@@ -15,7 +15,7 @@ required_location_country: US
 graded_allow: ["PSA 8", "PSA 9", "PSA 10", "BGS 9", "BGS 9.5", "BGS 10", "BGS 10 BLACK", "TAG 9.5", "TAG 10", "CGC 9", "CGC 9.5", "CGC 10 GEM", "CGC 10 PRISTINE"]
 
 slab_strategy:
-  version: '2026-09-05.3'
+  version: '2026-09-05.4'
   languages: [EN, JP, ZH-HANS, ZH-HANT, KO, PT, DE, FR, IT, ES]
   graders:
     PSA:

@@ -85,7 +85,23 @@ def listing_language(listing):
 
 
 def normalized(text):
-    return ' '.join(re.findall(r'[a-z0-9]+', unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode().lower()))
+    # Apostrophes are typography, not a different Pokemon (Rocket's / Rockets).
+    text = str(text).replace("'", '').replace('’', '')
+    key = ' '.join(re.findall(r'[a-z0-9]+', unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode().lower()))
+    return re.sub(r'\blv x\b', 'lvx', key)
+
+
+def set_label(value):
+    """Remove known catalog codes; keep subset/edition names as identity."""
+    value = str(value).strip()
+    value = pc_sales.PC_CONSOLE_ALIASES.get(value, value)
+    return re.sub(r'^(?:SV|SWSH|SM|XY|BW|DP|HGSS)\d{0,2}\s*(?::|\s-\s)\s*', '', value, flags=re.I)
+
+
+def discovery_query(card):
+    """Use readable catalog labels in discovery without changing stored identity."""
+    return re.sub(re.escape(card.set_name), lambda _: set_label(card.set_name),
+                  card.default_query(), flags=re.I)
 
 
 def identity_matches(card, title):
@@ -94,7 +110,9 @@ def identity_matches(card, title):
     numerator = str(card.number).split('/')[0]
     if not numerator or not card.name or not card.set_name:
         return False
-    if not title_parser.card_matches_title(replace(card, number=numerator), title):
+    # Check the number and explicit exclusions on the original title; names below
+    # use canonical typography rather than a raw substring requirement.
+    if not title_parser.card_matches_title(replace(card, name='', number=numerator), title):
         return False
     # 'Mew' must not match 'Mewtwo'; card suffixes are part of identity.
     name_key = normalized(card.name)
@@ -104,15 +122,16 @@ def identity_matches(card, title):
     if not re.search(r'\b' + suffixes + r'$', name_key) and re.search(
             r'\b' + re.escape(name_key) + r'\s+' + suffixes + r'\b', normalized(title)):
         return False
-    set_key, title_key = normalized(card.set_name), normalized(title)
+    set_key, title_key = normalized(set_label(card.set_name)), normalized(title)
     if not re.search(r"(?<![a-z0-9])" + re.escape(set_key) + r"(?![a-z0-9])", title_key):
         return False
     # Longer catalog names identify another set (Base Set 2 vs Base Set).
     from .groups import SCAN_GROUPS
     for group in SCAN_GROUPS.values():
         for other in group.sets:
-            other_key = normalized(other)
-            if other_key != set_key and set_key in other_key and other_key in title_key:
+            other_key = normalized(set_label(other))
+            if (other_key != set_key and set_key in normalized(other)
+                    and other_key in title_key):
                 return False
     if '/' in str(card.number):
         expected = [pc_sales.norm_number(n) for n in str(card.number).split('/')]
@@ -235,7 +254,7 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     if not identity_matches(card, listing.title):
         review.append('carta-colecao-numero-a-confirmar')
     for value in listing.item_aspects.get('Set', []):
-        if normalized(str(value)) != normalized(card.set_name):
+        if normalized(set_label(value)) != normalized(set_label(card.set_name)):
             review.append('colecao-do-aspecto-a-confirmar')
     for value in listing.item_aspects.get('Card Number', []):
         expected = [title_parser._norm_num_token(n) for n in str(card.number).split('/')]

@@ -1,14 +1,24 @@
 name: Validate eBay credentials and sample
 
-# Initial validation on this implementation branch only when this wiring changes.
-# No schedule; ordinary source pushes and pull requests do not receive secrets.
+# Read-only, bounded validation; credentials only in an explicitly dispatched run.
 on:
-  push:
-    branches: [feat/ebay-psa-slab-policy]
-    paths:
-      - .github/workflows/validate-ebay.yml
-      - validate_live.py
   workflow_dispatch:
+    inputs:
+      group:
+        description: Grupo do catálogo
+        type: choice
+        default: '1'
+        options: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
+      limit:
+        description: Máximo de cartas (uma página por carta)
+        type: choice
+        default: '3'
+        options: ['1', '2', '3']
+      psa_grade:
+        description: Nota PSA na busca (comparação por nota exata)
+        type: choice
+        default: '10'
+        options: ['8', '9', '10']
 
 permissions:
   contents: read
@@ -30,11 +40,14 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Offline regression tests
         run: python -m pytest -q
-      - name: Validate existing eBay secrets and process one card
+      - name: Validate existing eBay secrets and process sample
         env:
           EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
           EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
-        run: python validate_live.py --group 3 --limit 3 --psa-grade 9
+          SCAN_GROUP: ${{ inputs.group }}
+          SCAN_LIMIT: ${{ inputs.limit }}
+          SCAN_GRADE: ${{ inputs.psa_grade }}
+        run: python validate_live.py --group "$SCAN_GROUP" --limit "$SCAN_LIMIT" --psa-grade "$SCAN_GRADE"
       - name: Preserve validation report
         if: always()
         uses: actions/upload-artifact@v4

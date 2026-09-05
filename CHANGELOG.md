@@ -1,3 +1,11 @@
+## 2026-09-05 — revisão de execução, política 2026-09-05.4
+
+- Corrigida identidade de coleções com códigos de catálogo e grafias com apóstrofos/LV.X.
+- Mantidas as separações por número, subconjunto, variante, idioma e nota.
+- Separado estado de execução do estado de evidência; parâmetros operacionais no JSON.
+- Validação manual parametrizada por grupo/nota/amostra, sem rotina recorrente.
+- Diagnóstico e evidências em `docs/RUNTIME_REVIEW.md`.
+
 ## 2026-09-05 — autonomia delegada, política 2026-09-05.3
 
 - Dispersão máxima 30%; BGS 9,5 sem acumular os dois acréscimos de 5%.

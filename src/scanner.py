@@ -297,6 +297,9 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
     seen_ids = set()
     unique_listings = []
     base_query = card.default_query()
+    if 'slab_strategy' in config:
+        from .slab_strategy import discovery_query
+        base_query = discovery_query(card)
     try:
       for suffix in query_suffixes(config):
         listings = ebay.search(
