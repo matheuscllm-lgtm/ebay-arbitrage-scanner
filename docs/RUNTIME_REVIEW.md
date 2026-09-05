@@ -47,5 +47,22 @@ referência, custos, cálculo e decisão com evidência suficiente.
   entre comparação e revenda são detalhadas uma única vez no relatório.
 - Sem preço de revenda, a impossibilidade de estimar armazenamento é distinguida
   de tarifa COMC ainda não configurada. Dados e cálculos continuam pendentes.
-- 632 testes locais passaram, incluindo preservação de arquivos e limites de
+- 635 testes locais passaram, incluindo preservação de arquivos e limites de
   identidade. Os limites econômicos permanecem os confirmados anteriormente.
+
+## Verificação adicional
+
+- [Grupo 2, PSA 10, run 33949647793](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/runs/33949647793):
+  sucesso; 29 anúncios, 14 chamadas, 24 referências suficientes, 3 REVISAR e
+  26 REJEITAR. Dispersão elevada e lucro não positivo permaneceram sinalizados.
+- [Grupo 7, PSA 8, run 33949650560](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/actions/runs/33949650560):
+  execução completa, evidência insuficiente; 2 anúncios, 4 chamadas e 2 REVISAR.
+  Sem falha de fonte. O código 2 preserva a distinção entre executar e encontrar evidência.
+- Auditoria aritmética independente dos JSONs reais: **107 candidatos recalculados,
+  zero divergências** em investimento, receita após taxas, lucro, margem, ROI e desconto.
+- Regressores adicionais impedem que o nome da série (Sun & Moon, Sword & Shield,
+  XY) transforme uma expansão identificada no título em seu Base Set.
+
+Critério de entrega: testes e execução técnica aprovados, custos reproduzíveis,
+regras respeitadas e limites de evidência explícitos. Isso não garante cobertura
+integral do mercado, disponibilidade futura das fontes nem oportunidades lucrativas.

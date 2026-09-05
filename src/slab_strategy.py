@@ -133,6 +133,12 @@ def identity_matches(card, title):
             if (other_key != set_key and set_key in normalized(other)
                     and other_key in title_key):
                 return False
+            # A series name alone must not turn an expansion into its base set:
+            # "Sun & Moon Guardians Rising" is not "SM Base Set".
+            if (card.set_name in pc_sales.PC_CONSOLE_ALIASES and other_key != set_key
+                    and other_key not in set_key and len(re.findall(r'[a-z]+', other_key)) >= 2
+                    and re.search(r'(?<![a-z0-9])' + re.escape(other_key) + r'(?![a-z0-9])', title_key)):
+                return False
     if '/' in str(card.number):
         expected = [pc_sales.norm_number(n) for n in str(card.number).split('/')]
         fractions = title_parser._FRACTION_RE.findall(title)

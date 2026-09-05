@@ -31,6 +31,17 @@ def test_lvx_typography_is_same_card():
     assert not identity_matches(replace(card, name='Dialga'), 'Dialga LV.X #105 Great Encounters English PSA 8')
 
 
+@pytest.mark.parametrize('set_name,label,expansion', [
+    ('SM Base Set', 'Sun & Moon', 'Guardians Rising'),
+    ('SWSH01: Sword & Shield Base Set', 'Sword & Shield', 'Brilliant Stars'),
+    ('XY Base Set', 'XY', 'Furious Fists'),
+])
+def test_base_set_alias_is_not_permission_to_accept_an_expansion(set_name, label, expansion):
+    card = replace(CARD, set_name=set_name)
+    assert identity_matches(card, f'Charizard #4/102 {label} English PSA 10')
+    assert not identity_matches(card, f'Charizard #4/102 {label} {expansion} English PSA 10')
+
+
 def test_production_evidence_accepts_label_without_catalog_code():
     card = replace(CARD, set_name='SV05: Temporal Forces', name='Gengar ex', number='193')
     title = 'Gengar ex #193 Temporal Forces English PSA 10'
