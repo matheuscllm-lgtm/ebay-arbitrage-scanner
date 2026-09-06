@@ -27,6 +27,8 @@ HEADERS = {
     "Accept-Encoding": "gzip",
 }
 
+from uuid import uuid4
+RUN_CACHE_DIR = os.path.join("data", "cache", uuid4().hex)
 CACHE_TTL_SECONDS = 24 * 3600
 REQUEST_GAP_SECONDS = 2.0  # pausa entre requisicoes (educacao com o site)
 # Erro transitorio de rede (handshake TLS pendurado, conexao resetada, 5xx)
@@ -76,7 +78,7 @@ def _money(text):
         return None
 
 
-def fetch_page(url, cache_dir="data/cache"):
+def fetch_page(url, cache_dir=RUN_CACHE_DIR):
     """Baixa uma pagina do PriceCharting com cache em disco (24h)."""
     os.makedirs(cache_dir, exist_ok=True)
     slug = re.sub(r"[^a-z0-9]+", "_", url.lower())[-120:]
@@ -186,7 +188,7 @@ def parse_product_page(body, source_url=""):
     return fv
 
 
-def get_fair_value(pc_url, cache_dir="data/cache"):
+def get_fair_value(pc_url, cache_dir=RUN_CACHE_DIR):
     """Atalho: baixa e parseia a pagina de uma carta."""
     body = fetch_page(pc_url, cache_dir=cache_dir)
     return parse_product_page(body, source_url=pc_url)
@@ -221,7 +223,7 @@ def product_url_from_search(body):
     return None
 
 
-def search_product(query, cache_dir="data/cache"):
+def search_product(query, cache_dir=RUN_CACHE_DIR):
     """Busca uma carta no PriceCharting e retorna a URL do produto, ou None.
 
     Util quando a watchlist nao traz pc_url explicita (mas URL explicita e

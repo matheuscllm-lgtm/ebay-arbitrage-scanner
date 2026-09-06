@@ -1,3 +1,5 @@
+> **Regra vigente de entrega:** [DELIVERY_CHAT.md](DELIVERY_CHAT.md). Resultados somente no chat, referência clicável e coleta nova por solicitação; substitui orientações antigas de entrega via GitHub ou preços reutilizados.
+
 # EBAY PSA — scanner de cartas certificadas
 
 Busca cartas certificadas no eBay e compara com vendas concluídas PSA da mesma

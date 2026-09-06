@@ -1,4 +1,7 @@
 """Report every decision and the exact sales behind each calculation."""
+
+from .chat_format import reference_price
+from .report import links_cell
 import json
 from collections import Counter
 from .report import escape_md, md_url
@@ -12,17 +15,17 @@ def render(payload):
     lines = ['# EBAY PSA — avaliação de cartas certificadas', '',
              f'{len(rows)} candidatos: {counts["APROVAR"]} APROVAR, {counts["REVISAR"]} REVISAR, {counts["REJEITAR"]} REJEITAR.', '',
              'APROVAR é aprovação na análise; nenhuma compra é executada.', '',
-             '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem líquida % | ROI líquido % | Decisão |',
-             '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|']
+             '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem líquida % | ROI líquido % | Decisão | Links |',
+             '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|']
     if payload.get('meta', {}).get('aborted'):
         lines[2:2] = ['**EXECUÇÃO ABORTADA: resultado parcial; não representa busca completa.**', '']
     for r in rows:
         s=r['strategy']
         label=escape_md(f'{r["card"]} #{r["number"]} / {r["set"]} / {s.get("listing_language") or "idioma não confirmado"} / {r["grade"]}')
-        values=[num(r['price']) if s['purchase_currency']=='USD' else 'pendente',num(s['investment_total']),num(s['psa_reference_original']),
-                num(s['comparison_reference']),num(s['resale_estimate']),num(s['profit_estimate']),
+        values=[num(r['price']) if s['purchase_currency']=='USD' else 'pendente',num(s['investment_total']),reference_price(num(s['psa_reference_original']), r.get('pc_url')),
+                reference_price(num(s['comparison_reference']), r.get('pc_url')),reference_price(num(s['resale_estimate']), next((x.get('url') for x in s.get('resale_sales', []) if x.get('url')), None)),num(s['profit_estimate']),
                 num(r['discount_pct']) if s['comparison_reference'] is not None else 'pendente',
-                num(s['net_margin_percent']),num(s['net_roi_percent']),r['verdict']]
+                num(s['net_margin_percent']),num(s['net_roi_percent']),r['verdict'],links_cell(r.get('url'), r.get('pc_url'))]
         lines.append('| '+f'[{label}]({md_url(r["url"])})'+' | '+' | '.join(values)+' |')
     for r in rows:
         s=r['strategy']

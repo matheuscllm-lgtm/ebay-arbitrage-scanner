@@ -27,7 +27,8 @@ def test_incomplete_banner_precedes_opportunities_and_shared_evidence_is_not_dup
     payload = report.scan_payload([opp], 1, c, aborted=True)
     text = slab_report.render(payload)
     assert text.index('EXECUÇÃO ABORTADA') < text.index('| Carta')
-    assert text.count('https://www.ebay.com/itm/100)') == 1
+    # One clickable price in the table plus one sale in the evidence section.
+    assert text.count('https://www.ebay.com/itm/100)') == 2
     assert 'mesma amostra PSA' in text
     saved = payload['meta']['config']
     assert saved['max_ebay_calls'] == 500 and saved['trusted_min_feedback'] == 50

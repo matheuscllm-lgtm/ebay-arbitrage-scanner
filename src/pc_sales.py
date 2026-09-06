@@ -73,7 +73,8 @@ REQUEST_GAP_SECONDS = 2.0  # educação com o site
 # as tentativas o erro sobe como PcError.
 FETCH_ATTEMPTS = 3
 RETRY_BACKOFF_SECONDS = 2.0
-DEFAULT_CACHE_DIR = os.path.join("data", "cache", "pc")
+from uuid import uuid4
+DEFAULT_CACHE_DIR = os.path.join("data", "cache", "pc", uuid4().hex)
 
 # Tabela "Full Price Guide" (#full-prices): rótulo → chave normalizada.
 FULL_TABLE_GRADE_BY_LABEL = {

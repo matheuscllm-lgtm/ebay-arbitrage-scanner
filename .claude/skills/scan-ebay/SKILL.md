@@ -13,6 +13,10 @@ description: >-
   todos os buckets, funil no cabeçalho).
 ---
 
+REGRA VIGENTE DO OPERADOR: ler DELIVERY_CHAT.md na raiz do repositório. Entrega somente no chat, preço de referência clicável, coleta nova sob demanda; não executar scans no GitHub Actions nem publicar resultados. Esta regra substitui instruções antigas conflitantes abaixo.
+
+
+
 # Scan do eBay — pergunte, rode, entregue
 
 O scanner compara anúncios ativos de **preço fixo** do eBay (Browse API — a API
