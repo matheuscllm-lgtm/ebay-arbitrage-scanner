@@ -17,6 +17,8 @@ Padrao COMC (operador, 2026-09-03) -- tres metricas, nomeadas assim e so assim:
 Ranking: maior ROI bruto -> maior desconto -> maior spread -> Pokemon mais
 popular (rank menor na lista dos 100 chases). Nunca "lucro".
 """
+
+from .chat_format import reference_price
 import csv
 import json
 import os
@@ -308,7 +310,7 @@ def _cells_for(row, rank):
         "discount_pct": _num(row.get("discount_pct")),
         "roi_pct": _num(roi),
         "price": _num(row.get("price")),
-        "fair_value": _num(row.get("fair_value")),
+        "fair_value": reference_price(_num(row.get("fair_value")), row.get("ref_url") or row.get("pc_url") or row.get("tcg_url")),
         "spread_usd": _num(row.get("spread_usd")),
         "pokemon": row.get("pokemon") or "",
         "carta": carta_label(row.get("card"), row.get("number")),

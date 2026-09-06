@@ -203,7 +203,8 @@ def test_fetch_page_default_cache_is_data_cache_pc_scoped_by_day(monkeypatch, tm
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(pc.urllib.request, "urlopen", lambda req, timeout=30: _Resp(GOOD_PAGE))
     assert pc.fetch_page("https://www.pricecharting.com/game/x/default") == GOOD_PAGE
-    day_dir = tmp_path / "data" / "cache" / "pc" / pc.today_stamp()
+    day_dir = tmp_path / pc.DEFAULT_CACHE_DIR / pc.today_stamp()
+    assert Path(pc.DEFAULT_CACHE_DIR).parent == Path("data/cache/pc")
     assert day_dir.is_dir() and len(list(day_dir.glob("*.html"))) == 1
 
 

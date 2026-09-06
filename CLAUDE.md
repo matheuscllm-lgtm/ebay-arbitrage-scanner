@@ -1,3 +1,5 @@
+> **Regra vigente de entrega:** [DELIVERY_CHAT.md](DELIVERY_CHAT.md). Resultados somente no chat, referência clicável e coleta nova por solicitação; substitui orientações antigas de entrega via GitHub ou preços reutilizados.
+
 # Instruções de desenvolvimento — EBAY PSA
 
 As instruções do projeto EBAY PSA de 2026-09-05 substituem as regras econômicas
