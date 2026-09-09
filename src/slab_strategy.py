@@ -14,6 +14,7 @@ import unicodedata
 
 from . import grading, pc_sales, title_parser
 from .models import Opportunity
+from .policy_validation import economic_keys as policy_economic_keys
 
 
 def policy_config(config=None):
@@ -223,6 +224,12 @@ def reference_sales(card, refs, grade, variants, policy, today=None):
 def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     cfg = policy_config(config)
     p = cfg['slab_strategy']
+    # `gross_margin` (regra canonica do operador, 2026-09-09): o veredito economico e
+    # SO a margem bruta, sem taxa nenhuma. Os ramos abaixo que tratam de lucro liquido,
+    # desconto minimo e margem suspeita pertencem aos modos legados e nao podem decidir
+    # nada aqui -- por isso testam o modo pelo nome, nunca por `!= 'profit_or_discount'`.
+    gate_mode = p['economics'].get('gate_mode')
+    legacy_discount_gate = gate_mode not in ('profit_or_discount', 'gross_margin')
     observed_language, language_source = listing_language(listing)
     review, reject = [], []
     gr = grading.grade_from_title(listing.title, allow=frozenset(cfg['graded_allow']))
@@ -364,10 +371,10 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                 opp.discount_pct = float(discount)
                 opp.gross_margin_pct = float((comparison-price)/price*100) if price else 0
                 opp.spread_usd = amount(comparison-price)
-                if grade.grader == 'PSA' and p['economics'].get('gate_mode') != 'profit_or_discount' and discount < Decimal(str(cfg.get('min_discount_percent', 20))):
+                if grade.grader == 'PSA' and legacy_discount_gate and discount < Decimal(str(cfg.get('min_discount_percent', 20))):
                     reject.append('desconto-abaixo-do-minimo')
                 if grade.grader == 'PSA':
-                    cap = comparison if p['economics'].get('gate_mode') == 'profit_or_discount' else comparison * (1 - Decimal(str(cfg.get('min_discount_percent', 20))) / 100)
+                    cap = comparison * (1 - Decimal(str(cfg.get('min_discount_percent', 20))) / 100) if legacy_discount_gate else comparison
                     details['comparison_cap'] = amount(cap)
                     details['comparison_cap_exact'] = str(cap)
         else:
@@ -443,9 +450,9 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                                net_roi_percent=amount(profit/investment*100), net_sale_proceeds=amount(net))
                 details['costs']['selling_fee_usd'] = amount(gross*sell/100)
                 details['costs']['cashout_fee_usd'] = amount(gross*(1-sell/100)*cashout/100)
-                if profit <= 0:
+                if profit <= 0 and gate_mode != 'gross_margin':
                     reject.append('lucro-nao-positivo')
-                if p['economics'].get('gate_mode') == 'profit_or_discount':
+                if gate_mode == 'profit_or_discount':
                     profit_min = money(p['economics'].get('min_profit_usd'))
                     discount_min = money(p['economics'].get('min_discount_percent'))
                     comparison = money(details.get('comparison_reference_exact'))
@@ -456,21 +463,39 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                                                 'discount_pass': discount_pass, 'strictly_above': True}
                     if profit_min is not None and discount_min is not None and not (profit_pass or discount_pass):
                         reject.append('nao-atende-lucro-ou-desconto-minimo')
-                else:
+                elif gate_mode != 'gross_margin':
+                    # Em `gross_margin` a conta com taxas acima e so informacao no JSON.
                     for key, actual in [('min_profit_usd', profit), ('min_net_margin_percent', profit/gross*100),
                                         ('min_net_roi_percent', profit/investment*100)]:
                         threshold = money(p['economics'].get(key))
                         if threshold is not None and actual < threshold:
                             reject.append(f'abaixo-de-{key}')
-    economic_keys = ('min_profit_usd', 'min_discount_percent') if p['economics'].get('gate_mode') == 'profit_or_discount' else ('min_profit_usd', 'min_net_margin_percent', 'min_net_roi_percent')
-    for key in economic_keys:
+    # Gate economico do modo `gross_margin`: FORA do bloco de custos de proposito. No run
+    # real de 2026-09-09 quase toda linha ficou sem base de custo ('armazenamento-sem-base-
+    # de-revenda') e, dentro daquele `if`, nenhum veredito economico saia. A margem bruta
+    # nao usa custo nenhum: basta preco e referencia. Comparacao em Decimal exato, aprovada
+    # ESTRITAMENTE acima do limiar; o arredondamento existe so na saida.
+    if gate_mode == 'gross_margin':
+        comparison = money(details.get('comparison_reference_exact'))
+        threshold = money(p['economics'].get('min_gross_margin_percent'))
+        if price is not None and price > 0 and comparison is not None and listing.currency == 'USD':
+            gross_margin = (comparison - price) / price * 100
+            margin_pass = threshold is not None and gross_margin > threshold
+            details['economic_gate'] = {'mode': 'gross_margin',
+                                        'gross_margin_percent': amount(gross_margin),
+                                        'gross_margin_percent_exact': str(gross_margin),
+                                        'threshold': float(threshold) if threshold is not None else None,
+                                        'margin_pass': margin_pass, 'strictly_above': True}
+            if threshold is not None and not margin_pass:
+                reject.append('abaixo-da-margem-bruta-minima')
+    for key in policy_economic_keys(p['economics']):
         if money(p['economics'].get(key)) is None:
             review.append(f'{key}-indefinido')
     if p['logistics'].get('resale_route') != 'COMC' or p['logistics'].get('direct_vault_listing') is not False:
         review.append('rota-operacional-incompativel')
     if listing.seller_feedback_score < cfg.get('trusted_min_feedback', 50) or listing.seller_feedback_pct < cfg.get('trusted_min_feedback_pct', 98):
         review.append('historico-do-vendedor-insuficiente')
-    if p['economics'].get('gate_mode') != 'profit_or_discount' and grade and grade.grader == 'PSA' and (opp.gross_margin_pct or 0) > cfg.get('suspicious_margin_percent', 60):
+    if legacy_discount_gate and grade and grade.grader == 'PSA' and (opp.gross_margin_pct or 0) > cfg.get('suspicious_margin_percent', 60):
         review.append('desconto-elevado-conferir-identidade')
     opp.reasons = list(dict.fromkeys(reject + review))
     opp.verdict = 'REJEITAR' if reject else 'REVISAR' if review else 'APROVAR'

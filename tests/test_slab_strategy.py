@@ -211,7 +211,10 @@ def test_run_scan_injects_policy_even_with_custom_config(monkeypatch):
     monkeypatch.setattr(scanner,'scan_card',scan)
     _,os,_,_,aborted=scanner.run_scan(config={'graded_only':False},log=lambda *a:None)
     assert not aborted and os[0].strategy['policy_version'] == policy_config()['slab_strategy']['version']
-    assert os[0].verdict == 'REJEITAR' and 'lucro-nao-positivo' in os[0].reasons
+    # O config injetado e o de producao (gate `gross_margin`): 75 contra referencia 100
+    # da 33,3% de margem bruta, abaixo do minimo -- e o veredito vem SO dessa conta.
+    assert os[0].verdict == 'REJEITAR' and 'abaixo-da-margem-bruta-minima' in os[0].reasons
+    assert 'lucro-nao-positivo' not in os[0].reasons
 
 
 def test_scan_card_production_keeps_missing_refs_and_rejections(monkeypatch):
