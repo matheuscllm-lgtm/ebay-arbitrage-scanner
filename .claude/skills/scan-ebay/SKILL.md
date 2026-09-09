@@ -28,10 +28,11 @@ docs/EBAY_PSA.md):
   PriceCharting (≥3 vendas em 180 dias = OK; só em 365 dias = REVISAR por baixa
   liquidez; 1–2 vendas = REVISAR). Outras certificadoras são comparadas à PSA
   ajustada (`graders` no config) e a revenda exige vendas da própria certificadora.
-- **Regra econômica** = `slab_strategy.economics` do config.yaml: `gate_mode:
-  profit_or_discount` (braço `min_profit_usd: 40` OU braço `min_discount_percent:
-  30`, limites estritos, `require_positive_profit: true`), com os custos COMC
-  explícitos em `costs`. Nada disso é recomendação: é classificação técnica.
+- **Regra econômica** = `slab_strategy.economics` do config.yaml:
+  `gate_mode: profit_or_discount` — braço `min_profit_usd: 40` OU braço
+  `min_discount_percent: 30`, limites estritos, `require_positive_profit: true` —
+  com os custos COMC explícitos em `costs`. Nada disso é recomendação: é
+  classificação técnica.
 - **Carta solta (raw) não entra**: `graded_only: true` é obrigatório e a flag
   antiga de raw é rejeitada pelo `main.py` com erro.
 - Vereditos = **APROVAR / REVISAR / REJEITAR**, sempre com motivos e evidências
