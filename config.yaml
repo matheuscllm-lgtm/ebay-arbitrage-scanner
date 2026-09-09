@@ -67,9 +67,10 @@ slab_strategy:
     # sem taxa nenhuma. Custos de intermediação continuam sendo CALCULADOS e vão
     # para o JSON/relatório como informação, mas NÃO entram no veredito.
     gate_mode: gross_margin
-    min_gross_margin_percent: 42.9  # (referência - preço) / preço x 100, estritamente acima.
-                                    # 42,9% preserva a fronteira do antigo desconto de 30%
-                                    # sobre a referência: 30/(100-30) = 42,857...
+    min_gross_margin_percent: 43    # (referência - preço) / preço x 100, estritamente acima.
+                                    # Convenção do repo: percentual INTEIRO. 43 preserva a
+                                    # fronteira do antigo desconto de 30% sobre a referência
+                                    # (30/(100-30) = 42,857...), com 0,14 p.p. a mais de rigor.
     # --- chaves dos modos legados; sem efeito com gate_mode: gross_margin ---
     min_profit_usd: 40             # estritamente acima, após todos os custos
     min_discount_percent: 30       # estritamente acima, contra PSA ajustado

@@ -39,11 +39,47 @@ def test_skill_uses_only_flags_the_cli_accepts_and_no_removed_modes():
     # baldes do motor legado nao sao a entrega vigente
     assert "SUSPEITO" not in text and "OPORTUNIDADE" not in text
     for needle in ("APROVAR", "REJEITAR", "REVISAR", "DELIVERY_CHAT.md",
-                   "gate_mode: profit_or_discount", "min_discount_percent: 30",
+                   "gate_mode: gross_margin", "min_gross_margin_percent: 43",
                    "docs/EBAY_PSA.md", "slab_report"):
         assert needle in text, f"skill sem {needle!r}"
+    # O gate vigente usa SO margem bruta: a skill nao pode voltar a vender o modo
+    # antigo como regra em vigor (ele so sobrevive como modo legado, dito assim).
+    assert "gate_mode: profit_or_discount" not in text
 
 
+def test_skill_and_docs_declare_the_gate_mode_the_config_actually_has():
+    """Guarda de drift do GATE: o texto operacional tem de nomear o `gate_mode` que
+    esta de fato no config.yaml, e o limiar que aquele modo usa. Trocar o modo no
+    config sem atualizar skill/doc passa a quebrar aqui."""
+    import yaml
+    cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+    eco = cfg["slab_strategy"]["economics"]
+    mode = eco["gate_mode"]
+    threshold_key = {"gross_margin": "min_gross_margin_percent",
+                     "profit_or_discount": "min_discount_percent"}[mode]
+    threshold = eco[threshold_key]
+    assert isinstance(threshold, int), (
+        f"convencao do repo: percentual INTEIRO; {threshold_key}={threshold!r}")
+    for path in (SKILL, ROOT / "docs" / "EBAY_PSA.md"):
+        text = path.read_text(encoding="utf-8")
+        assert f"gate_mode: {mode}" in text, f"{path.name} nao nomeia o gate vigente"
+        assert f"{threshold_key}: {threshold}" in text, f"{path.name} sem o limiar vigente"
+
+
+def test_longterm_docs_use_the_real_fragility_flag_count():
+    """Guarda de drift da COLUNA: toda cobertura escrita nas docs no formato `k/N`
+    (flags, fontes de fragilidade, testes) tem de usar o N real de
+    `longterm.FRAGILITY_FLAGS`. Acrescentar ou remover uma flag sem mexer no texto
+    operacional passa a quebrar aqui."""
+    from src import longterm
+    n = len(longterm.FRAGILITY_FLAGS)
+    denom = re.compile(r"/(\d+)\s*(?:flags|fontes de fragilidade|testes)")
+    for name in ("docs/LONGO_PRAZO.md", "README.md",
+                 ".claude/skills/scan-ebay/SKILL.md"):
+        text = (ROOT / name).read_text(encoding="utf-8")
+        assert f"/{n}" in text, f"{name} nao menciona a cobertura /{n}"
+        wrong = [d for d in denom.findall(text) if int(d) != n]
+        assert not wrong, f"{name} com contagem desatualizada: {wrong} (real: {n})"
 def test_main_docstring_and_help_do_not_advertise_the_removed_diagnostic_mode(capsys):
     doc = main.__doc__
     for stale in ("--min-price 5", "--min-discount 10", "--include-raw"):

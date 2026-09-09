@@ -29,10 +29,14 @@ docs/EBAY_PSA.md):
   liquidez; 1–2 vendas = REVISAR). Outras certificadoras são comparadas à PSA
   ajustada (`graders` no config) e a revenda exige vendas da própria certificadora.
 - **Regra econômica** = `slab_strategy.economics` do config.yaml:
-  `gate_mode: profit_or_discount` — braço `min_profit_usd: 40` OU braço
-  `min_discount_percent: 30`, limites estritos, `require_positive_profit: true` —
-  com os custos COMC explícitos em `costs`. Nada disso é recomendação: é
-  classificação técnica.
+  `gate_mode: gross_margin` com `min_gross_margin_percent: 43`, limite estrito.
+  Margem bruta = (referência − preço) / **preço** ×100. Regra canônica da frota: o
+  gate usa SÓ margem bruta, **sem taxa nenhuma**, e não depende do modelo de custos.
+  Os custos COMC de `costs` seguem calculados e reportados como INFORMAÇÃO
+  (`profit_estimate`, `net_margin_percent`, `net_roi_percent`), fora do veredito.
+  Modos legados no código e sem efeito hoje: `profit_or_discount`
+  (`min_profit_usd: 40` / `min_discount_percent: 30`) e o modo por `min_net_*`.
+  Nada disso é recomendação: é classificação técnica.
 - **Carta solta (raw) não entra**: `graded_only: true` é obrigatório e a flag
   antiga de raw é rejeitada pelo `main.py` com erro.
 - Vereditos = **APROVAR / REVISAR / REJEITAR**, sempre com motivos e evidências
@@ -91,8 +95,10 @@ docs/EBAY_PSA.md):
 2. **Ajustes do run** (todos opcionais; o default é a política do config):
    - `--max-pages N` — páginas de 200 anúncios por carta (default 3; os runs
      validados de #29/#30 usaram `--max-pages 1`);
-   - `--min-discount N` — inteiro; altera SÓ o braço `min_discount_percent` da
-     regra `profit_or_discount` daquele run (nos dois lugares do config);
+   - `--min-gross-margin N` — inteiro; altera `min_gross_margin_percent` daquele
+     run (o gate vigente);
+   - `--min-discount N` — inteiro; altera `min_discount_percent`, que só tem efeito
+     nos modos legados (`profit_or_discount` e o modo por `min_net_*`);
    - `--min-price USD` — piso do preço do item (default `min_price_usd: 10`);
    - `--grades "PSA 10, CGC 10 Pristine"` — funil restrito a notas; nota
      desconhecida erra alto; RAW é rejeitado;
@@ -166,28 +172,31 @@ as vendas usadas na referência + funil no rodapé.
    decide se a linha entra), não é veredito, não é ranking e não é recomendação.
    Entregar como veio; se o operador perguntar, explicar assim (a legenda
    completa já sai no rodapé do `.md`, e a régua está em docs/LONGO_PRAZO.md):
-   - Célula `LP2 64/35 (4/5·8/10)` = **classe** · **PERFIL/FRAGILIDADE DO
+   - Célula `LP2 64/35 (4/5·9/11)` = **classe** · **PERFIL/FRAGILIDADE DO
      DADO** · (cobertura do perfil · cobertura da fragilidade).
    - **PERFIL** (0-100) = características observadas da carta: personagem,
      raridade, tempo fora de impressão, faixa da coluna PSA 10 e tendência real
      das vendas. **FRAGILIDADE DO DADO** (0-100) = quão frágil é o dado daquela
      linha: poucas vendas na referência, PSA 10 pouco vendida, referência
      desalinhada, reimpressão, tiragem, dispersão, vendedor, concentração de
-     anúncios iguais no mesmo run.
+     anúncios iguais no mesmo run e **meses de estoque** (`estoque-alto`:
+     anúncios ativos da mesma nota ÷ vendas PSA 10 por mês — oferta parada em
+     cima de demanda fina).
    - **Classe** LP1 forte · LP2 médio · LP3 fraco · LP4 frágil — é
      qualidade/completude do perfil, **não** é "oportunidade" nem nota de compra.
    - **`LP2*`** (asterisco) = seria LP1, **mas faltou dado**: um dos três
      insumos-chave da fragilidade (`ref-fragil`, `psa10-iliquido`,
      `ref-desalinhada`) estava em `n/d`, ou a cobertura da fragilidade ficou
-     abaixo de 8 das 10 flags. No caminho da política o teto desta rodada é
-     `LP2*`, porque `ref-desalinhada` é `n/d` por decisão do operador.
-   - **Cobertura** `4/5` = 4 dos 5 componentes tinham dado; `8/10` = 8 das 10
+     abaixo de `lp1_min_fragility_coverage` (9 das 11 flags). O teto `LP2*` que a
+     política tinha caiu: `ref-desalinhada` passou a ser calculada nos dois
+     caminhos, sem tocar em veredito.
+   - **Cobertura** `4/5` = 4 dos 5 componentes tinham dado; `9/11` = 9 das 11
      flags de fragilidade existiam. Toda ausência sai escrita como
      `LP:<nome>: n/d` nos motivos — nada some em silêncio. Célula inteira `n/d` =
      coluna indisponível, nunca 0. **Leia a FRAGILIDADE junto com a cobertura:**
      o PERFIL é uma média (o componente ausente sai mesmo da conta), mas a
      FRAGILIDADE é uma soma, então ela mede "problemas **detectados** entre os
-     testes que puderam rodar" — `0 (3/10)` quer dizer "só 3 dos 10 testes
+     testes que puderam rodar" — `0 (3/11)` quer dizer "só 3 dos 11 testes
      rodaram e nenhum acusou problema", e **não** "dado impecável".
    - Os pontos e limiares são **calibração inicial, não validada** (sem backtest).
      Nunca apresentar a classe como previsão de preço ou razão para comprar.

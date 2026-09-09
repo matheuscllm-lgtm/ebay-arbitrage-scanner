@@ -1,3 +1,83 @@
+## 2026-09-09 (2) — gate por MARGEM BRUTA, preços pedidos na coluna e sinal de MESES DE ESTOQUE
+
+Rodada decidida pelo operador em cima da auditoria do run real de 2026-09-09 (grupo 3, 6.104
+anúncios). Três mudanças de comportamento e duas de configurabilidade.
+
+### 1. O gate econômico passa a usar SÓ margem bruta
+
+Regra canônica da frota: **margem bruta, sem taxa nenhuma**. Antes, a política aprovava por
+`profit_or_discount` — lucro líquido acima de US$40 (com taxa de venda e de saque modeladas) OU
+desconto acima de 30% sobre a referência. Lucro líquido contradizia a regra da frota; foi
+autorizado em sessão autônoma anterior, não pelo operador.
+
+- `economics.gate_mode: gross_margin`, `min_gross_margin_percent: 43`, limite estrito.
+- Margem bruta = (referência − preço) / **preço** ×100, comparada em `Decimal` exato.
+- 43 preserva a fronteira do desconto de 30% sobre a referência (30/(100−30) = 42,857…%) e
+  respeita a convenção do repo de percentual INTEIRO, com 0,14 p.p. a mais de rigor.
+- **O gate deixou de depender do modelo de custos.** Antes, toda a avaliação econômica vivia
+  dentro de um `if` que exigia o custo completo; no run de 2026-09-09, 5.975 de 6.104 linhas
+  não tinham base de custo (`armazenamento-sem-base-de-revenda`), então um gate preso ao custo
+  simplesmente não tinha opinião sobre elas.
+- Custos COMC continuam calculados e no JSON (`profit_estimate`, `net_margin_percent`,
+  `net_roi_percent`, `costs`) como INFORMAÇÃO. Não decidem mais veredito: em `gross_margin` os
+  rejeitos `lucro-nao-positivo`, `nao-atende-lucro-ou-desconto-minimo`, `desconto-abaixo-do-minimo`
+  e `abaixo-de-min_net_*` não disparam, e a marcação `suspicious_margin_percent` (60) também
+  não — ela contradiz um gate que aprova a partir de 43%.
+- Modos legados (`profit_or_discount`, `all_minima`) seguem no código e nos testes.
+- CLI: `--min-gross-margin N` (inteiro). `--min-discount` passa a valer só nos modos legados.
+
+### 2. Preços pedidos passam a alimentar a coluna, sem tocar veredito
+
+`_annotate_ref_alignment` fazia duas coisas ao mesmo tempo: calculava a mediana dos preços
+pedidos E rebaixava o veredito de OPORTUNIDADE para REVISAR. Por isso o caminho da política
+mantinha `asks = {}`, e a flag `ref-desalinhada` ficava em `n/d`, travando a classe em `LP2*`.
+
+As duas responsabilidades foram separadas: o CÁLCULO roda nos dois caminhos (custo zero de API,
+os anúncios já estão em memória); o EFEITO NO VEREDITO continua só no legado. O teto `LP2*` da
+política caiu.
+
+### 3. "Meses de estoque" — o primeiro sinal de oferta contra demanda da régua
+
+A coluna não tinha nenhum sinal de estoque real: o componente B3, apesar de se chamar "supply",
+mede idade e reimpressão. A auditoria do snapshot mostrou que o PERFIL correlaciona com o
+PREÇO de referência e não com o prêmio da PSA 10 — ou seja, ele estava redescobrindo o preço
+que já aparece na linha ao lado.
+
+Nova flag de FRAGILIDADE `estoque-alto`, a 11ª: `listings_same_grade` ÷ `psa10_sales_pm`.
+≥ `supply_months_high` (24) +20 · ≥ `supply_months_mid` (12) +10 · abaixo 0 · `n/d` quando falta
+insumo ou quando as vendas por mês ficam abaixo de `supply_min_sales_pm` (0.05), onde a divisão
+fica instável. Os dois insumos já eram coletados e nunca tinham sido combinados. A cobertura da
+fragilidade passa de `k/10` para `k/11`.
+
+### 4. Pisos de cobertura da LP1 viraram configuração
+
+`LP1_MIN_PROFILE_COVERAGE` e `LP1_MIN_FRAGILITY_COVERAGE` eram constantes no código, escolhidas
+por proporção e não por medição. Agora são `longterm.lp1_min_profile_coverage` (4 de 5) e
+`longterm.lp1_min_fragility_coverage` (9 de 11).
+
+### 5. Cesta legada: chave existe, desligada por padrão
+
+`pc_sales.comparable_sales` ganhou `require_number` (keyword-only, default `False`). Com `True`
+a cesta legada passa a exigir o número da carta no título da venda, como o caminho vigente já
+faz, reutilizando `title_parser.card_matches_title` via a mesma chamada de
+`slab_strategy.identity_matches` — uma régua, não duas. `legacy_reference.require_number_in_sale_title`
+fica em `false`: unificar encolhe a cesta, e a cobertura de referência já é o gargalo (só 2,7%
+das linhas do run tiveram referência, com mediana de 2 vendas quando havia). Carta de watchlist
+sem número é fail-closed com `True`, igual ao caminho vigente.
+
+### Guardas de drift novas
+
+`tests/test_docs_drift.py` passa a exigir que a skill e `docs/EBAY_PSA.md` nomeiem o `gate_mode`
+que está de fato no `config.yaml` (e o limiar daquele modo, que tem de ser inteiro), e que toda
+cobertura `k/N` escrita em docs use o N real de `longterm.FRAGILITY_FLAGS`.
+
+### Limitações que continuam de pé
+
+Nada aqui foi validado contra o mercado: um snapshot não é backtest. Não existe dado de
+população PSA no scanner, então escassez real (pop por nota, taxa gem, velocidade da população)
+segue fora da régua — é o próximo passo e exige um coletor novo. Meses de estoque é o
+substituto barato e parcial, não o completo.
+
 ## 2026-09-09 — coluna informativa "Longo prazo" (PR-C `feat/longterm-risk-benefit`)
 
 Nova coluna na tabela de entrega dos DOIS geradores (`src/slab_report.render`, vigente, e a
