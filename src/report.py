@@ -184,13 +184,26 @@ FUNNEL_LABELS = [
 ]
 _KNOWN_FUNNEL_KEYS = {k for k, _ in FUNNEL_LABELS}
 
+# Mesmos contadores, vocabulario da POLITICA (`slab_strategy`, vigente): `VERDICT_STAT`
+# manda APROVAR para `rows_opportunity` e REJEITAR para `rows_rejected`, entao os
+# rotulos legados ("Linhas OPORTUNIDADE") mentiriam na entrega da politica
+# (auditoria de honestidade 2026-09-09). JSON legado continua com FUNNEL_LABELS.
+_POLICY_ROW_LABELS = {
+    "rows_opportunity": "Linhas APROVAR",
+    "rows_review": "Linhas REVISAR",
+    "rows_rejected": "Linhas REJEITAR (com motivo)",
+    "rows_suspect": "Linhas SUSPEITO (so existe no motor legado)",
+}
+POLICY_FUNNEL_LABELS = [(key, _POLICY_ROW_LABELS.get(key, label)) for key, label in FUNNEL_LABELS]
 
-def funnel_lines(counts):
+
+def funnel_lines(counts, labels=None):
     """Linhas 'rotulo: N' do funil (so as com valor > 0, mais 'analisados');
-    contadores sem rotulo conhecido aparecem como 'outros: k=v' (nunca somem)."""
+    contadores sem rotulo conhecido aparecem como 'outros: k=v' (nunca somem).
+    `labels` = FUNNEL_LABELS (legado, default) ou POLICY_FUNNEL_LABELS."""
     counts = counts or {}
     out = []
-    for key, label in FUNNEL_LABELS:
+    for key, label in (FUNNEL_LABELS if labels is None else labels):
         n = int(counts.get(key, 0) or 0)
         if n or key == "seen":
             out.append(f"{label}: {n}")
@@ -198,6 +211,12 @@ def funnel_lines(counts):
     if extra:
         out.append("outros: " + ", ".join(f"{k}={v}" for k, v in sorted(extra.items())))
     return out
+
+
+def policy_funnel_lines(counts):
+    """Funil com o vocabulario da politica (APROVAR / REVISAR / REJEITAR) -- entrega
+    vigente (`src/slab_report.render`) e console do `main.py` com a politica ativa."""
+    return funnel_lines(counts, POLICY_FUNNEL_LABELS)
 
 
 # --- status / referencia / tabela canonica --------------------------------------

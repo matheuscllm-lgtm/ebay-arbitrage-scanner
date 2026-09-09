@@ -63,3 +63,45 @@ def test_sensitivity_on_policy_json_is_declared_not_silently_ignored():
     assert "legado" in note
 
 
+
+
+# --- fix 4: funil da entrega da politica com rotulos humanos e vocabulario da politica --
+
+def test_policy_report_prints_funnel_with_human_labels_and_policy_verdicts():
+    from collections import Counter
+    from src import slab_report
+    payload = _policy_payload(funnel=Counter(seen=7, skip_raw=2, rows_opportunity=1,
+                                             rows_review=2, rows_rejected=3, weird=1))
+    text = slab_report.render(payload)
+    tail = text.split("Funil da busca:")[1]
+    assert "Anúncios analisados (após dedupe): 7" in tail
+    assert "escopo exclusivo de slabs): 2" in tail
+    assert "Linhas APROVAR: 1" in tail and "Linhas REVISAR: 2" in tail
+    assert "Linhas REJEITAR (com motivo): 3" in tail
+    assert "outros: weird=1" in tail            # contador sem rotulo nunca some
+    assert '{"seen"' not in text                 # nao e mais JSON cru
+    assert "OPORTUNIDADE" not in text and "REJEITADO" not in text
+
+
+def test_console_funnel_uses_policy_labels_when_policy_is_active(monkeypatch, tmp_path, capsys):
+    from collections import Counter
+    import main
+    from src import scanner
+    from src.slab_strategy import evaluate, policy_config
+    from tests.test_slab_strategy import CARD as PCARD, listing, sales, refs
+    opp = evaluate(PCARD, listing(price=50), config=policy_config(), refs=refs(sales()))
+    monkeypatch.setattr(scanner, "load_watchlist", lambda *a, **k: [PCARD])
+    monkeypatch.setattr(scanner, "run_scan",
+                        lambda **kw: ({}, [opp], False, Counter(seen=1, rows_opportunity=1), False))
+    assert main.main(["--out", str(tmp_path / "o.json"), "--csv", str(tmp_path / "o.csv")]) == 0
+    out = capsys.readouterr().out
+    assert "Linhas APROVAR: 1" in out
+    assert "OPORTUNIDADE" not in out.split("Funil:")[1]
+
+
+def test_legacy_funnel_labels_unchanged_for_legacy_json():
+    lines = report.funnel_lines({"seen": 3, "rows_opportunity": 1, "rows_rejected": 1})
+    assert any(line.startswith("Linhas OPORTUNIDADE: 1") for line in lines)
+    assert any(line.startswith("Linhas REJEITADO (com motivo): 1") for line in lines)
+
+

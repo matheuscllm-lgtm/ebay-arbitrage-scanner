@@ -31,6 +31,14 @@ do código) e foi conferida por mutation-check (desfazer a correção faz o test
   as faixas tinham sido aplicadas. Agora a entrega ganha um aviso explícito no topo ("ignorado:
   as faixas só existem para JSON do motor legado") e a tabela segue idêntica; nada muda na
   política nem nos vereditos.
+- Rótulo enganoso (classe iii) e "nada some em silêncio" (invariante do funil): a entrega da
+  política (`src/slab_report.render`) imprimia o funil como JSON cru (chaves internas, sem os
+  rótulos humanos de `FUNNEL_LABELS`), e os rótulos dos baldes eram os do motor legado —
+  `scorer.VERDICT_STAT` manda APROVAR para `rows_opportunity` e REJEITAR para `rows_rejected`,
+  então o console do `main.py` dizia "Linhas OPORTUNIDADE" para linhas APROVAR. Agora existem
+  `report.POLICY_FUNNEL_LABELS` / `policy_funnel_lines` (APROVAR / REVISAR / REJEITAR), usados
+  pelo `render` e pelo console quando a política está ativa; contador sem rótulo continua saindo
+  em "outros: …" e o JSON legado mantém os rótulos antigos.
 
 ## 2026-09-09 — porte do diff local pré-#29 sobre #31 (PR-A `fix/port-local-diff`)
 

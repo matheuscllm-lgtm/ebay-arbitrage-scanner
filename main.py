@@ -169,7 +169,10 @@ def main(argv=None):
             csv_path = f"{base}.aborted{ext or '.csv'}"
         path = report.to_csv(opportunities, csv_path)
         print(f"\nRegistro local: {path} ({len(opportunities)} linhas)")
-    print("Funil: " + " · ".join(report.funnel_lines(stats)))
+    # Rotulos do funil no vocabulario do motor ativo (politica: APROVAR/REJEITAR).
+    funnel = (report.policy_funnel_lines(stats) if "slab_strategy" in config
+              else report.funnel_lines(stats))
+    print("Funil: " + " · ".join(funnel))
 
     if effective_pricing_only and not args.pricing_only:
         # Scan degradou (EBAY_CLIENT_ID/SECRET ausentes): gravar um artefato

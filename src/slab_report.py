@@ -1,7 +1,7 @@
 """Report every decision and the exact sales behind each calculation."""
 
 from .chat_format import reference_price
-from .report import links_cell
+from .report import links_cell, policy_funnel_lines
 import json
 from collections import Counter
 from .report import escape_md, md_url
@@ -65,6 +65,7 @@ def render(payload):
                 lines.append(f'- {sale["date"]} · US$ {num(sale["price"])} · [{escape_md(sale["title"])}]({md_url(sale["url"])})')
     if payload.get('meta',{}).get('aborted'):
         lines += ['', 'EXECUÇÃO ABORTADA: resultado parcial; não representa busca completa.']
-    lines += ['', 'Funil da busca: '+escape_md(json.dumps(payload.get('meta', {}).get('funnel', {}), ensure_ascii=False))+'.']
+    # Funil com rotulos humanos (nada some: contador sem rotulo sai em "outros: ...").
+    lines += ['', 'Funil da busca: '+escape_md(' · '.join(policy_funnel_lines(payload.get('meta', {}).get('funnel', {}))))+'.']
     lines += ['', 'Desconto = (comparação − compra)/comparação. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.', '']
     return '\n'.join(lines)
