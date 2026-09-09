@@ -71,3 +71,19 @@ slab_strategy:
     prefer_vault: true
     resale_route: COMC
     direct_vault_listing: false
+
+# Coluna informativa "Longo prazo" (docs/LONGO_PRAZO.md, src/longterm.py): perfil da
+# carta / fragilidade do dado, só leitura na tabela — não é gate, veredito, ranking nem
+# recomendação. Limites das classes LP1-LP4 e coberturas mínimas; inteiros (0-100).
+# Pontos por componente/flag e bandas ficam no código (calibração inicial, não validada).
+longterm:
+  enabled: true
+  lp1_min_profile: 70              # LP1: PERFIL >= 70 e FRAGILIDADE <= 30 (e insumos-chave presentes)
+  lp1_max_fragility: 30
+  lp2_min_profile: 50              # LP2: PERFIL >= 50 e FRAGILIDADE <= 50
+  lp2_max_fragility: 50
+  lp4_max_profile: 30              # LP4: PERFIL < 30 ou FRAGILIDADE > 70
+  lp4_min_fragility: 70
+  min_profile_sources: 3           # menos que isto de 5 componentes -> PERFIL n/d
+  min_fragility_sources: 3         # menos que isto de 10 fontes -> FRAGILIDADE n/d
+  concentration_min_listings: 4    # mesma carta+nota com >= N anúncios no run -> LP:concentracao
