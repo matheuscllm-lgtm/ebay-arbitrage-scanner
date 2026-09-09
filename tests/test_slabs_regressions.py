@@ -473,3 +473,21 @@ def test_budget_exhausted_during_item_details_keeps_the_funnel_honest(no_tcg):
     assert stats["seen"] == _per_listing_buckets(stats)
     assert dict(report.FUNNEL_LABELS)["rows_lost_abort"]
     assert dict(report.FUNNEL_LABELS)["skip_details_abort"]
+
+
+# ── parser compartilhado (grading): efeito declarado na POLITICA ─────────────
+
+@pytest.mark.parametrize("qualifier,expected_n", [("GEM", 2), ("PRISTINE", 1)])
+def test_policy_resale_basket_reads_pristine_before_the_grader(qualifier, expected_n):
+    """O hunk "CGC Pristine antes da sigla" vive em `grading.grade_from_title`, que a
+    politica usa para o ANUNCIO e para a VENDA (`slab_strategy.reference_sales`):
+    uma venda "Pristine CGC 10" sai da cesta CGC 10 GEM e entra na cesta PRISTINE.
+    Efeito nos DOIS caminhos, declarado no CHANGELOG do PR #32 (o modulo
+    `slab_strategy` nao foi tocado; este teste so fixa o comportamento)."""
+    from src.slab_strategy import reference_sales
+    from tests.test_slab_strategy import CARD as POLICY_CARD, cfg, refs, sales
+    pool = sales("CGC 10", price=100, n=2, start=100) + sales("Pristine CGC 10", price=200, n=1, start=200)
+    ref = reference_sales(POLICY_CARD, refs(pool), grading.Grade("CGC", 10, qualifier),
+                          frozenset(), cfg()["slab_strategy"])
+    assert ref["n_sales"] == expected_n
+    assert all(("Pristine" in s["title"]) == (qualifier == "PRISTINE") for s in ref["sales"])
