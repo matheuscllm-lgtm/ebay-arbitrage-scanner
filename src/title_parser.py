@@ -211,9 +211,21 @@ def card_matches_title(card, title):
     if card.number:
         expected = str(card.number).lower().split("/")
         num = _norm_num_token(expected[0])
+        parts = re.match(r"^([a-z]*)(\d+)([a-z]?)$", num)
+        prefix = parts.group(1) if parts else ""
         clean = _GRADE_MENTION_STRIP.sub(" ", t)
-        clean = re.sub(r"\b(?:pop(?:ulation)?|cert(?:ificate)?|qty|swsh|sm|xy)"
-                       r"\s*[:#-]?\s*\d+\b", " ", clean)
+        # "pop 12" (populacao), "cert 12" (certificado) e "qty 2" nunca sao o
+        # numero da carta. Vale para os DOIS caminhos (a politica chama esta
+        # funcao com nome vazio) -- declarado no CHANGELOG do PR #32.
+        clean = re.sub(r"\b(?:pop(?:ulation)?|cert(?:ificate)?|qty)\s*[:#-]?\s*\d+\b",
+                       " ", clean)
+        # Codigo de serie + numero ("SM12", "SWSH 45") e o SET, nao a carta --
+        # exceto (a) quando o numero esperado tem esse prefixo (promo "SM211",
+        # "SWSH050") e (b) quando vem uma fracao logo depois ("SM 150/147": a
+        # fracao e o numero da carta). Review do PR #32.
+        series = [code for code in ("swsh", "sm", "xy") if code != prefix]
+        clean = re.sub(r"\b(?:%s)\s*[:#-]?\s*\d+\b(?!\s*/)" % "|".join(series),
+                       " ", clean)
         # Em "11/25" o DENOMINADOR e o tamanho do set, nunca a carta. Sem isto,
         # "Mew #11 /25" casava o card numero 25 (o Secret Rare, caro) e a referencia
         # saia da carta errada -- achado do review, 2026-09-04 (49 linhas afetadas).
@@ -226,7 +238,6 @@ def card_matches_title(card, title):
         # e "H2", "TG03" e "TG3", "SV049" e "SV49" sao a mesma carta (review do
         # PR #32: o zero nunca vem antes do prefixo, e 32 cartas da watchlist com
         # numero alfanumerico deixavam de casar o titulo com o zero).
-        parts = re.match(r"^([a-z]*)(\d+)([a-z]?)$", num)
         if parts:
             pattern = r"(?:#|no\.?\s*|\b)%s0*%s%s\b" % (
                 re.escape(parts.group(1)), parts.group(2), re.escape(parts.group(3)))

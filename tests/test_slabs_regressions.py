@@ -314,3 +314,30 @@ def test_alphanumeric_number_with_leading_zero_matches_both_spellings(name, numb
 def test_alphanumeric_number_does_not_match_other_numbers(number, title):
     card = dataclasses.replace(CARD, name="", number=number)
     assert not title_parser.card_matches_title(card, title)
+
+
+@pytest.mark.parametrize("name,number,title", [
+    ("Charizard GX", "150", "Charizard GX SM 150/147 Burning Shadows PSA 10"),
+    ("Charizard EX", "11", "Charizard EX XY 11/106 Flashfire PSA 10"),
+    ("Charizard V", "50", "Charizard V SWSH 50/202 Sword & Shield PSA 10"),
+    ("Charizard GX", "SM211", "Charizard GX SM211 Black Star Promo PSA 10"),
+    ("Charizard V", "SWSH050", "Charizard V SWSH050 Black Star Promo PSA 10"),
+])
+def test_series_code_before_fraction_or_as_promo_number_is_not_stripped(name, number, title):
+    """"SM 150/147": o codigo da serie vem SOLTO antes da fracao, e a fracao e o
+    numero da carta -- o strip de "codigo de serie + numero" nao pode come-la.
+    Promo "SM211"/"SWSH050": o proprio numero da carta tem o prefixo da serie."""
+    card = dataclasses.replace(CARD, name=name, number=number)
+    assert title_parser.card_matches_title(card, title)
+    assert title_parser.card_matches_title(dataclasses.replace(card, name=""), title)
+
+
+@pytest.mark.parametrize("number,title", [
+    ("12", "Charizard SM12 Cosmic Eclipse #4/236 PSA 10"),     # SM12 = set, nao carta
+    ("12", "Charizard Base Set #4 PSA 9 pop 12"),               # pop 12 = populacao
+    ("12", "Charizard Base Set #4 PSA 9 cert 12"),              # cert 12 = certificado
+    ("45", "Charizard V SWSH 45 Vivid Voltage #25/185 PSA 10"),  # SWSH 45 = set
+])
+def test_series_code_or_pop_cert_number_never_counts_as_card_number(number, title):
+    card = dataclasses.replace(CARD, name="", number=number)
+    assert not title_parser.card_matches_title(card, title)
