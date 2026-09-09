@@ -383,8 +383,11 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
     asks = {} if 'slab_strategy' in config else _clean_ask_prices(card, unique_listings)
 
     opportunities = []
+    # Linhas por veredito desta carta: so entram em `stats["rows_*"]` quando a
+    # carta termina -- linha que se perde numa interrupcao nao e "linha".
+    row_counts = Counter()
     details_used = 0
-    for listing in unique_listings:
+    for index, listing in enumerate(unique_listings):
         if 'slab_strategy' in config and callable(getattr(ebay, 'get_item', None)):
             from .slab_strategy import identity_matches, language, risk_title
             parsed_grade = grading.grade_from_title(listing.title)
@@ -397,6 +400,13 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                 try:
                     item, detail_url = ebay.get_item(listing.item_id)
                 except (EbayAuthError, EbayBudgetExceeded):
+                    # Cota/autenticacao estourou NO MEIO da carta: o erro sobe (run
+                    # parcial) e nada some em silencio -- as linhas ja avaliadas
+                    # que nao chegam ao artefato contam em `rows_lost_abort`; os
+                    # anuncios ainda nao avaliados (este inclusive) em
+                    # `skip_details_abort`. `seen` == soma dos baldes (review #32).
+                    stats["rows_lost_abort"] += len(opportunities)
+                    stats["skip_details_abort"] += len(unique_listings) - index
                     raise
                 except EbayApiError:
                     listing = dataclasses.replace(listing, details_error='detalhes-do-anuncio-indisponiveis')
@@ -431,8 +441,9 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                 _annotate_ref_alignment(opp, asks)
             # Veredito FINAL (apos rebaixamento por referencia desalinhada) e o
             # que conta no funil -- review Codex 2026-09-03.
-            stats[scorer.VERDICT_STAT.get(opp.verdict, "rows_review")] += 1
+            row_counts[scorer.VERDICT_STAT.get(opp.verdict, "rows_review")] += 1
             opportunities.append(opp)
+    stats.update(row_counts)
 
     log(f"  {card.name} #{card.number}: {len(unique_listings)} anuncios vistos, "
         f"{len(opportunities)} candidatos avaliados"
