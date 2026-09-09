@@ -16,6 +16,7 @@ NAO portados (com o porque):
   -> freio (f)7 do prompt: pergunta ao operador, hunk nao portado.
 """
 import dataclasses
+import re
 from collections import Counter
 
 import pytest
@@ -60,9 +61,12 @@ def test_legacy_basket_keeps_the_previous_grade_matcher():
     "Dark Charizard 4/102 PSA 9",                   # prefixo muda a carta
     "Charizard ex 4/102 PSA 9",                     # sufixo muda a carta
     "Charizard 14/102 PSA 9",                       # outro numero
-    "Charizard PSA 9 pop 4",                        # "pop 4" nao e numero de carta
+    "Charizard #14 PSA 9",                          # outro numero (marcador #)
 ])
-def test_wrong_card_or_ambiguous_sale_cannot_supply_reference(title):
+def test_wrong_card_sale_cannot_supply_reference(title):
+    """Venda de OUTRA carta nunca entra na cesta. ("Charizard PSA 9 pop 4" fica:
+    "pop 4" nao e numero, e sem numero nao ha contradicao -- ver
+    `test_legacy_basket_excludes_sales_only_by_contradiction`.)"""
     assert pc_sales.comparable_sales(
         [{"title": title, "price": 1000.0}], "PSA", 9, card=CARD) == []
 
@@ -352,3 +356,41 @@ def test_series_code_before_fraction_or_as_promo_number_is_not_stripped(name, nu
 def test_series_code_or_pop_cert_number_never_counts_as_card_number(number, title):
     card = dataclasses.replace(CARD, name="", number=number)
     assert not title_parser.card_matches_title(card, title)
+
+
+@pytest.mark.parametrize("title,kept", [
+    ("1999 Pokemon Charizard Base Set Holo PSA 9", True),        # propria carta, sem numero
+    ("Pokemon Vintage Base Set Charizard Holo PSA 9 MINT 1999", True),
+    ("Charizard 4/102 PSA 9", True),
+    ("Charizard #4 Base Set PSA 9", True),
+    ("Charizard Expedition #39/165 PSA 9", False),               # outro numero (fracao)
+    ("Charizard #14 Base Set PSA 9", False),                     # outro numero (#)
+    ("Blastoise Holo PSA 9", False),                             # outro nome
+    ("Dark Charizard Holo PSA 9", False),                        # prefixo muda a carta
+    ("Charizard ex Holo PSA 9", False),                          # sufixo muda a carta
+])
+def test_legacy_basket_excludes_sales_only_by_contradiction(title, kept):
+    """Na pagina da PROPRIA carta, a venda so sai da cesta por CONTRADICAO de
+    identidade (outro nome, prefixo/sufixo, outro numero) -- nunca por AUSENCIA de
+    numero no titulo (review do PR #32: exigir numero amputava vendas da propria
+    carta e movia a mediana). Exigir numero como a politica faz = pergunta ao operador."""
+    sale = {"title": title, "price": 1000.0}
+    got = pc_sales.comparable_sales([sale], "PSA", 9, card=CARD)
+    assert got == ([sale] if kept else [])
+
+
+def test_legacy_basket_on_real_fixture_changes_only_by_identity():
+    """Fixture real (pagina da Charizard 4/102): com a guarda de identidade, as cestas
+    PSA 9 / PSA 10 / BGS 9.5 / CGC 9 sao IGUAIS as de antes (nenhuma venda da propria
+    carta amputada) e so as vendas de OUTRA carta (Expedition #39/#40, TAG 10) saem."""
+    from pathlib import Path
+    body = (Path(__file__).parent / "fixtures" / "pc_product_charizard_base_4.html").read_text(encoding="utf-8")
+    sales = pc_sales.parse_sales(body)
+    for grader, value in [("PSA", 9.0), ("PSA", 10.0), ("BGS", 9.5), ("CGC", 9.0)]:
+        assert (pc_sales.comparable_sales(sales, grader, value, card=CARD)
+                == pc_sales.comparable_sales(sales, grader, value)), (grader, value)
+    unguarded = pc_sales.comparable_sales(sales, "TAG", 10.0)
+    guarded = pc_sales.comparable_sales(sales, "TAG", 10.0, card=CARD)
+    dropped = [s["title"] for s in unguarded if s not in guarded]
+    assert len(dropped) == 2 and all(re.search(r"#(?:39|40)/165", t) for t in dropped)
+    assert guarded == []

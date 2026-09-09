@@ -186,54 +186,77 @@ def _norm_num_token(tok):
     return (m.group(1) + m.group(2) + m.group(3)) if m else str(tok).strip().lower()
 
 
+_NAME_PREFIX_CONFLICT = re.compile(r"\b(?:dark|shining|radiant|light|mega|primal)\s*$")
+_NAME_SUFFIX_CONFLICT = re.compile(r"\s+(?:ex|gx|v|vmax|vstar|lv\.?\s*x)\b")
+_POP_CERT_QTY_RE = re.compile(r"\b(?:pop(?:ulation)?|cert(?:ificate)?|qty)\s*[:#-]?\s*\d+\b")
+# "#4", "#H02", "no. 4": numero de carta com marcador explicito.
+_MARKED_NUMBER_RE = re.compile(r"(?:#|\bno\.?)\s*([a-z]{0,3}\d{1,4}[a-z]?)\b")
+
+
+def _name_conflicts(card, t):
+    """True se o NOME da carta nao esta no titulo (palavra inteira) ou esta com
+    prefixo/sufixo que muda a carta ("Dark Charizard", "Charizard ex"). Nome vazio
+    = o chamador confere o nome por conta propria (`slab_strategy.identity_matches`)."""
+    name = card.name.lower().strip()
+    if not name:
+        return False
+    # Nome como palavra inteira (limite de palavra): "Mew" nao casa "Mewtwo".
+    name_match = re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", t)
+    if not name_match:
+        return True
+    # Prefixo que muda a carta ("Dark Charizard" nao e "Charizard") e sufixo
+    # que muda a carta ("Charizard ex" nao e "Charizard"): outra referencia.
+    if _NAME_PREFIX_CONFLICT.search(t[:name_match.start()]):
+        return True
+    return _NAME_SUFFIX_CONFLICT.match(t[name_match.end():]) is not None
+
+
+def _number_context(card, t):
+    """(numero esperado normalizado, partes prefixo/digitos/sufixo, denominador
+    esperado ou None, titulo limpo de tudo que NAO e numero de carta)."""
+    expected = str(card.number).lower().split("/")
+    num = _norm_num_token(expected[0])
+    parts = re.match(r"^([a-z]*)(\d+)([a-z]?)$", num)
+    prefix = parts.group(1) if parts else ""
+    clean = _GRADE_MENTION_STRIP.sub(" ", t)
+    # "pop 12" (populacao), "cert 12" (certificado) e "qty 2" nunca sao o
+    # numero da carta. Vale para os DOIS caminhos (a politica chama esta
+    # funcao com nome vazio) -- declarado no CHANGELOG do PR #32.
+    clean = _POP_CERT_QTY_RE.sub(" ", clean)
+    # Codigo de serie + numero ("SM12", "SWSH 45") e o SET, nao a carta --
+    # exceto (a) quando o numero esperado tem esse prefixo (promo "SM211",
+    # "SWSH050") e (b) quando vem uma fracao logo depois ("SM 150/147": a
+    # fracao e o numero da carta). Review do PR #32.
+    series = [code for code in ("swsh", "sm", "xy") if code != prefix]
+    clean = re.sub(r"\b(?:%s)\s*[:#-]?\s*\d+\b(?!\s*/)" % "|".join(series), " ", clean)
+    denominator = _norm_num_token(expected[1]) if len(expected) > 1 else None
+    return num, parts, denominator, clean
+
+
+def _fraction_matches(fracs, num, denominator):
+    # Em "11/25" o DENOMINADOR e o tamanho do set, nunca a carta. Sem isto,
+    # "Mew #11 /25" casava o card numero 25 (o Secret Rare, caro) e a referencia
+    # saia da carta errada -- achado do review, 2026-09-04 (49 linhas afetadas).
+    return any(_norm_num_token(a) == num and
+               (denominator is None or _norm_num_token(b) == denominator)
+               for a, b in fracs)
+
+
 def card_matches_title(card, title):
     """Checagem minima de identidade: nome da carta presente no titulo e,
     se houver numero, o numero tambem (evita casar 'Charizard ex' com
     'Charizard VMAX'). A nota do slab nunca conta como numero."""
     t = title.lower()
-    name = card.name.lower().strip()
-    if name:
-        # Nome como palavra inteira (limite de palavra): "Mew" nao casa "Mewtwo".
-        name_match = re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", t)
-        if not name_match:
-            return False
-        # Prefixo que muda a carta ("Dark Charizard" nao e "Charizard") e sufixo
-        # que muda a carta ("Charizard ex" nao e "Charizard"): outra referencia.
-        if re.search(r"\b(?:dark|shining|radiant|light|mega|primal)\s*$", t[:name_match.start()]):
-            return False
-        if re.match(r"\s+(?:ex|gx|v|vmax|vstar|lv\.?\s*x)\b", t[name_match.end():]):
-            return False
-    # Nome vazio = chamador confere o nome por conta propria (caminho
-    # `slab_strategy.identity_matches`): aqui so numero e exclusoes, como antes.
+    if _name_conflicts(card, t):
+        return False
     for kw in card.exclude_keywords:
         if kw.lower() in t:
             return False
     if card.number:
-        expected = str(card.number).lower().split("/")
-        num = _norm_num_token(expected[0])
-        parts = re.match(r"^([a-z]*)(\d+)([a-z]?)$", num)
-        prefix = parts.group(1) if parts else ""
-        clean = _GRADE_MENTION_STRIP.sub(" ", t)
-        # "pop 12" (populacao), "cert 12" (certificado) e "qty 2" nunca sao o
-        # numero da carta. Vale para os DOIS caminhos (a politica chama esta
-        # funcao com nome vazio) -- declarado no CHANGELOG do PR #32.
-        clean = re.sub(r"\b(?:pop(?:ulation)?|cert(?:ificate)?|qty)\s*[:#-]?\s*\d+\b",
-                       " ", clean)
-        # Codigo de serie + numero ("SM12", "SWSH 45") e o SET, nao a carta --
-        # exceto (a) quando o numero esperado tem esse prefixo (promo "SM211",
-        # "SWSH050") e (b) quando vem uma fracao logo depois ("SM 150/147": a
-        # fracao e o numero da carta). Review do PR #32.
-        series = [code for code in ("swsh", "sm", "xy") if code != prefix]
-        clean = re.sub(r"\b(?:%s)\s*[:#-]?\s*\d+\b(?!\s*/)" % "|".join(series),
-                       " ", clean)
-        # Em "11/25" o DENOMINADOR e o tamanho do set, nunca a carta. Sem isto,
-        # "Mew #11 /25" casava o card numero 25 (o Secret Rare, caro) e a referencia
-        # saia da carta errada -- achado do review, 2026-09-04 (49 linhas afetadas).
+        num, parts, denominator, clean = _number_context(card, t)
         fracs = _FRACTION_RE.findall(clean)
         if fracs:
-            return any(_norm_num_token(a) == num and
-                       (len(expected) == 1 or _norm_num_token(b) == _norm_num_token(expected[1]))
-                       for a, b in fracs)
+            return _fraction_matches(fracs, num, denominator)
         # Zero a esquerda opcional ENTRE o prefixo de letras e os digitos: "H02"
         # e "H2", "TG03" e "TG3", "SV049" e "SV49" sao a mesma carta (review do
         # PR #32: o zero nunca vem antes do prefixo, e 32 cartas da watchlist com
@@ -246,3 +269,28 @@ def card_matches_title(card, title):
         if not re.search(pattern, clean):
             return False
     return True
+
+
+def sale_contradicts_card(card, title):
+    """True se o titulo de uma VENDA (na pagina da propria carta no PriceCharting)
+    CONTRADIZ a identidade: outro nome, prefixo/sufixo que muda a carta, palavra
+    de exclusao, ou numero explicito diferente (fracao "39/165" ou "#14"). A
+    AUSENCIA de numero nao e contradicao: "1999 Pokemon Charizard Base Set Holo
+    PSA 9" na pagina da Charizard 4/102 continua na cesta (review do PR #32:
+    exigir numero amputava vendas da propria carta e movia a mediana). Um numero
+    solto sem marcador (ano "1999", "1st") nunca e evidencia contra."""
+    t = title.lower()
+    if _name_conflicts(card, t):
+        return True
+    for kw in card.exclude_keywords:
+        if kw.lower() in t:
+            return True
+    if card.number:
+        num, _parts, denominator, clean = _number_context(card, t)
+        fracs = _FRACTION_RE.findall(clean)
+        if fracs:
+            return not _fraction_matches(fracs, num, denominator)
+        marked = _MARKED_NUMBER_RE.search(clean)
+        if marked:
+            return _norm_num_token(marked.group(1)) != num
+    return False

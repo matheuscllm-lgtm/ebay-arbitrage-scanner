@@ -405,7 +405,10 @@ def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: st
         if (not math.isfinite(s.get("price", 0)) or s.get("price", 0) <= 0
                 or _LANG_NOISE.search(t) or _NOISE_SALE_RE.search(t)):
             continue
-        if card is not None and not title_parser.card_matches_title(card, t):
+        # Guarda de identidade: a venda esta na pagina da PROPRIA carta, entao so
+        # sai por CONTRADICAO (outro nome/prefixo/sufixo/numero), nunca por falta
+        # de numero no titulo (review do PR #32).
+        if card is not None and title_parser.sale_contradicts_card(card, t):
             continue
         if _grade_mentions(t) != wanted:
             continue  # nenhuma menção, outra nota, ou mais de uma nota citada
