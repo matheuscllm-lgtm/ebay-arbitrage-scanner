@@ -255,9 +255,7 @@ def test_parse_sales_old_fixture_has_more_rows_than_three_buckets():
     assert len(sales) == 215
     psa9 = pc.comparable_sales(sales, "PSA", 9.0)
     assert len(psa9) >= 3 and all("PSA 9" in s["title"].upper() for s in psa9)
-    bgs = pc.comparable_sales(sales, "BGS", 9.5)
-    assert len(bgs) == 4  # Includes valid "BGS GEM MINT 9.5" titles.
-    assert all(pc.grading.grade_from_title(s["title"]).grade.value == 9.5 for s in bgs)
+    assert len(pc.comparable_sales(sales, "BGS", 9.5)) < pc.MIN_COMPARABLE_SALES
 
 
 def test_parse_sales_dedupes_rows_repeated_across_combined_divs():

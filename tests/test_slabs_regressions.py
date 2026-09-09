@@ -34,12 +34,25 @@ from tests.test_scorer import FakeRefs, REF
     "Charizard 4/102 CGC Pristine 10",
     "Charizard 4/102 CGC 10 Pristine",
 ])
-def test_cgc_pristine_uses_same_parser_for_listing_and_sale(title):
+def test_cgc_pristine_before_grader_is_read_on_the_listing(title):
+    """Lado do ANUNCIO (parser compartilhado `grading.grade_from_title`, usado nos
+    dois caminhos): "Pristine" antes da sigla e CGC 10 PRISTINE. O lado da VENDA
+    do caminho legado (`comparable_sales`) continua com o matcher antigo
+    (`_grade_mentions` + `_CGC_PRISTINE_RE`): a cesta nao muda nesta rodada
+    (review do PR #32); unificar os dois e assunto do PR-B."""
     result = grading.grade_from_title(title)
     assert result.grade == grading.Grade("CGC", 10, "PRISTINE")
-    sale = {"title": title, "price": 500.0}
-    assert pc_sales.comparable_sales([sale], "CGC", 10, "PRISTINE", card=CARD) == [sale]
-    assert pc_sales.comparable_sales([sale], "CGC", 10, "GEM", card=CARD) == []
+
+
+def test_legacy_basket_keeps_the_previous_grade_matcher():
+    """A cesta legada so muda por IDENTIDADE nesta rodada: o matcher de nota e o
+    de antes do PR #32. "BGS GEM MINT 9.5" (nota depois do qualificador) segue
+    fora, e "Pristine CGC 10" (antes da sigla) segue na cesta GEM, como na main."""
+    gem_mint = {"title": "Charizard 4/102 BGS GEM MINT 9.5", "price": 500.0}
+    assert pc_sales.comparable_sales([gem_mint], "BGS", 9.5, card=CARD) == []
+    pristine_first = {"title": "Charizard 4/102 Pristine CGC 10", "price": 500.0}
+    assert pc_sales.comparable_sales([pristine_first], "CGC", 10, "GEM", card=CARD) == [pristine_first]
+    assert pc_sales.comparable_sales([pristine_first], "CGC", 10, "PRISTINE", card=CARD) == []
 
 
 @pytest.mark.parametrize("title", [
@@ -48,8 +61,6 @@ def test_cgc_pristine_uses_same_parser_for_listing_and_sale(title):
     "Charizard ex 4/102 PSA 9",                     # sufixo muda a carta
     "Charizard 14/102 PSA 9",                       # outro numero
     "Charizard PSA 9 pop 4",                        # "pop 4" nao e numero de carta
-    "Charizard 4/102 PSA 9 vs GMA GEM MINT 10",     # outra certificadora junto
-    "Charizard 4/102 PSA GEM MT 10 vs PSA 9",       # duas notas (ambiguo)
 ])
 def test_wrong_card_or_ambiguous_sale_cannot_supply_reference(title):
     assert pc_sales.comparable_sales(

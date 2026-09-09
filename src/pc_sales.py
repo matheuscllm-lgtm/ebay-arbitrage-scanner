@@ -60,7 +60,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import grading, title_parser
+from . import title_parser
 from .models import WatchCard
 
 BASE_URL = "https://www.pricecharting.com"
@@ -388,11 +388,14 @@ def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: st
                      card: WatchCard | None = None) -> list[dict]:
     """Só vendas cujo título nomeia a MESMA certificadora e nota — e SÓ ela —, em inglês,
     com preço > 0, na MESMA subcategoria e com o MESMO conjunto de tokens de variante.
-    'PSA 9' não casa 'PSA 9.5' nem 'BGS 9'; CGC 10 usa o mesmo parser de
-    qualificadores dos anuncios; BGS 10 exige "black" no
+    'PSA 9' não casa 'PSA 9.5' nem 'BGS 9'; CGC 10 exige 'Pristine' logo após a nota
+    quando qualifier=PRISTINE (e a ausência dele para GEM); BGS 10 exige "black" no
     título quando qualifier=BLACK (e a ausência dele para o BGS 10 comum/dourado);
     "1st Edition" no título não casa listagem sem token, e vice-versa.
-    `card` valida tambem a identidade e e obrigatorio nos caminhos de referencia."""
+    `card` = guarda de identidade (venda de OUTRA carta nunca entra) e e obrigatorio
+    nos caminhos de referencia. O matcher de nota da cesta (`_grade_mentions` +
+    `_CGC_PRISTINE_RE`) e o de antes do PR #32: nesta rodada a cesta so muda por
+    identidade; unificar com `grading.grade_from_title` e assunto do PR-B."""
     grader = grader.upper()
     wanted = {(grader, float(value))}
     variants = frozenset(variants)
@@ -404,11 +407,10 @@ def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: st
             continue
         if card is not None and not title_parser.card_matches_title(card, t):
             continue
-        parsed = grading.grade_from_title(t)
-        if parsed.grade is None or {(parsed.grade.grader, parsed.grade.value)} != wanted:
+        if _grade_mentions(t) != wanted:
             continue  # nenhuma menção, outra nota, ou mais de uma nota citada
         if grader == "CGC" and value == 10.0:
-            pristine = parsed.grade.qualifier == "PRISTINE"
+            pristine = _CGC_PRISTINE_RE.search(t) is not None
             if qualifier == "PRISTINE" and not pristine:
                 continue
             if qualifier == "GEM" and pristine:
@@ -416,8 +418,7 @@ def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: st
         if grader == "BGS" and value == 10.0:
             if _is_ambiguous_black_sale(t):
                 continue  # não dá para dizer se é etiqueta preta: não serve a cesta nenhuma
-            if (qualifier == "BLACK") != (
-                    parsed.grade.qualifier == "BLACK" or _is_black_label_sale(t)):
+            if (qualifier == "BLACK") != _is_black_label_sale(t):
                 continue
         if variant_tokens(t) != variants:
             continue
