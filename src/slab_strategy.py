@@ -6,7 +6,7 @@ Legacy scorer remains only for reading/testing pre-policy artifacts.
 from copy import deepcopy
 from collections import Counter
 from datetime import date, datetime, timezone
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_DOWN, Decimal, InvalidOperation
 from pathlib import Path
 import re
 import statistics
@@ -374,7 +374,21 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                 if grade.grader == 'PSA' and legacy_discount_gate and discount < Decimal(str(cfg.get('min_discount_percent', 20))):
                     reject.append('desconto-abaixo-do-minimo')
                 if grade.grader == 'PSA':
-                    cap = comparison * (1 - Decimal(str(cfg.get('min_discount_percent', 20))) / 100) if legacy_discount_gate else comparison
+                    # O teto e o MAIOR preco que aquele modo ainda aprova. Em
+                    # `gross_margin` o gate exige (ref - preco)/preco > L, ou seja
+                    # preco < ref/(1+L/100) -- imprimir a referencia crua prometeria um
+                    # preco que sai REJEITAR (revisao em contexto limpo, 2026-09-09).
+                    gm_min = money(p['economics'].get('min_gross_margin_percent'))
+                    if legacy_discount_gate:
+                        cap = comparison * (1 - Decimal(str(cfg.get('min_discount_percent', 20))) / 100)
+                    elif gate_mode == 'gross_margin' and gm_min is not None:
+                        # Arredondado para BAIXO ao centavo: o teto publicado tem de ser
+                        # um preco que o gate REALMENTE aprova. Arredondar para cima
+                        # prometeria um centavo que sai REJEITAR.
+                        cap = (comparison / (1 + gm_min / 100)).quantize(
+                            Decimal('0.01'), rounding=ROUND_DOWN)
+                    else:
+                        cap = comparison
                     details['comparison_cap'] = amount(cap)
                     details['comparison_cap_exact'] = str(cap)
         else:
@@ -495,7 +509,18 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         review.append('rota-operacional-incompativel')
     if listing.seller_feedback_score < cfg.get('trusted_min_feedback', 50) or listing.seller_feedback_pct < cfg.get('trusted_min_feedback_pct', 98):
         review.append('historico-do-vendedor-insuficiente')
-    if legacy_discount_gate and grade and grade.grader == 'PSA' and (opp.gross_margin_pct or 0) > cfg.get('suspicious_margin_percent', 60):
+    # Margem absurda = assinatura classica de referencia errada ou carta trocada. O
+    # gate `gross_margin` so tem PISO, entao sem esta checagem uma linha de centenas de
+    # por cento chegava a APROVAR sem nenhuma ressalva -- justo no modo em que a margem
+    # e o unico criterio (revisao em contexto limpo, 2026-09-09). Ela REVISA, nunca
+    # rejeita: o operador decide olhando o anuncio.
+    # Corte proprio do modo `gross_margin`. Ausente, cai no corte legado do topo do
+    # config (60): fail-safe, revisa MAIS e nunca menos.
+    suspicious = (money(p['economics'].get('suspicious_gross_margin_percent'))
+                  if gate_mode == 'gross_margin' else None)
+    suspicious = float(suspicious) if suspicious is not None else cfg.get('suspicious_margin_percent', 60)
+    if (gate_mode != 'profit_or_discount' and grade and grade.grader == 'PSA'
+            and (opp.gross_margin_pct or 0) > suspicious):
         review.append('desconto-elevado-conferir-identidade')
     opp.reasons = list(dict.fromkeys(reject + review))
     opp.verdict = 'REJEITAR' if reject else 'REVISAR' if review else 'APROVAR'

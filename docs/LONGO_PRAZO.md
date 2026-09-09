@@ -98,14 +98,25 @@ que rodaram** — leia sempre junto com a cobertura `k/11` (ver "Como ler a cél
 | `dispersao` | **o mesmo valor que já rebaixa para REVISAR na política**: (máx − mín) ÷ mediana × 100 das vendas usadas na referência, corte `evidence.max_dispersion_percent` (30). Política: valor mostrado = `psa_evidence.dispersion_percent` (arredondado), mas a comparação com o corte usa `psa_evidence.dispersion_exact` — **o mesmo Decimal que a política compara** —, senão os dois discordariam na fronteira (dispersão real de 30,004% rebaixa a linha e arredonda para 30,00); legado: a mesma fórmula sobre `refs.sales_history` (janela da referência, 10 vendas mais recentes). Uma definição, um nome. Ressalva: a coluna olha só a cesta PSA, enquanto a política checa dispersão também na cesta de `revenda` (relevante só em anúncio que não é PSA) | +10 |
 | `ref-stale` | legado: flags existentes `REF GRADED < RAW TCG` / `ref-divergente` (disponível só quando há market TCG para conferir). Política: `n/d` | +10 |
 | `concentracao` | mesma carta + mesma nota com ≥4 anúncios no mesmo run (`concentration_min_listings`), contados antes da avaliação e aplicados a todas as linhas daquela carta+nota, inclusive as primeiras. Só entram na contagem os anúncios cujo TÍTULO é mesmo daquela carta (mesma guarda de identidade — `title_parser.card_matches_title` — que `_clean_ask_prices` já usava): a busca do eBay devolve anúncios de outras cartas junto, e eles são descartados logo depois (`skip_no_match`) | +10 |
-| `estoque-alto` | **meses de estoque** = `listings_same_grade` (anúncios ativos da mesma carta+nota no run) ÷ `psa10_sales_pm` (vendas PSA 10 por mês, do PriceCharting). ≥ `supply_months_high` (24) +20 · ≥ `supply_months_mid` (12) +10 · abaixo 0. `n/d` quando falta anúncio contado ou quando `psa10_sales_pm < supply_min_sales_pm` (0.05), onde a divisão fica instável. É o ÚNICO sinal de oferta contra demanda real da régua: o componente B3, apesar do nome "supply", mede idade e reimpressão, não estoque | 0-20 |
+| `estoque-alto` | **meses de estoque** = `listings_same_grade` (anúncios ativos da mesma carta+nota no run) ÷ `psa10_sales_pm` (vendas PSA 10 por mês, do PriceCharting). **Só em linhas PSA 10**: o PriceCharting traz volume por certificadora apenas nessa coluna, e as demais notas caem no balde genérico `GRADE 9`, que mistura certificadoras e que este repo proíbe rotular como PSA — dividir anúncios PSA 9 por vendas PSA 10 não é meses de estoque de coisa nenhuma. ≥ `supply_months_high` (24) +20 · ≥ `supply_months_mid` (12) +10 · abaixo 0. `n/d` fora da PSA 10, sem anúncio contado, ou com `psa10_sales_pm < supply_min_sales_pm` (0.05), onde a divisão fica instável. É o ÚNICO sinal de oferta contra demanda real da régua: o componente B3, apesar do nome "supply", mede idade e reimpressão, não estoque | 0-20 |
+
+### Teto da família que compartilha insumo
+
+`psa10-iliquido` (vendas/mês), `concentracao` (nº de anúncios) e `estoque-alto` (a divisão
+dos dois) leem os **mesmos dois números**. Somadas cheias, uma única observação viraria 60
+pontos e jogaria a linha para LP4 com a mesma evidência que dava LP2 antes da 11ª flag
+existir. Por isso a família inteira (`SHARED_SUPPLY_FLAGS`) contribui no máximo
+`SHARED_SUPPLY_CAP` = 30, que é o que a leitura mais forte dela já contribuía sozinha. O
+teto **não** mexe na cobertura: cada flag continua contando como fonte que rodou.
 
 ## Classe (avaliar nesta ordem)
 
 1. `n/d` se PERFIL ou FRAGILIDADE é `n/d`.
 2. **LP4** se FRAGILIDADE > 70 ou PERFIL < 30.
 3. **LP1** se PERFIL ≥ 70, FRAGILIDADE ≤ 30, cobertura do perfil ≥ `lp1_min_profile_coverage`
-   (4 de 5), cobertura da fragilidade ≥ `lp1_min_fragility_coverage` (9 de 11, ~80%)
+   (4 de 5), cobertura da fragilidade ≥ `lp1_min_fragility_coverage` (**8** de 11 — a
+   contagem absoluta que já valia quando eram 10 flags; subir para 9 rebaixaria linhas
+   que davam LP1 sem nenhuma evidência nova, só porque entrou a 11ª)
    **e** os três insumos-chave (`ref-fragil`, `psa10-iliquido`, `ref-desalinhada`)
    disponíveis. Os dois pisos eram constantes no código e viraram chave do bloco
    `longterm:` do config.yaml em 2026-09-09. O piso de cobertura da fragilidade existe

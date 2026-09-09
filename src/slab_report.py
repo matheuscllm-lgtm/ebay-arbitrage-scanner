@@ -1,7 +1,8 @@
 """Report every decision and the exact sales behind each calculation."""
 
 from .chat_format import reference_price
-from .report import (LONGTERM_LEGEND, links_cell, longterm_cell, longterm_counts_line,
+from .report import (LONGTERM_LEGEND, gross_margin_value, links_cell, longterm_cell,
+                     longterm_counts_line,
                      policy_funnel_lines)
 import json
 from collections import Counter
@@ -93,21 +94,6 @@ def collection_line(meta):
     if meta.get('trusted_mode'):
         parts.append('--confiavel (sem efeito na política; histórico do vendedor já é sempre verificado)')
     return ' · '.join(parts)
-
-
-def gross_margin_value(row):
-    """Margem bruta da linha, preferindo o valor que o GATE comparou.
-
-    No modo `gross_margin` o veredito sai de `economic_gate.gross_margin_percent`;
-    mostrar qualquer outra conta abriria espaco para a tabela e a decisao divergirem
-    na fronteira. Fora daquele modo o gate nao publica margem bruta, e a linha cai no
-    campo do payload (`margin_pct` = `Opportunity.gross_margin_pct`, mesma formula).
-    Sem nenhum dos dois devolve None -- `num` transforma em "pendente", nunca em zero.
-    """
-    gate = (row.get('strategy') or {}).get('economic_gate') or {}
-    if gate.get('mode') == 'gross_margin' and gate.get('gross_margin_percent') is not None:
-        return gate['gross_margin_percent']
-    return row.get('margin_pct')
 
 
 def render(payload):

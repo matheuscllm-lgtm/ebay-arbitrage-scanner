@@ -42,6 +42,19 @@ nunca decidem veredito:
 - Margem líquida sobre a venda = lucro / revenda bruta ×100.
 - ROI líquido = lucro / investimento ×100.
 
+**Teto de comparação.** O bloco por carta imprime o MAIOR preço que o modo ainda aprova:
+em `gross_margin` isso é `referência / (1 + limiar/100)`, arredondado para BAIXO ao centavo.
+Com referência US$100 e limiar 43%, o teto é US$69,93 — imprimir a referência crua
+prometeria um preço que o próprio gate rejeita.
+
+**Margem absurda pede conferência de identidade.** O gate só tem piso, então uma margem de
+centenas de por cento — assinatura clássica de referência errada ou carta trocada — chegaria
+a APROVAR sem ressalva. `economics.suspicious_gross_margin_percent: 150` marca essas linhas
+como REVISAR (nunca REJEITAR). É um corte próprio do modo: o `suspicious_margin_percent: 60`
+do topo foi calibrado para o gate antigo e, sob um gate que aprova a partir de 43%, ficaria
+logo acima do limiar e engoliria negócio normal. Ausente, o código cai no corte de 60, que
+revisa mais e nunca menos.
+
 Modos legados preservados no código e sem efeito hoje: `profit_or_discount`
 (`min_profit_usd` OU `min_discount_percent`) e o modo por `min_net_*`.
 

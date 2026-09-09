@@ -777,7 +777,7 @@ def test_e4_config_block_has_exactly_the_declared_keys_and_defaults_match():
               "lp4_min_fragility": 70, "min_profile_sources": 3, "min_fragility_sources": 3,
               "concentration_min_listings": 4,
               # pisos de cobertura da LP1: eram fixos no codigo, viraram chave
-              "lp1_min_profile_coverage": 4, "lp1_min_fragility_coverage": 9,
+              "lp1_min_profile_coverage": 4, "lp1_min_fragility_coverage": 8,
               # meses de estoque = anuncios da nota / vendas PSA 10 por mes (11a flag)
               "supply_months_high": 24, "supply_months_mid": 12,
               "supply_min_sales_pm": 0.05}
@@ -921,10 +921,17 @@ def test_r3_thin_fragility_coverage_can_never_be_read_as_a_clean_lp1():
     # a soma nao distingue os dois casos (e por isso a COBERTURA vira o piso da classe)
     assert lt.fragility_score(thin) == (0.0, (3, 11))
     assert lt.fragility_score(full) == (0.0, (11, 11))
-    assert lt.LP1_MIN_FRAGILITY_COVERAGE == 9   # mesma proporcao (~80%) do piso do PERFIL (4/5)
+    # 8, nao 9: CONTAGEM ABSOLUTA preservada. Subir o piso ao acrescentar a 11a flag
+    # rebaixaria para `LP2*` linhas que davam LP1 sem NENHUMA evidencia nova -- e
+    # `estoque-alto` e a MENOS disponivel das onze (so PSA 10, e so com volume
+    # medivel). Revisao em contexto limpo, 2026-09-09.
+    assert lt.LP1_MIN_FRAGILITY_COVERAGE == 8
     assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(11, 11)) == "LP1"
     assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(9, 11)) == "LP1"
-    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(8, 11)) == "LP2*"
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(8, 11)) == "LP1"
+    # Piso = 8 (contagem absoluta preservada ao entrar a 11a flag): a fronteira do
+    # `LP2*` por cobertura desceu para 7/11.
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(7, 11)) == "LP2*"
     assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(3, 11)) == "LP2*"
     # cobertura desconhecida (chamada sem o argumento) segue a regra antiga
     assert lt.classify(92.0, 0.0, (5, 5), True) == "LP1"

@@ -64,6 +64,28 @@ def _load_config(path):
     return policy_config(config)
 
 
+def apply_cli_overrides(config, *, min_gross_margin=None, log=print):
+    """Sobrescritas de CLI que dependem do MODO do gate.
+
+    `--min-gross-margin` so significa alguma coisa com `gate_mode: gross_margin`. Nos
+    modos legados ela era aplicada assim mesmo e nao mudava nada, em silencio -- o
+    mesmo tipo de mentira que o repo ja trata alto para `--confiavel` (revisao em
+    contexto limpo, 2026-09-09). Aqui o config fica INTACTO e o aviso e impresso.
+    """
+    if min_gross_margin is None:
+        return config
+    economics = (config.get('slab_strategy') or {}).get('economics')
+    if economics is None:
+        return config
+    if economics.get('gate_mode') != 'gross_margin':
+        log(f"AVISO: --min-gross-margin sem efeito com gate_mode "
+            f"{economics.get('gate_mode')!r}: o limiar de margem bruta so decide no modo "
+            f"gross_margin. Config inalterado.")
+        return config
+    economics['min_gross_margin_percent'] = int(min_gross_margin)
+    return config
+
+
 def main(argv=None):
     if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -130,8 +152,7 @@ def main(argv=None):
                   "já é verificado em toda linha); a flag fica registrada no meta do JSON.")
     if args.include_raw:
         ap.error("EBAY PSA aceita apenas cartas certificadas; --include-raw foi removido da estrategia")
-    if args.min_gross_margin is not None:
-        config['slab_strategy']['economics']['min_gross_margin_percent'] = int(args.min_gross_margin)
+    apply_cli_overrides(config, min_gross_margin=args.min_gross_margin)
     if args.min_discount is not None:
         config["min_discount_percent"] = int(args.min_discount)
         if config['slab_strategy']['economics'].get('gate_mode') == 'profit_or_discount':

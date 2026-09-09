@@ -68,13 +68,27 @@ FRAGILITY_FLAGS = ("ref-fragil", "psa10-iliquido", "ref-desalinhada", "reprint-f
                    "preco-absoluto-alto", "vendedor-fraco", "tiragem", "dispersao",
                    "ref-stale", "concentracao", "estoque-alto")
 # Sem estes tres em dado, a classe nunca chega a LP1 (vira LP2*).
+# Estas TRES flags leem os MESMOS dois numeros (`psa10_sales_pm` e
+# `listings_same_grade`): a primeira mede so a demanda, a segunda so a oferta, e a
+# terceira e a DIVISAO das duas. Somadas cheias, uma unica observacao vira 60 pontos e
+# joga a linha para LP4 com a mesma evidencia que dava LP2 antes da 11a flag existir
+# (revisao em contexto limpo, 2026-09-09). O teto abaixo faz a familia contribuir no
+# maximo o que a leitura mais forte dela ja contribuia sozinha (`psa10-iliquido`: 30).
+SHARED_SUPPLY_FLAGS = ("psa10-iliquido", "concentracao", "estoque-alto")
+SHARED_SUPPLY_CAP = 30
+
 KEY_FRAGILITY_INPUTS = ("ref-fragil", "psa10-iliquido", "ref-desalinhada")
 
 # Pisos e cortes que o `config.yaml` pode mudar. As constantes do modulo continuam
 # sendo o VALOR PADRAO -- `DEFAULT_CONFIG` so as espelha, para nunca existirem dois
 # numeros diferentes para o mesmo corte.
 LP1_MIN_PROFILE_COVERAGE = 4       # de 5 componentes
-LP1_MIN_FRAGILITY_COVERAGE = 9     # de 11 flags -- mesma proporcao (~80%) do piso acima
+LP1_MIN_FRAGILITY_COVERAGE = 8     # de 11 flags. Ficou na CONTAGEM ABSOLUTA que ja
+# valia quando eram 10 flags. Subir para 9 rebaixaria para `LP2*` linhas que davam
+# LP1, sem NENHUMA evidencia nova -- so porque entrou uma 11a flag que e a MENOS
+# disponivel de todas (`estoque-alto` so existe na PSA 10 e exige volume medivel).
+# Trocar o piso muda classe sem trocar dado; a proporcao de 80% nao vale esse preco
+# (revisao em contexto limpo, 2026-09-09). Ajustavel por `lp1_min_fragility_coverage`.
 SUPPLY_MONTHS_HIGH = 24            # meses de estoque: >= isto -> 20 pontos
 SUPPLY_MONTHS_MID = 12             # >= isto -> 10 pontos; abaixo -> 0
 SUPPLY_MIN_SALES_PM = 0.05         # vendas/mes abaixo disto: divisao instavel -> n/d
@@ -430,7 +444,15 @@ def fragility_score(points, min_sources=3):
     coverage = (len(available), len(FRAGILITY_FLAGS))
     if len(available) < min_sources:
         return None, coverage
-    return float(min(FRAGILITY_CAP, sum(available))), coverage
+    # Teto da FAMILIA que compartilha insumo (`SHARED_SUPPLY_FLAGS`): as tres leem os
+    # mesmos dois numeros, entao somadas cheias contariam uma observacao tres vezes.
+    # A familia inteira contribui no maximo `SHARED_SUPPLY_CAP`. Isso NAO mexe na
+    # cobertura: cada flag continua contando como fonte que rodou.
+    shared = sum(points.get(name) or 0 for name in SHARED_SUPPLY_FLAGS)
+    others = sum(p for name, p in ((n, points.get(n)) for n in FRAGILITY_FLAGS)
+                 if p is not None and name not in SHARED_SUPPLY_FLAGS)
+    total = others + min(shared, SHARED_SUPPLY_CAP)
+    return float(min(FRAGILITY_CAP, total)), coverage
 
 
 def classify(profile, fragility, profile_coverage, key_inputs_available, cfg=None, *,
@@ -796,7 +818,14 @@ def assess(card, listing, opp, fair, refs, listings_same_grade, cfg=None, *,
     # MESES DE ESTOQUE (unico sinal de oferta x demanda real da coluna): anuncios da
     # mesma carta+nota no run divididos pelas vendas PSA 10 por mes. Sem os dois
     # insumos -- ou com demanda abaixo de `supply_min_sales_pm` -- fica n/d, nunca 0.
-    months = months_of_supply(same_grade, psa10_pm, lt_cfg["supply_min_sales_pm"])
+    # SO na PSA 10: o PriceCharting da volume por certificadora apenas nessa coluna.
+    # As demais notas caem no balde GENERICO "GRADE 9", que MISTURA certificadoras e
+    # que este repo proibe rotular como PSA (auditoria de honestidade 2026-09-09).
+    # Dividir anuncios PSA 9 pelas vendas PSA 10 nao e meses de estoque de coisa
+    # nenhuma -- fora da PSA 10 a flag e n/d, nunca um numero inventado.
+    grade_key = str(getattr(opp, "grade", "") or "").upper()
+    months = (months_of_supply(same_grade, psa10_pm, lt_cfg["supply_min_sales_pm"])
+              if grade_key == "PSA 10" else None)
     stock_high = stock_points(months, lt_cfg["supply_months_high"],
                               lt_cfg["supply_months_mid"])
     if stock_high:

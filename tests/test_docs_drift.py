@@ -66,25 +66,35 @@ def test_skill_and_docs_declare_the_gate_mode_the_config_actually_has():
         assert f"{threshold_key}: {threshold}" in text, f"{path.name} sem o limiar vigente"
 
 
+def stale_fragility_counts(text, n):
+    """Contagens de flags de fragilidade no texto que NAO batem com `n`.
+
+    Casa as tres formas em que a contagem aparece no texto operacional e SO elas:
+
+    1. celula de cobertura, ancorada no separador: `4/5·9/11`;
+    2. cobertura entre parenteses ANCORADA na nota que a precede: `0 (3/11)` --
+       exige digito + espaco antes do parentese, senao a cobertura do PERFIL escrita
+       `(4/5)` ou um `(1/2)` solto derrubariam a guarda sem nada ter mudado;
+    3. contagem por extenso: "9 das 11 flags", "3 dos 11 testes".
+
+    (revisao em contexto limpo, 2026-09-09)
+    """
+    achados = [int(d) for _, d in re.findall(r"·\s*(\d+)/(\d+)", text)]
+    achados += [int(d) for d in re.findall(r"(?<=\d )\(\d+/(\d+)\)", text)]
+    achados += [int(d) for d in re.findall(r"d[oa]s (\d+) (?:flags|fontes|testes)", text)]
+    return [d for d in achados if d != n]
+
+
 def test_longterm_docs_use_the_real_fragility_flag_count():
     """Guarda de drift da COLUNA: toda contagem de flags de fragilidade escrita no
-    texto operacional tem de bater com `len(longterm.FRAGILITY_FLAGS)`. Cobre as tres
-    formas em que ela aparece: a celula de cobertura (`4/5·9/11`), a cobertura solta
-    entre parenteses (`0 (3/11)`) e a contagem por extenso ("9 das 11 flags", "3 dos 11
-    testes"). Acrescentar ou remover uma flag sem mexer nas docs quebra aqui."""
+    texto operacional tem de bater com `len(longterm.FRAGILITY_FLAGS)`."""
     from src import longterm
     n = len(longterm.FRAGILITY_FLAGS)
-    cell = re.compile(r"·\s*(\d+)/(\d+)")          # 4/5·9/11 -> denominador da fragilidade
-    paren = re.compile(r"\((\d+)/(\d+)\)")              # 0 (3/11)
-    spelled = re.compile(r"d[oa]s (\d+) (?:flags|fontes|testes)")
     for name in ("docs/LONGO_PRAZO.md", "README.md",
                  ".claude/skills/scan-ebay/SKILL.md"):
         text = (ROOT / name).read_text(encoding="utf-8")
-        found = ([int(d) for _, d in cell.findall(text)]
-                 + [int(d) for _, d in paren.findall(text)]
-                 + [int(d) for d in spelled.findall(text)])
-        assert found, f"{name} sem nenhuma contagem de fragilidade para conferir"
-        wrong = [d for d in found if d != n]
+        assert f"/{n}" in text, f"{name} nao menciona a cobertura /{n}"
+        wrong = stale_fragility_counts(text, n)
         assert not wrong, f"{name} com contagem desatualizada: {wrong} (real: {n})"
 def test_main_docstring_and_help_do_not_advertise_the_removed_diagnostic_mode(capsys):
     doc = main.__doc__

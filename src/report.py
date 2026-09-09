@@ -124,6 +124,22 @@ def _f(row, key):
         return 0.0
 
 
+def gross_margin_value(row):
+    """Margem bruta da linha, preferindo o valor que o GATE comparou.
+
+    No modo `gross_margin` o veredito sai de `economic_gate.gross_margin_percent`;
+    usar qualquer outra conta abriria espaco para a tabela, a ordem e a decisao
+    divergirem na fronteira. Fora daquele modo o gate nao publica margem bruta, e a
+    linha cai no campo do payload (`margin_pct` = `Opportunity.gross_margin_pct`,
+    mesma formula). Sem nenhum dos dois devolve None -- quem exibe transforma em
+    "pendente", nunca em zero.
+    """
+    gate = (row.get("strategy") or {}).get("economic_gate") or {}
+    if gate.get("mode") == "gross_margin" and gate.get("gross_margin_percent") is not None:
+        return gate["gross_margin_percent"]
+    return row.get("margin_pct")
+
+
 def sort_key(row):
     """Chave para sorted(): menor = melhor (negativos nas metricas).
     Linha da POLITICA (`strategy`): veredito -> PSA primeiro -> maior
@@ -134,6 +150,12 @@ def sort_key(row):
         s = row["strategy"]
         return ({"APROVAR": 0, "REVISAR": 1, "REJEITAR": 2}.get(row.get("verdict"), 1),
                 0 if row.get("grade", "").startswith("PSA ") else 1,
+                # A METRICA QUE DECIDE vem primeiro. `net_roi_percent` so existe quando
+                # o modelo de custo esta completo, o que quase nunca acontece (5.975 de
+                # 6.104 linhas sem base de custo no run de 2026-09-09): ordenar so por
+                # ele fazia a tabela sair em ordem de INSERCAO, e uma linha de 44% podia
+                # aparecer acima de uma de 300% (revisao em contexto limpo).
+                -(gross_margin_value(row) or 0),
                 -(s.get("net_roi_percent") or 0),
                 0 if s.get("vault_confirmed") is True else 1)
     roi = _f(row, "roi_pct") if row.get("roi_pct") is not None else _f(row, "margin_pct")

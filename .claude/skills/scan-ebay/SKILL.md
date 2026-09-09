@@ -34,6 +34,10 @@ docs/EBAY_PSA.md):
   gate usa SÓ margem bruta, **sem taxa nenhuma**, e não depende do modelo de custos.
   Os custos COMC de `costs` seguem calculados e reportados como INFORMAÇÃO
   (`profit_estimate`, `net_margin_percent`, `net_roi_percent`), fora do veredito.
+  Margem alta demais (`suspicious_gross_margin_percent: 150`) sai REVISAR pedindo
+  conferência de identidade — nunca REJEITAR. O "Teto de comparação" do bloco por
+  carta é o maior preço que o gate ainda aprova (`referência / 1,43`), não a
+  referência crua.
   Modos legados no código e sem efeito hoje: `profit_or_discount`
   (`min_profit_usd: 40` / `min_discount_percent: 30`) e o modo por `min_net_*`.
   Nada disso é recomendação: é classificação técnica.
@@ -188,7 +192,7 @@ as vendas usadas na referência + funil no rodapé.
    - **`LP2*`** (asterisco) = seria LP1, **mas faltou dado**: um dos três
      insumos-chave da fragilidade (`ref-fragil`, `psa10-iliquido`,
      `ref-desalinhada`) estava em `n/d`, ou a cobertura da fragilidade ficou
-     abaixo de `lp1_min_fragility_coverage` (9 das 11 flags). O teto `LP2*` que a
+     abaixo de `lp1_min_fragility_coverage` (8 das 11 flags). O teto `LP2*` que a
      política tinha caiu: `ref-desalinhada` passou a ser calculada nos dois
      caminhos, sem tocar em veredito.
    - **Cobertura** `4/5` = 4 dos 5 componentes tinham dado; `9/11` = 9 das 11

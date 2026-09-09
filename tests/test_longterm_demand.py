@@ -169,12 +169,18 @@ def test_b1_lp1_coverage_floors_are_config_keys_with_the_module_constants_as_def
     lt = _lt()
     n = len(lt.FRAGILITY_FLAGS)
     assert lt.LP1_MIN_PROFILE_COVERAGE == 4
-    assert lt.LP1_MIN_FRAGILITY_COVERAGE == 9      # ~80% de 11 flags
+    # 8, nao 9: CONTAGEM ABSOLUTA preservada. Subir o piso ao acrescentar a 11a flag
+    # rebaixaria para `LP2*` linhas que davam LP1 sem NENHUMA evidencia nova -- e
+    # `estoque-alto` e a MENOS disponivel das onze (so PSA 10, e so com volume
+    # medivel). Revisao em contexto limpo, 2026-09-09.
+    assert lt.LP1_MIN_FRAGILITY_COVERAGE == 8
     assert lt.DEFAULT_CONFIG["lp1_min_profile_coverage"] == lt.LP1_MIN_PROFILE_COVERAGE
     assert lt.DEFAULT_CONFIG["lp1_min_fragility_coverage"] == lt.LP1_MIN_FRAGILITY_COVERAGE
     # sem cfg: os pisos sao os do modulo
     assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(9, n)) == "LP1"
-    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(8, n)) == "LP2*"
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(8, n)) == "LP1"
+    # Piso = 8: a fronteira do `LP2*` por cobertura desceu para 7 de 11.
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(7, n)) == "LP2*"
     assert lt.classify(92.0, 0.0, (4, 5), True, fragility_coverage=(9, n)) == "LP1"
     assert lt.classify(92.0, 0.0, (3, 5), True, fragility_coverage=(9, n)) == "LP2"
     # com cfg: a chave manda (e um piso mais frouxo libera LP1)
@@ -193,7 +199,7 @@ def test_b2_config_yaml_carries_the_five_new_keys_and_defaults_mirror_them():
                 "supply_months_high", "supply_months_mid", "supply_min_sales_pm"):
         assert key in block, key
         assert lt.DEFAULT_CONFIG[key] == block[key], key
-    assert block["lp1_min_profile_coverage"] == 4 and block["lp1_min_fragility_coverage"] == 9
+    assert block["lp1_min_profile_coverage"] == 4 and block["lp1_min_fragility_coverage"] == 8
     assert block["supply_months_high"] == 24 and block["supply_months_mid"] == 12
     assert block["supply_min_sales_pm"] == 0.05
     assert lt.DEFAULT_CONFIG == dict(lt.DEFAULT_CONFIG, **block)

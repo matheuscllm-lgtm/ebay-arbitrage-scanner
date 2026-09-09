@@ -67,6 +67,12 @@ slab_strategy:
     # sem taxa nenhuma. Custos de intermediação continuam sendo CALCULADOS e vão
     # para o JSON/relatório como informação, mas NÃO entram no veredito.
     gate_mode: gross_margin
+    # Margem tão alta que é assinatura de referência errada ou carta trocada. REVISA,
+    # nunca rejeita. Vale só no modo `gross_margin`: o `suspicious_margin_percent: 60`
+    # do topo foi calibrado para o gate antigo (desconto de 20-30% = 25-43% de margem
+    # bruta), e sob um gate que aprova a partir de 43% ele fica logo acima do limiar e
+    # engoliria negócio normal. 150% = comprar a 40% da referência.
+    suspicious_gross_margin_percent: 150
     min_gross_margin_percent: 43    # (referência - preço) / preço x 100, estritamente acima.
                                     # Convenção do repo: percentual INTEIRO. 43 preserva a
                                     # fronteira do antigo desconto de 30% sobre a referência
@@ -96,7 +102,10 @@ longterm:
   min_fragility_sources: 3         # menos que isto de 10 fontes -> FRAGILIDADE n/d
   concentration_min_listings: 4    # mesma carta+nota com >= N anúncios no run -> LP:concentracao
   lp1_min_profile_coverage: 4      # de 5 componentes; era fixo no código (PR-C), virou chave
-  lp1_min_fragility_coverage: 9    # de 11 flags (~80%); era 8 de 10, fixo no código
+  lp1_min_fragility_coverage: 8    # de 11 flags. CONTAGEM ABSOLUTA preservada: subir
+                                   # para 9 rebaixaria linhas que davam LP1 sem
+                                   # nenhuma evidência nova, só porque entrou a 11ª
+                                   # flag, que é a MENOS disponível de todas.
   # Meses de estoque = anúncios ativos da mesma nota no run / vendas PSA 10 por mês.
   # 11ª flag de FRAGILIDADE (`estoque-alto`): oferta parada em cima de demanda fina.
   supply_months_high: 24           # >= N meses de estoque -> 20 pontos de fragilidade

@@ -71,6 +71,48 @@ sem número é fail-closed com `True`, igual ao caminho vigente.
 que está de fato no `config.yaml` (e o limiar daquele modo, que tem de ser inteiro), e que toda
 cobertura `k/N` escrita em docs use o N real de `longterm.FRAGILITY_FLAGS`.
 
+### Correções da revisão em contexto limpo (2026-09-09)
+
+Oito achados, todos corrigidos com teste vermelho antes. Três mudam comportamento e valem
+atenção do operador.
+
+1. **A ordem da tabela usava uma métrica quase sempre indisponível.** `sort_key` ranqueava
+   por `net_roi_percent`, que só existe com o modelo de custo completo — ausente em 5.975
+   das 6.104 linhas do run real. O termo colapsava para zero em todas e a tabela saía em
+   ordem de inserção: uma linha de 44% podia aparecer acima de uma de 300%. Agora a
+   **margem bruta entra na ordenação**, antes do ROI líquido, lida do mesmo
+   `economic_gate` que a tabela exibe.
+2. **O "teto de comparação" prometia um preço que o gate rejeita.** Em `gross_margin` o
+   teto virava a referência crua, mas o gate exige `preço < referência/1,43`. Com
+   referência US$100 a entrega dizia "teto US$100,00" enquanto US$70 já sai REJEITAR.
+   O teto passa a ser o maior preço que o modo aprova, arredondado para BAIXO ao centavo.
+3. **`estoque-alto` contava três vezes a mesma observação.** Ela, `psa10-iliquido` e
+   `concentracao` leem os mesmos dois números. Somadas cheias, uma leitura virava 60
+   pontos e jogava a linha para LP4 com a evidência que dava LP2. A família passa a ter
+   teto de 30, o que a leitura mais forte dela já contribuía sozinha. Não mexe na cobertura.
+4. **Meses de estoque dividia anúncios de uma nota pelas vendas de outra.** O
+   PriceCharting só dá volume por certificadora na coluna PSA 10; as demais notas caem no
+   balde genérico `GRADE 9`, que mistura certificadoras e que este repo proíbe rotular
+   como PSA. A flag passa a valer **só em linhas PSA 10**; fora disso é `n/d`.
+5. **O piso da LP1 voltou de 9 para 8.** Subir junto com a 11ª flag rebaixava para `LP2*`
+   linhas que davam LP1 sem nenhuma evidência nova, e `estoque-alto` é a menos disponível
+   das onze. A contagem absoluta foi preservada.
+6. **Margem absurda voltou a pedir conferência de identidade.** O gate `gross_margin` só
+   tem piso, então uma linha de centenas de por cento — assinatura clássica de referência
+   errada ou carta trocada — chegava a APROVAR sem ressalva. A checagem existia no config
+   e estava inerte. Ela ganhou corte próprio do modo,
+   `economics.suspicious_gross_margin_percent: 150`, porque os 60% do topo foram
+   calibrados para o gate antigo e, sob um gate que aprova a partir de 43%, engoliriam
+   negócio normal. REVISA, nunca rejeita.
+7. **A guarda de drift nova passava por vacuidade e depois quebrava demais.** Foi ancorada
+   nas três formas reais em que a contagem aparece.
+8. **`--min-gross-margin` era aplicada em modo que a ignora, em silêncio.** Agora o config
+   fica intacto e o aviso é impresso, como o repo já faz com `--confiavel`.
+
+Fixtures de `test_catalog_identity` usavam preço com 300% de margem como atalho para
+APROVAR; passaram a usar 60%, dentro da faixa normal. Os testes são sobre identidade de
+catálogo, não sobre economia.
+
 ### Limitações que continuam de pé
 
 Nada aqui foi validado contra o mercado: um snapshot não é backtest. Não existe dado de

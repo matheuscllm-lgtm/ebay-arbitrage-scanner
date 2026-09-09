@@ -9,7 +9,7 @@ Nenhum teste fixa o literal do limiar de producao: quando precisa do valor
 vigente le de `config.yaml` via `policy_config()`; nos casos de fronteira usa um
 limiar proprio do teste.
 """
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 
 import pytest
 
@@ -158,12 +158,26 @@ def test_trap1_legacy_discount_reject_never_fires():
     assert o.verdict == 'APROVAR', o.reasons
 
 
-def test_trap2_comparison_cap_is_the_reference_itself():
+def test_trap2_comparison_cap_is_the_highest_price_the_gate_approves():
+    """REVISADO (revisao em contexto limpo, 2026-09-09): o teto NAO e a referencia crua.
+    O teto e o MAIOR preco que o modo ainda aprova, e em `gross_margin` isso e
+    `referencia / (1 + limiar/100)`, arredondado para BAIXO ao centavo. Imprimir a
+    referencia crua no bloco por carta ("Teto de comparacao") prometia um preco que o
+    proprio gate rejeita: com referencia 150 e limiar 43%, qualquer preco a partir de
+    104,90 sai REJEITAR, mas a entrega dizia "teto US$ 150,00".
+
+    O que a armadilha original queria proteger continua valendo: o teto NAO pode usar
+    a formula do desconto legado (`min_discount_percent`)."""
     c = gm_cfg()
-    c['min_discount_percent'] = 40
+    c['min_discount_percent'] = 40   # regua legada: nao pode influenciar nada aqui
     o = evaluate(CARD, listing(price=100), config=c, refs=refs(sales(price=150)))
-    assert o.strategy['comparison_cap'] == o.strategy['comparison_reference'] == 150
-    assert Decimal(o.strategy['comparison_cap_exact']) == Decimal(o.strategy['comparison_reference_exact'])
+    limiar = Decimal(str(c['slab_strategy']['economics']['min_gross_margin_percent']))
+    esperado = (Decimal('150') / (1 + limiar / 100)).quantize(Decimal('0.01'),
+                                                              rounding=ROUND_DOWN)
+    assert o.strategy['comparison_reference'] == 150
+    assert Decimal(o.strategy['comparison_cap_exact']) == esperado
+    # E nao e o teto da regua legada (150 x (1 - 40/100) = 90).
+    assert o.strategy['comparison_cap'] != 90
 
 
 def test_trap3_non_positive_profit_never_rejects():
@@ -192,11 +206,32 @@ def test_trap5_economic_keys_are_the_gross_margin_ones():
     assert o.verdict == 'REVISAR'
 
 
-def test_trap6_suspicious_margin_review_never_fires():
-    o = evaluate(CARD, listing(price=100), config=gm_cfg(), refs=refs(sales(price=300)))
-    assert o.gross_margin_pct == 200
-    assert 'desconto-elevado-conferir-identidade' not in o.reasons
-    assert o.verdict == 'APROVAR', o.reasons
+def test_trap6_suspicious_margin_uses_the_cut_of_its_own_mode():
+    """REVISADO (revisao em contexto limpo, 2026-09-09): a checagem de margem absurda
+    NAO pode ficar inerte no modo `gross_margin`. O gate so tem PISO, entao sem ela uma
+    linha de centenas de por cento -- assinatura classica de referencia errada ou carta
+    trocada -- chegava a APROVAR sem nenhuma ressalva, justo no modo em que a margem e
+    o unico criterio.
+
+    A armadilha original estava certa em UMA coisa: o corte de 60% do topo do config
+    foi calibrado para o gate antigo e, sob um gate que aprova a partir de 43%, ficaria
+    logo acima do limiar e engoliria negocio normal. Por isso o modo tem corte proprio
+    (`economics.suspicious_gross_margin_percent`), e o de 60% do topo NAO e usado aqui.
+    Ela REVISA, nunca rejeita."""
+    # `gm_cfg` zera o bloco `economics`, entao o corte proprio do modo entra explicito.
+    # Ausente, o codigo cai no corte legado de 60 (fail-safe: revisa MAIS, nunca menos).
+    corte = 150
+    c = gm_cfg(suspicious_gross_margin_percent=corte)
+    # 200% de margem: acima do corte proprio -> pede conferencia de identidade.
+    o = evaluate(CARD, listing(price=100), config=c, refs=refs(sales(price=300)))
+    assert o.gross_margin_pct == 200 and 200 > corte
+    assert 'desconto-elevado-conferir-identidade' in o.reasons
+    assert o.verdict == 'REVISAR', o.reasons
+    # 66,7% de margem: acima do corte LEGADO de 60, mas dentro do normal neste modo.
+    ok = evaluate(CARD, listing(price=60), config=c, refs=refs(sales(price=100)))  # 66,7%
+    assert ok.gross_margin_pct > c.get('suspicious_margin_percent', 60)
+    assert 'desconto-elevado-conferir-identidade' not in ok.reasons
+    assert ok.verdict == 'APROVAR', ok.reasons
 
 
 # --- custos continuam informativos ---------------------------------------------------
