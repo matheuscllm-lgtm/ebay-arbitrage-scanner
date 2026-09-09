@@ -48,7 +48,10 @@ alimenta a referência também não muda: a coluna só LÊ a referência e a ces
   `preco-absoluto-alto`, `vendedor-fraco` (os MESMOS cortes `trusted_min_feedback` e
   `trusted_min_feedback_pct` do config que a política já usa), `tiragem` (variante de impressão
   ambígua), `dispersao` (o MESMO valor que já rebaixa uma linha para REVISAR, pelo corte
-  `slab_strategy.evidence.max_dispersion_percent` — uma definição, um nome), `ref-stale` e
+  `slab_strategy.evidence.max_dispersion_percent` — uma definição, um nome: a célula mostra o
+  valor arredondado, mas a comparação com o corte usa o valor EXATO `dispersion_exact`, o mesmo
+  que a política compara, senão os dois discordariam na fronteira; a coluna olha a cesta PSA,
+  enquanto a política checa dispersão também na cesta de `revenda`), `ref-stale` e
   `concentracao` (mesma carta e mesma nota com muitos anúncios no run, corte
   `longterm.concentration_min_listings`, contado ANTES do loop de avaliação e aplicado também às
   primeiras linhas daquela carta+nota).

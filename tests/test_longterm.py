@@ -934,3 +934,29 @@ def test_r5_zero_comparable_sales_is_labelled_sem_vendas_not_thin():
     assert res.fragility_points["ref-fragil"] == 30
     assert "LP:ref-fragil(sem-vendas)" in res.reasons
     assert not any("thin" in r for r in res.reasons)
+
+
+def test_r6_dispersion_flag_uses_the_exact_value_the_policy_compares():
+    """O CHANGELOG promete que `dispersao` e "o MESMO valor que ja rebaixa uma linha
+    para REVISAR ... uma definicao, um nome". A coluna comparava o valor ARREDONDADO
+    (`dispersion_percent`, 2 casas) com o corte, enquanto a politica compara
+    `dispersion_exact` como Decimal. Na fronteira os dois discordavam: com dispersao
+    real 30,004% a politica rebaixa a linha e a coluna dizia que a dispersao estava
+    sob controle."""
+    lt = _lt()
+    from decimal import Decimal
+    from src.slab_strategy import amount
+    # precos 42.55 / 50.06 / 57.57 -> (max-min)/mediana = 30,00399...% (corte = 30)
+    assert amount(Decimal('30.00399520575309628445864962')) == 30.0   # arredonda PARA 30
+    rows = psales(n=3)
+    for sale, price in zip(rows, (42.55, 50.06, 57.57)):
+        sale["price"] = price
+    popp = slab_evaluate(PCARD, plisting(), config=pcfg(), refs=prefs(rows))
+    ev = popp.strategy["psa_evidence"]
+    assert ev["dispersion_percent"] == 30.0            # o que a celula mostra
+    assert Decimal(ev["dispersion_exact"]) > Decimal("30")   # o que a politica compara
+    assert "PSA-precos-dispersos" in popp.reasons      # a politica JA rebaixou a linha
+    res = lt.assess(PCARD, popp.listing, popp, fair(), prefs(rows), 1, pcfg(), today=TODAY)
+    assert res.signals["dispersion_pct"] == 30.0
+    assert res.fragility_points["dispersao"] == 10     # a coluna tem de concordar
+    assert any(r.startswith("LP:dispersao") for r in res.reasons)

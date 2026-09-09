@@ -53,6 +53,7 @@ import re
 import statistics
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from . import grading, groups, pc_sales, scorer
@@ -484,6 +485,23 @@ def _reference_inputs(opp):
     return None, None, None, None
 
 
+def _exceeds_dispersion(rounded, exact_text, limit):
+    """A dispersao passou do corte? Usa o valor EXATO quando ele existe
+    (`psa_evidence['dispersion_exact']`, a string do Decimal que a POLITICA compara em
+    `slab_strategy`), e so cai no arredondado da celula quando nao ha exato.
+
+    Sem isso a coluna discordava da politica na fronteira: com dispersao real de
+    30,004% a politica grava `PSA-precos-dispersos` (rebaixa a linha para REVISAR) e a
+    coluna, comparando o arredondado 30,00, dizia que a dispersao estava sob controle --
+    duas leituras do MESMO numero na mesma linha (review do PR-C 2026-09-09)."""
+    try:
+        if exact_text is not None:
+            return Decimal(str(exact_text)) > Decimal(str(limit))
+    except (InvalidOperation, TypeError, ValueError):
+        pass
+    return rounded > limit
+
+
 def _dispersion_from_sales(sales, window_days, today):
     """MESMA formula da politica: (max - min) / mediana x 100 (2 casas) sobre as vendas
     da cesta dentro da janela da referencia, 10 mais recentes. Sem venda -> None."""
@@ -668,10 +686,15 @@ def assess(card, listing, opp, fair, refs, listings_same_grade, cfg=None, *,
     if strategy:
         evidence = strategy.get("psa_evidence") or {}
         dispersion = _float_or_none(evidence.get("dispersion_percent")) if evidence else None
+        # A politica compara o valor EXATO (`dispersion_exact`, Decimal); a celula mostra
+        # o arredondado. Comparar o arredondado fazia a coluna discordar da politica na
+        # fronteira (review do PR-C 2026-09-09).
+        dispersion_exact = evidence.get("dispersion_exact") if evidence else None
         dispersion_source = "psa_evidence" if dispersion is not None else None
     else:
         dispersion = (_dispersion_from_sales(history, ref_window, today)
                       if history is not None and ref_window else None)
+        dispersion_exact = None
         dispersion_source = "sales_history" if dispersion is not None else None
     max_dispersion = _float_or_none(((cfg.get("slab_strategy") or {}).get("evidence") or {})
                                     .get("max_dispersion_percent"))
@@ -679,7 +702,7 @@ def assess(card, listing, opp, fair, refs, listings_same_grade, cfg=None, *,
         max_dispersion = float(_DEFAULT_MAX_DISPERSION)
     if dispersion is None:
         dispersed = None
-    elif dispersion > max_dispersion:
+    elif _exceeds_dispersion(dispersion, dispersion_exact, max_dispersion):
         dispersed = 10
         details["dispersao"] = f"{dispersion:g}%"
     else:
