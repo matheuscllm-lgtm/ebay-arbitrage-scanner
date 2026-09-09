@@ -107,8 +107,9 @@ def test_all_rows_present_including_rejected_with_reason():
 
 def test_comc_columns_header():
     md = ebay_summary.build_markdown(payload())
+    # `Longo prazo` (coluna informativa) entre Status e Links; `| Links | Flags |` adjacentes.
     assert ("| # | Desconto% | ROI bruto% | eBay$ | Ref$ | Spread$ | Pokémon | Carta | Set "
-            "| Tipo | Ref | Vend | Status | Links | Flags |") in md
+            "| Tipo | Ref | Vend | Status | Longo prazo | Links | Flags |") in md
     assert "| # | Carta | Tipo | eBay$ | Motivo | Links |" in md
 
 

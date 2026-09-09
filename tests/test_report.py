@@ -80,7 +80,8 @@ def test_opportunity_row_carries_comc_fields():
     row = report.opportunity_row(O())
     for key in ("discount_pct", "roi_pct", "spread_usd", "ref_source", "ref_label",
                 "ref_n_sales", "ref_liquidity", "pc_url", "listing_type", "pokemon",
-                "pokemon_rank", "reasons"):
+                "pokemon_rank", "reasons", "year", "rarity", "longterm_tier",
+                "longterm_reasons", "trend_source"):
         assert key in row
     assert row["roi_pct"] == 50.0 and row["margin_pct"] == 50.0
     assert row["pc_url"] == "https://pricecharting.com/g/p/x"
