@@ -37,6 +37,7 @@ SCOPE = "https://api.ebay.com/oauth/api_scope"
 
 # Categoria 183454 = CCG Individual Cards (cartas avulsas de TCG no eBay).
 CCG_CATEGORY_ID = "183454"
+GRADED_CONDITION_ID = "2750"  # Graded in the captured CCG Browse API fixture.
 
 # Teto de itens por pagina da Browse API (item_summary/search).
 MAX_LIMIT = 200
@@ -148,6 +149,8 @@ class EbayClient:
         # ela gastou cota do mesmo jeito.
         self.calls = 0
         self.dedup_dropped = 0  # itens repetidos entre paginas (vao pro funil)
+        self.fetched = 0
+        self.parse_dropped = 0
         # `total` reportado pela API na ultima busca (None antes da 1a).
         self.last_total = None
 
@@ -230,7 +233,8 @@ class EbayClient:
             f"{last_error}") from last_error
 
     def search(self, query, min_price=10.0, max_price=None, limit=MAX_LIMIT,
-               fixed_price_only=True, location_country="US", max_pages=3):
+               fixed_price_only=True, location_country="US", max_pages=3,
+               graded_only=False):
         """Busca anuncios ativos. Retorna lista de models.Listing.
 
         - fixed_price_only: DEFAULT True (decisao do operador 2026-09-03: so
@@ -257,6 +261,8 @@ class EbayClient:
 
         price_filter = f"price:[{min_price:g}..{'' if max_price is None else f'{max_price:g}'}]"
         filters = [price_filter, "priceCurrency:USD"]
+        if graded_only:
+            filters.append(f"conditionIds:{{{GRADED_CONDITION_ID}}}")
         if location_country:
             filters.append(f"itemLocationCountry:{location_country}")
         if fixed_price_only:
@@ -277,10 +283,16 @@ class EbayClient:
             url = SEARCH_URL + "?" + urllib.parse.urlencode(params)
             payload = self._request_search_json(url)
 
+            items = payload.get("itemSummaries", []) or []
+            self.fetched += len(items)
             total = payload.get("total")
             self.last_total = int(total) if total is not None else None
-            items = payload.get("itemSummaries", []) or []
-            for listing in parse_search_payload(payload):
+            for item in items:
+                try:
+                    listing = parse_search_payload({"itemSummaries": [item]})[0]
+                except (ValueError, TypeError, AttributeError, OverflowError):
+                    self.parse_dropped += 1
+                    continue
                 # item_id vazio nao identifica nada -> nao entra no set.
                 if listing.item_id:
                     if listing.item_id in seen_ids:

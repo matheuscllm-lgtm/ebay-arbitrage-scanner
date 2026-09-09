@@ -4,13 +4,12 @@ Por carta (padrao COMC, 2026-09-03):
 1. UMA pagina do PriceCharting (`pc_sales.fetch_page`, cache do dia) alimenta
    tanto as colunas/tendencia (`pricecharting.parse_product_page`, so informacao)
    quanto as vendas concluidas (`CardRefs`: mediana por certificadora+nota+
-   variante para slabs; vendas LP para raw LP). Fonte falhou -> `PcError` ->
+   variante para slabs). Fonte falhou -> `PcError` ->
    contado no funil (`pc_error`) e, apos `PC_MAX_CONSECUTIVE_ERRORS` falhas
    seguidas, o breaker suspende a fonte (`pc_breaker`) em vez de martelar o site.
-2. Referencia TCGplayer (tcgcsv) da carta raw EN (`tcg_reference`).
-3. Browse API: UMA busca generica por carta, paginada (`limit` 200 x `max_pages`),
-   so preco fixo, so EUA; dedupe por id E por titulo+preco.
-4. `scorer.evaluate` por anuncio, com `stats` (Counter) recebendo o motivo de
+2. Browse API: UMA busca por carta, paginada (`limit` 200 x `max_pages`),
+   so slabs, preco fixo, EUA; dedupe por id E por titulo+preco.
+3. `scorer.evaluate` por anuncio, com `stats` (Counter) recebendo o motivo de
    cada anuncio que nao vira linha -- nada some em silencio.
 
 Erro por carta e CONTADO (`card_error`, `ebay_error`) e logado, nunca engolido;
@@ -48,7 +47,18 @@ GRADE_QUERY_SUFFIXES = [""] + GRADED_ONLY_SUFFIXES
 def parse_grades_arg(text, allow=None):
     """'psa10, cgc 10 pristine' -> ['PSA 10', 'CGC 10 PRISTINE']; ValueError alto
     em nota desconhecida/fora da allowlist (typo nunca vira scan vazio)."""
-    return grading.parse_grades_arg(text, allow or grading.DEFAULT_GRADED_ALLOW)
+    grades = grading.parse_grades_arg(text, allow or grading.DEFAULT_GRADED_ALLOW)
+    if "RAW" in grades:
+        raise ValueError("RAW fora do escopo: o scanner aceita somente slabs.")
+    return grades
+
+
+def scan_config(config=None):
+    """Apply mandatory listing scope even for callers bypassing the CLI."""
+    cfg = dict(config or {}, graded_only=True, fixed_price_only=True)
+    if "RAW" in (cfg.get("allowed_grades") or []):
+        raise ValueError("RAW fora do escopo: o scanner aceita somente slabs.")
+    return cfg
 
 
 def query_suffixes(config):
@@ -159,7 +169,7 @@ class CardRefs:
         key = ("slab", grade.key, frozenset(variants))
         if key not in self._memo:
             comps = pc_sales.comparable_sales(self._sales, grade.grader, grade.value,
-                                              grade.qualifier, variants)
+                                              grade.qualifier, variants, card=self.card)
             ref = pc_sales.sales_reference(comps, self.url, grade.label, allow_thin=True)
             column_key = grading.pc_price_key(grade)
             column = self._columns.get(column_key) if column_key else None
@@ -276,16 +286,15 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
     """Escaneia uma carta da watchlist. Retorna (fair_value, [Opportunity]).
     `refs`/`fair` podem ser injetados (testes); senao vem de `load_card_page`."""
     stats = stats if stats is not None else Counter()
+    config = scan_config(config)
     if refs is None or fair is None:
         fair, refs = load_card_page(card, config, stats=stats, breaker=breaker, log=log)
 
-    tcg_ref = tcg_reference.get_tcg_reference(card)
-    if tcg_ref is None and not config.get("graded_only", True):
-        log(f"  (sem referencia TCGplayer p/ {card.name} -- raw NM usara "
-            "PriceCharting rotulado)")
-
     calls_before = int(getattr(ebay, "calls", 0) or 0)
     dups_before = int(getattr(ebay, "dedup_dropped", 0) or 0)
+    fetched_before = int(getattr(ebay, "fetched", 0) or 0)
+    invalid_before = int(getattr(ebay, "parse_dropped", 0) or 0)
+    scanner_dups_before = stats["dedup_dropped"]
     seen_ids = set()
     unique_listings = []
     base_query = card.default_query()
@@ -298,6 +307,7 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
             # Filtros server-side seguem o config (so preco fixo; so EUA) -- o
             # scorer repete a checagem como cinto de seguranca.
             fixed_price_only=bool(config.get("fixed_price_only", True)),
+            graded_only=True,
             location_country=str(config.get("required_location_country", "US") or ""),
         )
         for listing in listings:
@@ -312,18 +322,34 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                 seen_ids.add(listing.item_id)
             seen_ids.add(fingerprint)
             unique_listings.append(listing)
+    except Exception:
+        # Completed pages/queries are discarded when any later request fails.
+        fetched = int(getattr(ebay, "fetched", 0) or 0) - fetched_before
+        duplicates = (int(getattr(ebay, "dedup_dropped", 0) or 0) - dups_before
+                      + stats["dedup_dropped"] - scanner_dups_before)
+        invalid = int(getattr(ebay, "parse_dropped", 0) or 0) - invalid_before
+        lost = max(len(unique_listings), fetched - duplicates - invalid)
+        stats["seen"] += lost
+        stats["skip_fetch_error"] += lost
+        raise
     finally:
         # Cota e duplicados contam mesmo quando a busca estoura no meio.
         stats["ebay_calls"] += max(0, int(getattr(ebay, "calls", 0) or 0) - calls_before)
         stats["dedup_dropped"] += max(0, int(getattr(ebay, "dedup_dropped", 0) or 0) - dups_before)
+        stats["fetched"] += max(0, int(getattr(ebay, "fetched", 0) or 0) - fetched_before)
+        stats["skip_invalid_payload"] += max(0, int(getattr(ebay, "parse_dropped", 0) or 0) - invalid_before)
     stats["seen"] += len(unique_listings)
 
     asks = _clean_ask_prices(card, unique_listings)
 
     opportunities = []
     for listing in unique_listings:
-        opp = scorer.evaluate(card, listing, fair, config, tcg_ref=tcg_ref,
-                              refs=refs, stats=stats)
+        try:
+            opp = scorer.evaluate(card, listing, fair, config, refs=refs, stats=stats)
+        except Exception as exc:
+            stats["skip_evaluation_error"] += 1
+            log(f"  ERRO ao avaliar {listing.item_id}: {type(exc).__name__}: {exc}")
+            continue
         if opp is not None:
             _annotate_ref_alignment(opp, asks)
             # Veredito FINAL (apos rebaixamento por referencia desalinhada) e o
@@ -347,7 +373,7 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
     `aborted` True quando o run parou antes do fim (autenticacao eBay,
     `EBAY_MAX_CONSECUTIVE_ERRORS` erros seguidos da API) -- o caller NAO pode
     tratar o resultado como scan completo."""
-    config = config or {}
+    config = scan_config(config)
     cards = filter_group(load_watchlist(watchlist_path), group)
     stats = Counter()
     stats["cards"] = len(cards)

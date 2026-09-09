@@ -6,7 +6,6 @@ Uso:
   python main.py --pricing-only               # so referencias da watchlist (sem chaves)
   python main.py --watchlist w.yaml           # watchlist alternativa
   python main.py --list-groups                # lista os grupos da watchlist e sai
-  python main.py --include-raw                # inclui raw (NM = TCG market; LP = vendas LP)
   python main.py --grades "PSA 10, CGC 10 Pristine"   # funil restrito a notas
   python main.py --out results/last_scan.json # artefato JSON (default)
 
@@ -73,13 +72,11 @@ def main(argv=None):
                          "avaliacoes, >=98%%) e ROI abaixo do teto de suspeita; "
                          "tabela 100%% acionavel")
     ap.add_argument("--include-raw", action="store_true",
-                    help="inclui cartas soltas NESTE run: NM = TCGplayer market "
-                         "(tcgcsv); LP = mediana de >=3 vendas LP (PriceCharting), "
-                         "nunca LP vs NM. Nao altera o default graded-only do config")
+                    help=argparse.SUPPRESS)
     ap.add_argument("--grades", default="",
                     help='restringe o funil DESTE run a notas especificas, separadas '
                          'por virgula (ex.: --grades "PSA 10, CGC 10 Pristine, BGS 10 '
-                         'Black"). RAW so tem efeito com --include-raw. Nota fora da '
+                         'Black"). Somente slabs. Nota fora da '
                          'allowlist erra ALTO')
     ap.add_argument("--min-discount", type=int, default=None, metavar="N",
                     help="Desconto%% minimo (INTEIRO) deste run; sobrescreve "
@@ -99,18 +96,19 @@ def main(argv=None):
     ap.add_argument("--out", default="results/last_scan.json",
                     help="artefato JSON do scan (insumo do ebay_summary.py)")
     args = ap.parse_args(argv)
+    if args.include_raw:
+        ap.error("--include-raw foi removido: o scanner aceita somente slabs.")
 
     if args.list_groups:
         _print_groups(scanner.load_watchlist(args.watchlist))
         return 0
 
-    config = _load_config(args.config)
+    try:
+        config = scanner.scan_config(_load_config(args.config))
+    except ValueError as exc:
+        ap.error(str(exc))
     if args.confiavel:
         config["trusted_mode"] = True
-    if args.include_raw:
-        # Habilita raw SO neste run (o default `graded_only: true` do config e
-        # decisao de escopo do operador e continua intacto).
-        config["graded_only"] = False
     if args.min_discount is not None:
         config["min_discount_percent"] = int(args.min_discount)
     if args.min_price is not None:
@@ -160,7 +158,7 @@ def main(argv=None):
     if not effective_pricing_only:
         payload = report.scan_payload(
             opportunities, watchlist_count=len(cards_in_scope), config=config,
-            include_raw=args.include_raw, group=args.group, funnel=stats,
+            include_raw=False, group=args.group, funnel=stats,
             aborted=aborted,
         )
         out = args.out

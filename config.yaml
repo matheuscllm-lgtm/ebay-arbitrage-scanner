@@ -15,11 +15,8 @@ suspicious_margin_percent: 60  # ROI bruto acima disto vira SUSPEITO (bom demais
 # Decisao do operador 2026-09-03: SO preco fixo (lance atual de leilao nao e preco).
 fixed_price_only: true
 
-# Escopo (decisao 2026-06-10): SO graded por default. Raw entra por run
-# (--include-raw): NM = TCGplayer market; LP = mediana de >=3 vendas LP explicitas
-# (nunca LP vs NM). lp_with_reference: false desliga o caminho LP.
+# Escopo obrigatorio: somente slabs. Raw NM/LP nao entra no scan.
 graded_only: true
-lp_with_reference: true
 
 # Notas aceitas (chaves do src/grading.py). Descomente para restringir; default =
 # PSA 8/9/10, CGC 9/9.5/10 Gem/10 Pristine, BGS 9/9.5/10/10 Black, SGC 9/9.5/10,

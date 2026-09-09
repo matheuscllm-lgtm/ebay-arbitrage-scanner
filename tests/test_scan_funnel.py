@@ -84,7 +84,7 @@ def test_scan_card_funnel_counts_everything_and_jp_in_middle_does_not_stop(no_tc
     assert stats["ebay_calls"] == 1
 
 
-def test_scan_card_include_raw_lp_path(no_tcg):
+def test_scan_card_rejects_raw_even_with_legacy_config(no_tcg):
     refs = FakeRefs(slab={}, lp=REF(250.0, n=4, what="LP"), pc_url=PC_URL)
     fair = FairValue(prices={"RAW": 400.0}, sales_per_month={"RAW": 50.0})
     batch = [
@@ -96,9 +96,9 @@ def test_scan_card_include_raw_lp_path(no_tcg):
     _, opps = scanner.scan_card(CARD, FakeEbay(batch),
                                 {"graded_only": False, "min_discount_percent": 20},
                                 log=lambda *a: None, stats=stats, refs=refs, fair=fair)
-    assert [o.listing.item_id for o in opps] == ["1"]
-    assert opps[0].fair_value == 250.0 and opps[0].ref_source == "pricecharting-sales-lp"
-    assert stats["lp_prefilter"] == 1 and stats["skip_condition"] == 1
+    assert opps == []
+    assert stats["skip_raw"] == 3
+    assert refs.calls == []
 
 
 # ── CardRefs sobre a pagina REAL do Charizard 4/102 ───────────────────────────
@@ -285,7 +285,8 @@ def test_scan_card_passes_fixed_price_and_country_from_config(no_tcg):
                                    "min_price_usd": 7.0},
                       log=lambda *a: None, refs=refs, fair=fair)
     kw = ebay.kwargs[0]
-    assert kw["fixed_price_only"] is False and kw["location_country"] == "CA"
+    assert kw["fixed_price_only"] is True and kw["location_country"] == "CA"
+    assert kw["graded_only"] is True
     assert kw["max_pages"] == 2 and kw["min_price"] == 7.0
     ebay2 = RecordingEbay()
     scanner.scan_card(CARD, ebay2, {"graded_only": True}, log=lambda *a: None,

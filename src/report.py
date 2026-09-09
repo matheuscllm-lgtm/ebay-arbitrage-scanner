@@ -119,7 +119,7 @@ def sort_key(row):
     roi = _f(row, "roi_pct") if row.get("roi_pct") is not None else _f(row, "margin_pct")
     try:
         rank = int(row.get("pokemon_rank") or UNRANKED)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         rank = UNRANKED
     return (-roi, -_f(row, "discount_pct"), -_f(row, "spread_usd"), rank)
 
@@ -134,13 +134,18 @@ def sort_rows(rows):
 FUNNEL_LABELS = [
     ("cards", "Cartas da watchlist no escopo"),
     ("ebay_calls", "Chamadas à Browse API (cota grátis 5.000/dia)"),
+    ("fetched", "Anuncios recebidos da Browse API (antes dos filtros)"),
     ("seen", "Anúncios analisados (após dedupe)"),
     ("dedup_dropped", "Duplicados removidos (mesmo item/título+preço)"),
     ("skip_not_fixed_price", "Ignorados: leilão (só preço fixo)"),
     ("skip_price_floor", "Ignorados: abaixo do piso US$"),
     ("skip_country", "Ignorados: item fora dos EUA"),
     ("skip_no_match", "Ignorados: título não é a carta da watchlist"),
-    ("skip_raw", "Ignorados: carta solta (graded-only; use --include-raw)"),
+    ("skip_raw", "Ignorados: carta solta (escopo exclusivo de slabs)"),
+    ("skip_fetch_error", "Descartados: coleta parcial interrompida por erro"),
+    ("skip_invalid_payload", "Descartados: dados invalidos no anuncio recebido"),
+    ("skip_evaluation_error", "Descartados: erro interno ao avaliar anuncio"),
+    ("invalid_reference", "Descartados: referencia invalida ou nao positiva"),
     ("skip_grade_filtered", "Ignorados: nota fora do funil pedido (--grades)"),
     ("skip_grade_out_of_scope", "Ignorados: certificadora/nota fora do escopo"),
     ("skip_grade_ambiguous", "Ignorados: título cita mais de uma nota (ambíguo)"),

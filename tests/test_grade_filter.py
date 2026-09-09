@@ -24,7 +24,8 @@ def test_parse_aceita_grafia_informal():
     assert scanner.parse_grades_arg("bgs-9.5") == ["BGS 9.5"]
     assert scanner.parse_grades_arg("bgs 10 black") == ["BGS 10 BLACK"]
     assert scanner.parse_grades_arg("tag 9.5, sgc 10, psa 8") == ["TAG 9.5", "SGC 10", "PSA 8"]
-    assert scanner.parse_grades_arg("raw") == ["RAW"]
+    with pytest.raises(ValueError, match="RAW fora do escopo"):
+        scanner.parse_grades_arg("raw")
 
 
 def test_parse_deduplica():

@@ -36,6 +36,9 @@ Vereditos:
 `stats` (Counter opcional) recebe o MOTIVO de cada anuncio que NAO vira linha
 (funil da entrega): nada some em silencio.
 """
+import math
+from decimal import Decimal
+
 from . import grading, pc_sales, title_parser
 from .models import Opportunity
 from .report import compute_metrics
@@ -191,7 +194,8 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
 
     if cfg.get("fixed_price_only", True) and listing.buying_option != "FIXED_PRICE":
         return _skip(stats, "skip_not_fixed_price")
-    if listing.price <= 0 or listing.price < float(cfg["min_price_usd"]):
+    if (not math.isfinite(listing.price) or listing.price <= 0
+            or listing.price < float(cfg["min_price_usd"])):
         return _skip(stats, "skip_price_floor")
     required_country = cfg.get("required_location_country")
     if required_country and listing.country and listing.country != required_country:
@@ -346,8 +350,13 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
         ref_n, ref_liq, ref_window = ref.n_sales, ref.liquidity, ref.window_days
         tier = _tier_from_ref(ref)
 
+    if not math.isfinite(fair_price) or fair_price <= 0:
+        return _skip(stats, "invalid_reference")
     discount_pct, roi_pct, spread_usd = compute_metrics(fair_price, listing.price)
-    if discount_pct < min_discount:
+    # Decimal currency values preserve equality at the gate; display rounding cannot admit a row.
+    reference_amount = Decimal(str(fair_price))
+    discount_amount = reference_amount - Decimal(str(listing.price))
+    if discount_amount * 100 < reference_amount * Decimal(str(min_discount)):
         # Abaixo do gate nao interessa -- nem como linha rejeitada (senao a tabela
         # afoga em rejeitados de desconto negativo).
         return _skip(stats, "below_discount")

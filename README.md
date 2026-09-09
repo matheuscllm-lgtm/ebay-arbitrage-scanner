@@ -10,9 +10,11 @@ table with three plain metrics per row:
 - **Gross ROI %** = (reference − listing price) / listing price — shown as a column;
 - **Spread $** = reference − listing price — raw difference, no fees included.
 
-Reference prices are never invented: graded items use the median of completed
-sales of the same item/grade; ungraded items use a public market price with a
-labeled fallback. When a source fails, the row is counted in a "funnel"
+The scanner accepts only graded Pokemon cards (slabs), at fixed prices.
+Reference prices use the median of completed PriceCharting sales of the same
+card, variant, grader, grade and qualifier. Raw cards cannot be enabled by CLI
+or configuration, and raw prices do not affect slab verdicts.
+When a source fails, discarded listings are counted in a "funnel"
 summary instead of silently disappearing.
 
 Single-user project. No paid services. The target list ships with the repo
@@ -57,8 +59,8 @@ list (`python main.py --watchlist <file>`).
 python main.py --pricing-only                    # reference prices only (no credentials needed)
 python main.py --list-groups                     # list the groups with their titles (no credentials needed)
 python main.py --group 3                         # scan one group (default: discount >= 20%)
-python main.py --group 3 --min-discount 10 --min-price 5 --include-raw --out results/last_scan_g3.json
-                                                 # diagnostic run: lower gate, lower floor, ungraded included
+python main.py --group 3 --min-discount 10 --min-price 5 --out results/last_scan_g3.json
+                                                 # diagnostic run: lower gate and lower floor, slabs only
 python main.py --grades "PSA 10, CGC 10 Pristine"   # restrict this run to specific grades
 python main.py --max-pages 2                     # fewer API pages per item (200 listings each)
 ```
