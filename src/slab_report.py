@@ -1,7 +1,8 @@
 """Report every decision and the exact sales behind each calculation."""
 
 from .chat_format import reference_price
-from .report import links_cell, policy_funnel_lines
+from .report import (LONGTERM_LEGEND, links_cell, longterm_cell, longterm_counts_line,
+                     policy_funnel_lines)
 import json
 from collections import Counter
 from datetime import datetime, timedelta
@@ -90,11 +91,13 @@ def render(payload):
     meta = payload.get('meta') or {}
     lines = ['# EBAY PSA — avaliação de cartas certificadas', '',
              f'{len(rows)} candidatos: {counts["APROVAR"]} APROVAR, {counts["REVISAR"]} REVISAR, {counts["REJEITAR"]} REJEITAR.', '',
+             # Coluna informativa (docs/LONGO_PRAZO.md): contagem por classe; LP2* conta como LP2.
+             f'Longo prazo: {longterm_counts_line(rows)} (coluna informativa; legenda no rodapé).', '',
              'Coleta: ' + (escape_md(collection_line(meta)) if meta
                            else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)'), '',
              'APROVAR é aprovação na análise; nenhuma compra é executada.', '',
-             '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem líquida % | ROI líquido % | Decisão | Links |',
-             '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|']
+             '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem líquida % | ROI líquido % | Decisão | Longo prazo | Links |',
+             '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|']
     if meta.get('aborted'):
         # Causa da parcialidade (review #32): parada antecipada x erros contados no funil.
         cause = ('parada antecipada (autenticação, cota ou API): cartas restantes NÃO foram varridas'
@@ -107,12 +110,17 @@ def render(payload):
         values=[num(r['price']) if s['purchase_currency']=='USD' else 'pendente',num(s['investment_total']),reference_price(num(s['psa_reference_original']), r.get('pc_url')),
                 reference_price(num(s['comparison_reference']), r.get('pc_url')),reference_price(num(s['resale_estimate']), next((x.get('url') for x in s.get('resale_sales', []) if x.get('url')), None)),num(s['profit_estimate']),
                 num(r['discount_pct']) if s['comparison_reference'] is not None else 'pendente',
-                num(s['net_margin_percent']),num(s['net_roi_percent']),r['verdict'],links_cell(r.get('url'), r.get('pc_url'))]
+                num(s['net_margin_percent']),num(s['net_roi_percent']),r['verdict'],
+                longterm_cell(r),links_cell(r.get('url'), r.get('pc_url'))]
         lines.append('| '+f'[{label}]({md_url(r["url"])})'+' | '+' | '.join(values)+' |')
     for r in rows:
         s=r['strategy']
+        # Motivos `LP:` da coluna informativa entram SO aqui (exibicao), nunca em `reasons`.
+        lp_reasons = '; '.join(str(x) for x in (r.get('longterm_reasons') or []) if x)
+        motivos = ('; '.join(r['reasons']) or 'regras e evidências atendidas') + (
+            ' · Longo prazo: ' + lp_reasons if lp_reasons else '')
         lines += ['', f'## {escape_md(r["card"])} #{escape_md(r["number"])} — {r["verdict"]}', '',
-                  'Motivos: '+escape_md('; '.join(r['reasons']) or 'regras e evidências atendidas')+'.',
+                  'Motivos: '+escape_md(motivos)+'.',
                   'Variante: '+escape_md(', '.join(s['variant']) or 'sem modificadores identificados')+'.',
                   'Idioma do alvo: '+escape_md(r['language'])+'; idioma identificado no anúncio: '+escape_md(s.get('listing_language') or 'não confirmado')+'.',
                   'Evidência do idioma: '+escape_md(s.get('language_source', 'titulo'))+'.',
@@ -152,5 +160,6 @@ def render(payload):
     funnel = meta.get('funnel')
     lines += ['', 'Funil da busca: ' + (escape_md(' · '.join(policy_funnel_lines(funnel))) if funnel is not None
                                        else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)') + '.']
-    lines += ['', 'Desconto = (comparação − compra)/comparação. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.', '']
+    lines += ['', 'Desconto = (comparação − compra)/comparação. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.',
+              '', LONGTERM_LEGEND, '']
     return '\n'.join(lines)

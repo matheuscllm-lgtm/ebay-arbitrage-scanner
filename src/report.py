@@ -30,6 +30,7 @@ import csv
 import json
 import os
 import tempfile
+from collections import Counter
 from datetime import datetime, timezone
 from urllib.parse import quote
 
@@ -166,6 +167,7 @@ FUNNEL_LABELS = [
     ("skip_invalid_payload", "Descartados: dados invalidos no anuncio recebido"),
     ("skip_evaluation_error", "Descartados: erro interno ao avaliar anuncio"),
     ("skip_details_abort", "Descartados: interrupcao (cota/autenticacao eBay) antes de avaliar o anuncio"),
+    ("longterm_error", "Linhas mantidas com a coluna Longo prazo em n/d por erro interno (ver log)"),
     # Contadores que so o caminho da politica produz (scanner.scan_card / run_scan):
     # sem rotulo cairiam em "outros:" como chave crua (review do PR #33).
     ("item_details_fetched", "Consultas de detalhe do anuncio (get_item) feitas"),
@@ -294,6 +296,66 @@ def _row_links(row):
     return links_cell(row.get("url"), ref, ref_label=label, keep_placeholders=False)
 
 
+# --- coluna informativa "Longo prazo" (src/longterm.py, docs/LONGO_PRAZO.md) -------
+
+LONGTERM_TIERS = ("LP1", "LP2", "LP3", "LP4")
+
+# Legenda unica dos dois geradores (rodape da entrega). Termos: PERFIL, FRAGILIDADE DO
+# DADO, classe LP1-LP4, asterisco, cobertura -- e o que a coluna NAO e.
+LONGTERM_LEGEND = (
+    "_Longo prazo (coluna informativa): `LP2 64/35 (4/5·8/10)` = classe · PERFIL/FRAGILIDADE · "
+    "coberturas. PERFIL = características observadas da carta (personagem, raridade, tempo fora "
+    "de impressão, faixa da coluna PSA 10, tendência real das vendas); FRAGILIDADE DO DADO = "
+    "fragilidade da referência, da liquidez e da identidade da carta (poucas vendas, PSA 10 pouco "
+    "vendida, referência desalinhada, reprint, tiragem, dispersão, vendedor, concentração); "
+    "classe LP1-LP4 = qualidade/completude do perfil (forte / médio / fraco / frágil), não é "
+    "oportunidade nem recomendação; `*` = classe limitada por dado ausente (seria LP1, mas um "
+    "insumo-chave estava em n/d); cobertura `4/5` = 4 dos 5 insumos existiam (ausente = n/d, "
+    "nunca zero). Régua = calibração inicial, não validada; a coluna não é previsão, conselho, "
+    "gate nem ranking, e os motivos `LP:` ficam só em Flags/Motivos, sem mudar veredito._"
+)
+
+
+def _score_text(value):
+    if value is None or value == "":
+        return "n/d"
+    try:
+        return f"{float(value):.0f}"
+    except (TypeError, ValueError):
+        return "n/d"
+
+
+def longterm_cell(row):
+    """Celula `Longo prazo`: 'LP2 64/35 (4/5·8/10)' = classe · PERFIL/FRAGILIDADE ·
+    (cobertura do perfil · cobertura da fragilidade). Sem URL: a celula nao carrega link.
+
+    Sem classe -> 'n/d', nunca inventada. Sao DOIS casos, e os dois saem 'n/d':
+    - row sem o campo (JSON anterior a coluna, coluna desligada, erro interno) -> 'n/d';
+    - classe calculada como a string 'n/d' (PERFIL ou FRAGILIDADE abaixo do minimo de
+      fontes) -> 'n/d (2/5·8/10)': a cobertura fica, porque explica POR QUE a classe
+      esta indisponivel, mas as notas somem junto com a classe. Antes esse segundo caso
+      escapava do guard (a string 'n/d' e verdadeira para o `if`) e saia grudado, tipo
+      'n/d n/d/40 (2/5·8/10)' -- ilegivel (review do PR-C 2026-09-09)."""
+    tier = str(row.get("longterm_tier") or "").strip()
+    coverage = str(row.get("longterm_coverage") or "").strip()
+    if not tier or tier == "n/d":
+        return f"n/d ({coverage})" if coverage else "n/d"
+    text = f"{tier} {_score_text(row.get('longterm_profile'))}/{_score_text(row.get('longterm_fragility'))}"
+    return f"{text} ({coverage})" if coverage else text
+
+
+def longterm_tier_bucket(row):
+    """Classe da row para contagem: `LP2*` conta como LP2; sem classe -> 'n/d'."""
+    tier = str(row.get("longterm_tier") or "").strip().rstrip("*")
+    return tier if tier in LONGTERM_TIERS else "n/d"
+
+
+def longterm_counts_line(rows):
+    """'1 LP1 · 1 LP2 · 0 LP3 · 0 LP4 · 1 n/d' (cabecalho dos dois geradores)."""
+    counts = Counter(longterm_tier_bucket(r) for r in (rows or []))
+    return " · ".join(f"{counts.get(tier, 0)} {tier}" for tier in LONGTERM_TIERS + ("n/d",))
+
+
 def _num(value, digits=2):
     if value is None or value == "":
         return "—"
@@ -320,6 +382,7 @@ TABLE_COLS = [
     ("ref", "Ref"),
     ("trust_score", "Vend"),
     ("status", "Status"),
+    ("longterm", "Longo prazo"),   # informativa: classe · PERFIL/FRAGILIDADE · coberturas
     ("links", "Links"),
     ("flags", "Flags"),
 ]
@@ -329,6 +392,11 @@ REJECTED_COLS = [
     ("listing_type", "Tipo"),
     ("price", "eBay$"),
     ("motivo", "Motivo"),
+    # A coluna informativa entra tambem no balde REJEITADO, na MESMA posicao de
+    # TABLE_COLS (antes de Links): o cabecalho da entrega conta a classe LP de TODAS as
+    # linhas, rejeitadas incluidas, entao sem ela a contagem apontava para celulas que
+    # nao existiam em tabela nenhuma (review do PR-C 2026-09-09).
+    ("longterm", "Longo prazo"),
     ("links", "Links"),
 ]
 _MAXW = {"carta": 40, "set": 30, "listing_type": 22, "pokemon": 16}
@@ -346,8 +414,17 @@ def _cell(key, value):
 
 def _cells_for(row, rank):
     roi = row.get("roi_pct") if row.get("roi_pct") is not None else row.get("margin_pct")
-    flags = row.get("flags") or []
-    flags_txt = escape_md("; ".join(str(f) for f in flags)) if flags else "-"
+    flags = [str(f) for f in (row.get("flags") or [])]
+    motivo_txt = escape_md("; ".join(flags)) if flags else "-"
+    # Motivos `LP:` da coluna Longo prazo vao SO para `Flags` (exibicao); a coluna
+    # `Motivo` dos REJEITADO fica com o motivo da rejeicao. So os que DISPARARAM: os
+    # `LP:<nome>: n/d` podem ser 15 numa linha so e empurravam para longe o sinal de
+    # risco real (FRAUDE PROVAVEL, REF DESALINHADA...) numa tabela que e colada verbatim
+    # no chat. Nada se perde: as ausencias seguem inteiras no JSON (`longterm_reasons`)
+    # e resumidas na cobertura `k/5·k/10` da propria coluna (review do PR-C 2026-09-09).
+    lp_reasons = [str(r) for r in (row.get("longterm_reasons") or [])
+                  if r and not str(r).endswith(": n/d")]
+    flags_txt = escape_md("; ".join(flags + lp_reasons)) if (flags or lp_reasons) else "-"
     return {
         "rank": str(rank),
         "discount_pct": _num(row.get("discount_pct")),
@@ -362,9 +439,10 @@ def _cells_for(row, rank):
         "ref": ref_label_cell(row),
         "trust_score": _num(row.get("trust_score"), 0),
         "status": status_cell(row),
+        "longterm": longterm_cell(row),
         "links": _row_links(row),
         "flags": flags_txt,
-        "motivo": flags_txt,
+        "motivo": motivo_txt,
     }
 
 
@@ -406,7 +484,10 @@ def to_markdown(opportunities, meta=None):
     if not opportunities:
         return "_Nenhum anuncio passou do desconto minimo neste scan._"
     rows = sort_rows([opportunity_row(o) for o in opportunities])
-    return render_rows_table(rows)
+    # Legenda no rodape, igual aos outros dois geradores: a tabela do console tambem e
+    # colada VERBATIM no chat, e sem ela a coluna `Longo prazo` chega ao operador como
+    # uma sigla e dois numeros sem explicacao (review do PR-C 2026-09-09).
+    return render_rows_table(rows) + "\n\n" + LONGTERM_LEGEND
 
 
 # --- registro local -------------------------------------------------------------
@@ -437,7 +518,9 @@ def to_csv(opportunities, path):
         "median_ask_usd", "score", "trust_score", "authenticity_guarantee",
         "top_rated", "verdict", "reasons", "flags", "seller_feedback_pct",
         "seller_feedback_score", "buying_option", "title", "url", "pc_url",
-        "tcg_url",
+        "tcg_url", "year", "rarity", "longterm_tier", "longterm_profile",
+        "longterm_fragility", "longterm_coverage", "longterm_reasons",
+        "trend_12m_pct", "trend_36m_pct", "trend_source",
     ]
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -453,6 +536,9 @@ def to_csv(opportunities, path):
                 o.verdict, "; ".join(o.reasons), "; ".join(o.risk_flags),
                 lst.seller_feedback_pct, lst.seller_feedback_score,
                 lst.buying_option, lst.title, lst.url, o.pc_url, o.tcg_url,
+                c.year, c.rarity, o.longterm_tier, o.longterm_profile,
+                o.longterm_fragility, o.longterm_coverage, "; ".join(o.longterm_reasons),
+                o.trend_12m_pct, o.trend_36m_pct, o.trend_source,
             ])
     return path
 
@@ -477,6 +563,8 @@ def opportunity_row(o):
         "group": c.group,
         "pokemon": c.pokemon,
         "pokemon_rank": c.pokemon_rank,
+        "year": c.year,          # so informacao (coluna Longo prazo / validador)
+        "rarity": c.rarity,
         "grade": o.grade,
         "grade_label": o.grade_label,
         "condition": o.condition,
@@ -515,6 +603,16 @@ def opportunity_row(o):
         "url": lst.url,
         "item_id": lst.item_id,
         "title": lst.title,
+        # Coluna informativa "Longo prazo" (None/""/[] = n/d; nunca zero inventado).
+        "longterm_profile": o.longterm_profile,
+        "longterm_fragility": o.longterm_fragility,
+        "longterm_tier": o.longterm_tier,
+        "longterm_coverage": o.longterm_coverage,
+        "longterm_reasons": list(o.longterm_reasons),
+        "longterm_signals": dict(o.longterm_signals),
+        "trend_12m_pct": o.trend_12m_pct,
+        "trend_36m_pct": o.trend_36m_pct,
+        "trend_source": o.trend_source,
     }
 
 
@@ -545,6 +643,8 @@ def scan_payload(opportunities, watchlist_count, config, include_raw=False,
             "max_item_details_per_card": config.get("max_item_details_per_card", 10),
             "trusted_min_feedback": config.get("trusted_min_feedback", 50),
             "trusted_min_feedback_pct": config.get("trusted_min_feedback_pct", 98),
+            # Bloco da coluna informativa, gravado como rodou (None = defaults do modulo).
+            "longterm": config.get("longterm"),
         },
         "funnel": dict(funnel or {}),
     }

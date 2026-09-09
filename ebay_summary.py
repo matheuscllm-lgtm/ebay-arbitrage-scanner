@@ -33,7 +33,8 @@ import json
 import os
 import sys
 
-from src.report import funnel_lines, render_rejected_table, render_rows_table, sort_rows
+from src.report import (LONGTERM_LEGEND, funnel_lines, longterm_counts_line,
+                        render_rejected_table, render_rows_table, sort_rows)
 
 VERDICTS = ("OPORTUNIDADE", "REVISAR", "SUSPEITO", "REJEITADO")
 
@@ -195,6 +196,9 @@ def _header(meta, rows, by_verdict, sensitivity):
         f" · só preço fixo · só item nos EUA · slabs aceitos: "
         f"{', '.join(graded) if graded else '—'}",
         f"- Vereditos: {counts}",
+        # Coluna informativa "Longo prazo" (docs/LONGO_PRAZO.md): contagem por classe;
+        # LP2* conta como LP2; row sem a coluna (JSON antigo) = n/d.
+        f"- Longo prazo: {longterm_counts_line(rows)}",
         f"- {coverage_line(rows)}",
     ]
     funnel = meta.get("funnel") or {}
@@ -276,6 +280,8 @@ def build_markdown(payload, sensitivity=None):
     else:
         lines += _verdict_sections(by_verdict)
     lines.append(FOOTER)
+    lines.append("")
+    lines.append(LONGTERM_LEGEND)
     lines.append("")
     return "\n".join(lines)
 

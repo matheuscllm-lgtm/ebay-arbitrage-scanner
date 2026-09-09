@@ -107,9 +107,12 @@ def test_all_rows_present_including_rejected_with_reason():
 
 def test_comc_columns_header():
     md = ebay_summary.build_markdown(payload())
+    # `Longo prazo` (coluna informativa) entre Status e Links; `| Links | Flags |` adjacentes.
     assert ("| # | Desconto% | ROI bruto% | eBay$ | Ref$ | Spread$ | Pokémon | Carta | Set "
-            "| Tipo | Ref | Vend | Status | Links | Flags |") in md
-    assert "| # | Carta | Tipo | eBay$ | Motivo | Links |" in md
+            "| Tipo | Ref | Vend | Status | Longo prazo | Links | Flags |") in md
+    # REJEITADO tem a MESMA coluna informativa, na mesma posicao (antes de `Links`):
+    # o cabecalho conta a classe LP de todas as linhas, rejeitadas incluidas.
+    assert "| # | Carta | Tipo | eBay$ | Motivo | Longo prazo | Links |" in md
 
 
 def test_every_row_has_both_links_reference_is_pricecharting_page():

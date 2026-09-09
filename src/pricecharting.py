@@ -70,6 +70,11 @@ FULL_TABLE_GRADE_BY_LABEL = {
 
 _last_request_at = [0.0]
 
+# Serie mensal embutida no JavaScript da pagina: `VGPC.chart_data = {"used": [[ts_ms,
+# centavos], ...], ...};` -- buckets used (Ungraded), cib (Grade 7), new (Grade 8),
+# graded (Grade 9, generico), boxonly (Grade 9.5), manualonly (PSA 10). JSON valido.
+_CHART_DATA_RE = re.compile(r"VGPC\.chart_data\s*=\s*(\{.*?\})\s*;", re.S)
+
 
 def _money(text):
     text = text.replace(",", "").replace("$", "").strip()
@@ -188,7 +193,41 @@ def parse_product_page(body, source_url=""):
                              "month": n, "year": n / 12}[per]
                 fv.sales_per_month[grade] = round(per_month, 1)
 
+    # 3) Serie mensal (so informacao: tendencia B5 da coluna "Longo prazo").
+    fv.history = parse_chart_data(body)
+
     return fv
+
+
+def parse_chart_data(body):
+    """Serie mensal `VGPC.chart_data` da pagina -> {bucket: [(timestamp ms, centavos|None)]}.
+
+    Funcao pura. Valor 0 na serie significa "sem dado naquele mes" (as series PSA 10 /
+    Grade 9 / Grade 9.5 comecam em 0 em 2020-12), NUNCA preco zero -> vira None.
+    Pagina sem a serie (ou JSON ilegivel) -> {} -- nunca inventa. E so informacao para
+    a coluna informativa "Longo prazo"; nunca vira referencia de preco."""
+    m = _CHART_DATA_RE.search(body or "")
+    if not m:
+        return {}
+    try:
+        raw = json.loads(m.group(1))
+    except ValueError:
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    out = {}
+    for bucket, points in raw.items():
+        series = []
+        for point in points or []:
+            try:
+                ts = int(point[0])
+                cents = point[1]
+                cents = int(cents) if cents is not None else None
+            except (TypeError, ValueError, IndexError):
+                continue
+            series.append((ts, cents if cents and cents > 0 else None))
+        out[str(bucket)] = series
+    return out
 
 
 def get_fair_value(pc_url, cache_dir=RUN_CACHE_DIR):

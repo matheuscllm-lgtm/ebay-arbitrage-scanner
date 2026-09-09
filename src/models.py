@@ -52,6 +52,11 @@ class FairValue:
     deltas: dict = field(default_factory=dict)        # grade -> variacao recente USD (tendencia)
     sales_per_month: dict = field(default_factory=dict)  # grade -> vendas/mes (float)
     source_url: str = ""
+    # Serie mensal `VGPC.chart_data` da pagina (bucket do PriceCharting -> lista de
+    # (timestamp em ms, preco em centavos ou None)). 0 na serie = SEM DADO -> None,
+    # nunca preco zero. So informacao (tendencia B5 da coluna "Longo prazo"); nunca
+    # referencia. Pagina sem serie -> {}.
+    history: dict = field(default_factory=dict)
 
     def price(self, grade: str):
         return self.prices.get(grade)
@@ -135,3 +140,17 @@ class Opportunity:
 
 
     strategy: dict = field(default_factory=dict)  # versioned EBAY PSA calculation/evidence
+    # --- Coluna informativa "Longo prazo" (src/longterm.py, docs/LONGO_PRAZO.md) ---
+    # Preenchida DEPOIS do veredito final e so por `longterm.annotate`; nunca entra em
+    # veredito, gate, score, `risk_flags`, `reasons` nem ranking. Sem dado = None/""
+    # (n/d na entrega) -- nunca zero. Defaults preservam `Opportunity(**base)` dos
+    # testes e a construcao posicional da politica (src/slab_strategy.py).
+    longterm_profile: float | None = None    # PERFIL 0-100 (caracteristicas da carta)
+    longterm_fragility: float | None = None  # FRAGILIDADE DO DADO 0-100
+    longterm_tier: str = ""                  # "LP1".."LP4", "LP2*" (limitada por dado ausente), "n/d"
+    longterm_coverage: str = ""              # "4/5·8/10" = insumos disponiveis por nota
+    longterm_reasons: list = field(default_factory=list)   # motivos `LP:` (so exibicao)
+    longterm_signals: dict = field(default_factory=dict)   # insumos crus rotulados (auditoria)
+    trend_12m_pct: float | None = None       # tendencia real em 12 m (B5), % ou None
+    trend_36m_pct: float | None = None       # 36 m, so informativa (serie do PriceCharting)
+    trend_source: str = ""                   # "sales_history" | "chart_data[:psa10-proxy|:sem-dado]" | ""
