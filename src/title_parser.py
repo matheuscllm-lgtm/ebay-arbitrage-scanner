@@ -191,20 +191,37 @@ def card_matches_title(card, title):
     se houver numero, o numero tambem (evita casar 'Charizard ex' com
     'Charizard VMAX'). A nota do slab nunca conta como numero."""
     t = title.lower()
-    if card.name.lower() not in t:
-        return False
+    name = card.name.lower().strip()
+    if name:
+        # Nome como palavra inteira (limite de palavra): "Mew" nao casa "Mewtwo".
+        name_match = re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", t)
+        if not name_match:
+            return False
+        # Prefixo que muda a carta ("Dark Charizard" nao e "Charizard") e sufixo
+        # que muda a carta ("Charizard ex" nao e "Charizard"): outra referencia.
+        if re.search(r"\b(?:dark|shining|radiant|light|mega|primal)\s*$", t[:name_match.start()]):
+            return False
+        if re.match(r"\s+(?:ex|gx|v|vmax|vstar|lv\.?\s*x)\b", t[name_match.end():]):
+            return False
+    # Nome vazio = chamador confere o nome por conta propria (caminho
+    # `slab_strategy.identity_matches`): aqui so numero e exclusoes, como antes.
     for kw in card.exclude_keywords:
         if kw.lower() in t:
             return False
     if card.number:
-        num = card.number.lower().lstrip("0") or card.number.lower()
+        expected = str(card.number).lower().split("/")
+        num = _norm_num_token(expected[0])
         clean = _GRADE_MENTION_STRIP.sub(" ", t)
+        clean = re.sub(r"\b(?:pop(?:ulation)?|cert(?:ificate)?|qty|swsh|sm|xy)"
+                       r"\s*[:#-]?\s*\d+\b", " ", clean)
         # Em "11/25" o DENOMINADOR e o tamanho do set, nunca a carta. Sem isto,
         # "Mew #11 /25" casava o card numero 25 (o Secret Rare, caro) e a referencia
         # saia da carta errada -- achado do review, 2026-09-04 (49 linhas afetadas).
         fracs = _FRACTION_RE.findall(clean)
         if fracs:
-            return any(_norm_num_token(a) == _norm_num_token(num) for a, _ in fracs)
+            return any(_norm_num_token(a) == num and
+                       (len(expected) == 1 or _norm_num_token(b) == _norm_num_token(expected[1]))
+                       for a, b in fracs)
         pattern = r"(?:#|no\.?\s*|\b)0*%s\b" % re.escape(num)
         if not re.search(pattern, clean):
             return False

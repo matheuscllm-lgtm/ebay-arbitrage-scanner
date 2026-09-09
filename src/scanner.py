@@ -159,8 +159,11 @@ class CardRefs:
     def slab(self, grade, variants=frozenset()):
         key = ("slab", grade.key, frozenset(variants))
         if key not in self._memo:
+            # `card=` = guarda de identidade: venda cujo titulo nao e desta carta
+            # (outro nome/numero) nunca entra na mediana. So o caminho legado
+            # passa por aqui; `slab_strategy` monta a propria cesta.
             comps = pc_sales.comparable_sales(self._sales, grade.grader, grade.value,
-                                              grade.qualifier, variants)
+                                              grade.qualifier, variants, card=self.card)
             ref = pc_sales.sales_reference(comps, self.url, grade.label, allow_thin=True)
             column_key = grading.pc_price_key(grade)
             column = self._columns.get(column_key) if column_key else None
@@ -294,6 +297,12 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
 
     calls_before = int(getattr(ebay, "calls", 0) or 0)
     dups_before = int(getattr(ebay, "dedup_dropped", 0) or 0)
+    # Funil da coleta (contagem de por que cada anuncio foi descartado):
+    # `fetched` = itens recebidos da API antes de qualquer filtro;
+    # `parse_dropped` = itens cujo payload (dados recebidos) nao deu para ler.
+    fetched_before = int(getattr(ebay, "fetched", 0) or 0)
+    invalid_before = int(getattr(ebay, "parse_dropped", 0) or 0)
+    scanner_dups_before = stats["dedup_dropped"]
     seen_ids = set()
     unique_listings = []
     base_query = card.default_query()
@@ -324,10 +333,24 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                 seen_ids.add(listing.item_id)
             seen_ids.add(fingerprint)
             unique_listings.append(listing)
+    except Exception:
+        # A busca estourou no meio (pagina/consulta seguinte falhou): os anuncios
+        # das paginas ja concluidas sao descartados junto com a carta. Eles contam
+        # no funil como `skip_fetch_error` (nada some em silencio) e o erro sobe.
+        fetched = int(getattr(ebay, "fetched", 0) or 0) - fetched_before
+        duplicates = (int(getattr(ebay, "dedup_dropped", 0) or 0) - dups_before
+                      + stats["dedup_dropped"] - scanner_dups_before)
+        invalid = int(getattr(ebay, "parse_dropped", 0) or 0) - invalid_before
+        lost = max(len(unique_listings), fetched - duplicates - invalid)
+        stats["seen"] += lost
+        stats["skip_fetch_error"] += lost
+        raise
     finally:
         # Cota e duplicados contam mesmo quando a busca estoura no meio.
         stats["ebay_calls"] += max(0, int(getattr(ebay, "calls", 0) or 0) - calls_before)
         stats["dedup_dropped"] += max(0, int(getattr(ebay, "dedup_dropped", 0) or 0) - dups_before)
+        stats["fetched"] += max(0, int(getattr(ebay, "fetched", 0) or 0) - fetched_before)
+        stats["skip_invalid_payload"] += max(0, int(getattr(ebay, "parse_dropped", 0) or 0) - invalid_before)
     stats["seen"] += len(unique_listings)
 
     asks = {} if 'slab_strategy' in config else _clean_ask_prices(card, unique_listings)
@@ -372,8 +395,17 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                     stats['item_details_error'] += 1
                 finally:
                     stats['ebay_calls'] += max(0, ebay.calls - before)
-        opp = scorer.evaluate(card, listing, fair, config, tcg_ref=tcg_ref,
-                              refs=refs, stats=stats)
+        try:
+            # Vale para os DOIS caminhos (legado e `slab_strategy`): erro interno
+            # ao avaliar UM anuncio nao derruba a carta inteira -- conta no funil
+            # (`skip_evaluation_error`), e logado e o run fica marcado parcial.
+            opp = scorer.evaluate(card, listing, fair, config, tcg_ref=tcg_ref,
+                                  refs=refs, stats=stats)
+        except Exception as exc:  # noqa: BLE001 -- contado e logado, nunca engolido
+            stats["skip_evaluation_error"] += 1
+            log(f"  ERRO ao avaliar anuncio {listing.item_id or '(sem id)'}: "
+                f"{type(exc).__name__}: {exc}")
+            continue
         if opp is not None:
             if not opp.strategy:
                 _annotate_ref_alignment(opp, asks)
@@ -462,7 +494,10 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
             stats["card_error"] += 1
             log(f"  ERRO em {card.name} #{card.number}: {type(e).__name__}: {e} "
                 "-- carta pulada (contada no funil)")
-    if any(stats[k] for k in ('pc_error', 'pc_breaker', 'ebay_error', 'card_error', 'item_details_error')):
+    # `skip_evaluation_error` entra na mesma regra: cobertura parcial nunca passa
+    # por scan completo (antes o mesmo erro virava `card_error`, ja listado aqui).
+    if any(stats[k] for k in ('pc_error', 'pc_breaker', 'ebay_error', 'card_error',
+                              'item_details_error', 'skip_evaluation_error')):
         aborted = True
         stats['aborted'] = 1
     return fair_values, all_opportunities, pricing_only, stats, aborted

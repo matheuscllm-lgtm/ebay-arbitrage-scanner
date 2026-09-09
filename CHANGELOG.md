@@ -1,3 +1,55 @@
+## 2026-09-09 — porte do diff local pré-#29 sobre #31 (PR-A `fix/port-local-diff`)
+
+- Resgate: o trabalho local não commitado (13 arquivos + `tests/test_slabs_regressions.py`)
+  foi congelado na branch `wip/local-slabs-diff-2026-09-04` (cópia de segurança; não
+  mergear) e portado aqui por hunk (trecho de diff), nunca por arquivo inteiro.
+- Identidade da venda usada na referência (caminho legado): `pc_sales.comparable_sales(...,
+  card=)` descarta venda cujo título não é da mesma carta (outro nome/número) antes da
+  mediana (valor do meio); `CardRefs.slab` e `graded_reference` passam a carta. A nota da
+  venda passa a ser lida pelo mesmo parser dos anúncios (`grading.grade_from_title`): CGC
+  "Pristine" antes da nota é reconhecido; título com duas notas ou outra certificadora
+  junto não entra na cesta; vendas "BGS GEM MINT 9.5" antes ignoradas passam a contar.
+  **Ressalva:** a guarda cobre SÓ o caminho legado — `src/slab_strategy.py` monta a
+  própria cesta de vendas e não chama `comparable_sales` (0 ocorrências); replicar a
+  guarda lá é pergunta ao operador (backlog), nada foi tocado nesse módulo.
+- Identidade do anúncio (`title_parser.card_matches_title`, função usada nos dois
+  caminhos): nome como palavra inteira ("Mew" não casa "Mewtwo"); prefixo/sufixo que
+  mudam a carta ("Dark Charizard", "Charizard ex") não casam; número completo com
+  denominador quando a watchlist o traz; "pop/cert/qty + número" nunca conta como número
+  da carta. Chamada com nome vazio (é como `slab_strategy.identity_matches` a usa)
+  mantém o comportamento anterior — só número e exclusões — para não alterar a política.
+- Funil da coleta nos DOIS caminhos (contagem de por que cada anúncio foi descartado):
+  `fetched` (recebidos da API antes de qualquer filtro), `skip_invalid_payload` (item com
+  estrutura ilegível), `skip_fetch_error` (páginas já concluídas descartadas quando a busca
+  estoura no meio) e `skip_evaluation_error` (erro interno ao avaliar UM anúncio, que não
+  derruba a carta inteira e marca o run como parcial, como já fazia `card_error`).
+  `invalid_reference` (referência ausente/NaN/infinita/≤0) e `below_discount` só existem
+  no caminho legado; a política (`slab_strategy`) rejeita com motivos próprios.
+- Preço do anúncio ausente/NaN/infinito/≤0 conta em `skip_price_floor` (caminho legado);
+  `report.sort_key` tolera rank infinito (OverflowError = número grande demais); rótulo do
+  funil `skip_raw` diz "escopo exclusivo de slabs" (o texto antigo sugeria `--include-raw`,
+  que a base atual rejeita).
+- Gate em Decimal (aritmética exata) **não portado**: o gate vigente compara o Desconto%
+  já arredondado a 2 casas (`report.compute_metrics`); com centavos reais um caso de
+  fronteira mudaria de lado (29,996% é admitido hoje como 30,00% e seria rejeitado em
+  aritmética exata). Freio (f)7 do prompt: pergunta ao operador; teste de fronteira em
+  `tests/test_slabs_regressions.py`. Limiar 30/30 e bloco `slab_strategy` do config
+  intactos (diff vazio).
+- Bloco "somente slabs" do diff local descartado (`scan_config`, `parse_grades_arg`
+  rejeitando RAW, `GRADED_CONDITION_ID`, README/config): já coberto pela política
+  2026-09-05.4 com outro mecanismo (`slab_strategy`, `conditionIds:{2750}`, `--include-raw`
+  rejeitado no CLI) — ver `docs/EBAY_PSA.md` e a seção 2026-09-05 abaixo. Das 17 funções
+  de teste do arquivo local, 3 (bloco 1) e 2 (Decimal) não foram portadas; 12
+  sobreviveram adaptadas à base #31 (preço ilegível vira `price=None`, não descarte na
+  coleta) + 4 testes novos (nome vazio, preço `None`, fronteira do gate, run parcial).
+- Correções órfãs do PR #27 (sem entrada própria até aqui): reverse holo sem market do
+  subtipo conta como `raw_variant_no_reference`; jumbo/metal/oversize saem do funil como
+  outro produto; em "11/25" o denominador nunca é lido como número da carta.
+- PR #26 já contido na `main` (cherry-pick vazio; patch aplica ao contrário limpo) e
+  PR #28 superado por #29 (regressão do catálogo já na `main`): comentados com
+  evidência, sem fechar (decisão do operador). Cópia do `/auto` do eBay já em sincronia.
+- 682 testes locais.
+
 ## 2026-09-05 — revisão de execução, política 2026-09-05.4
 
 - Corrigida identidade de coleções com códigos de catálogo e grafias com apóstrofos/LV.X.
