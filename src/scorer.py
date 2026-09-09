@@ -196,11 +196,13 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
 
     if cfg.get("fixed_price_only", True) and listing.buying_option != "FIXED_PRICE":
         return _skip(stats, "skip_not_fixed_price")
-    # Preco ausente (payload sem valor legivel -> None), NaN/infinito, zero ou
-    # negativo nunca vira linha: conta no piso (`skip_price_floor`).
+    # Preco AUSENTE (payload sem valor legivel -> None) nunca vira linha e conta
+    # como "sem preco legivel" (`skip_no_price`): ausencia nao e "abaixo do piso".
+    # NaN/infinito, zero ou negativo contam no piso (`skip_price_floor`).
     price = listing.price
-    if (price is None or not math.isfinite(price) or price <= 0
-            or price < float(cfg["min_price_usd"])):
+    if price is None:
+        return _skip(stats, "skip_no_price")
+    if not math.isfinite(price) or price <= 0 or price < float(cfg["min_price_usd"]):
         return _skip(stats, "skip_price_floor")
     required_country = cfg.get("required_location_country")
     if required_country and listing.country and listing.country != required_country:

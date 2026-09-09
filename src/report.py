@@ -147,6 +147,7 @@ FUNNEL_LABELS = [
     ("seen", "Anúncios analisados (após dedupe)"),
     ("dedup_dropped", "Duplicados removidos (mesmo item/título+preço)"),
     ("skip_not_fixed_price", "Ignorados: leilão (só preço fixo)"),
+    ("skip_no_price", "Descartados: anuncio sem preco legivel"),
     ("skip_price_floor", "Ignorados: abaixo do piso US$"),
     ("skip_country", "Ignorados: item fora dos EUA"),
     ("skip_no_match", "Ignorados: título não é a carta da watchlist"),

@@ -161,10 +161,10 @@ def test_invalid_item_does_not_lose_later_items(monkeypatch):
     assert client.fetched == 3 and client.parse_dropped == 1
 
 
-def test_unreadable_price_is_kept_as_none_and_counted_at_the_floor(monkeypatch, no_tcg):
+def test_unreadable_price_is_kept_as_none_and_counted_as_no_price(monkeypatch, no_tcg):
     """Valor de preco ilegivel vira `price=None` (comportamento de #31, nao e
-    descarte na coleta): no caminho legado conta no piso, nunca vira linha nem
-    erro de avaliacao."""
+    descarte na coleta): no caminho legado conta como "sem preco legivel"
+    (`skip_no_price`), nunca vira linha nem erro de avaliacao."""
     client = ebay_api.EbayClient("id", "secret")
     monkeypatch.setattr(client, "_request_search_json", lambda url: _page([
         dict(_item("x"), title="Charizard 4/102 PSA 9", price={"value": "oops"})], total=1))
@@ -175,7 +175,9 @@ def test_unreadable_price_is_kept_as_none_and_counted_at_the_floor(monkeypatch, 
                                 refs=FakeRefs(slab={"PSA 9": REF(100.0)}),
                                 fair=FairValue(), log=lambda *a: None)
     assert rows == []
-    assert stats["skip_price_floor"] == 1 and stats["skip_evaluation_error"] == 0
+    # Ausencia de preco != preco abaixo do piso: chave propria no funil (review #32).
+    assert stats["skip_no_price"] == 1 and stats["skip_price_floor"] == 0
+    assert stats["skip_evaluation_error"] == 0
 
 
 def test_one_evaluation_failure_preserves_other_rows(monkeypatch, no_tcg):
@@ -224,7 +226,9 @@ def test_invalid_listing_price_never_emits_row(price):
     stats = Counter()
     assert scorer.evaluate(CARD, L("Charizard 4/102 PSA 9", price, "1"), FairValue(),
                            {"min_price_usd": 0}, refs=FakeRefs(), stats=stats) is None
-    assert stats["skip_price_floor"] == 1
+    # Preco AUSENTE (None) e "sem preco legivel"; NaN/infinito/zero/negativo e piso.
+    assert stats["skip_no_price" if price is None else "skip_price_floor"] == 1
+    assert sum(stats.values()) == 1
 
 
 @pytest.mark.parametrize("price", [float("nan"), float("inf"), -1, 0])
