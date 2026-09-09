@@ -95,6 +95,21 @@ def collection_line(meta):
     return ' · '.join(parts)
 
 
+def gross_margin_value(row):
+    """Margem bruta da linha, preferindo o valor que o GATE comparou.
+
+    No modo `gross_margin` o veredito sai de `economic_gate.gross_margin_percent`;
+    mostrar qualquer outra conta abriria espaco para a tabela e a decisao divergirem
+    na fronteira. Fora daquele modo o gate nao publica margem bruta, e a linha cai no
+    campo do payload (`margin_pct` = `Opportunity.gross_margin_pct`, mesma formula).
+    Sem nenhum dos dois devolve None -- `num` transforma em "pendente", nunca em zero.
+    """
+    gate = (row.get('strategy') or {}).get('economic_gate') or {}
+    if gate.get('mode') == 'gross_margin' and gate.get('gross_margin_percent') is not None:
+        return gate['gross_margin_percent']
+    return row.get('margin_pct')
+
+
 def render(payload):
     def num(value):
         return 'pendente' if value is None else f'{value:.2f}'
@@ -108,8 +123,8 @@ def render(payload):
              'Coleta: ' + (escape_md(collection_line(meta)) if meta
                            else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)'), '',
              'APROVAR é aprovação na análise; nenhuma compra é executada.', '',
-             '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem líquida % | ROI líquido % | Decisão | Longo prazo | Links |',
-             '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|']
+             '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem bruta % | Margem líquida % | ROI líquido % | Decisão | Longo prazo | Links |',
+             '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|']
     if meta.get('aborted'):
         # Causa da parcialidade (review #32): parada antecipada x erros contados no funil.
         cause = ('parada antecipada (autenticação, cota ou API): cartas restantes NÃO foram varridas'
@@ -122,6 +137,11 @@ def render(payload):
         values=[num(r['price']) if s['purchase_currency']=='USD' else 'pendente',num(s['investment_total']),reference_price(num(s['psa_reference_original']), r.get('pc_url')),
                 reference_price(num(s['comparison_reference']), r.get('pc_url')),reference_price(num(s['resale_estimate']), next((x.get('url') for x in s.get('resale_sales', []) if x.get('url')), None)),num(s['profit_estimate']),
                 num(r['discount_pct']) if s['comparison_reference'] is not None else 'pendente',
+                # Margem bruta = o numero que o gate `gross_margin` de fato comparou.
+                # Le do proprio `economic_gate` para nao existir uma SEGUNDA conta que
+                # possa divergir da que decidiu; fora daquele modo cai no campo do
+                # payload (`margin_pct` = `Opportunity.gross_margin_pct`, mesma formula).
+                num(gross_margin_value(r)),
                 num(s['net_margin_percent']),num(s['net_roi_percent']),r['verdict'],
                 longterm_cell(r),links_cell(r.get('url'), r.get('pc_url'))]
         lines.append('| '+f'[{label}]({md_url(r["url"])})'+' | '+' | '.join(values)+' |')
@@ -172,6 +192,6 @@ def render(payload):
     funnel = meta.get('funnel')
     lines += ['', 'Funil da busca: ' + (escape_md(' · '.join(policy_funnel_lines(funnel))) if funnel is not None
                                        else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)') + '.']
-    lines += ['', 'Desconto = (comparação − compra)/comparação. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.',
+    lines += ['', 'Desconto = (comparação − compra)/comparação. Margem bruta = (comparação − compra)/compra, sem taxa nenhuma — é ela que decide no modo `gross_margin`. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.',
               '', LONGTERM_LEGEND, '']
     return '\n'.join(lines)

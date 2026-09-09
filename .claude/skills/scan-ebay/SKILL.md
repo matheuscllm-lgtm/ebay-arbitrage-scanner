@@ -147,9 +147,10 @@ $env:PYTHONIOENCODING="utf-8"
 vigente é `src/slab_report.py` (`render`), chamado pelo `ebay_summary.py` sempre
 que o JSON é da política: linha "Coleta:" (quando, o quê e com qual regra
 coletou, lida só do meta do JSON) + tabela única com todos os candidatos, nas
-13 colunas do `render` (Carta / Compra / Investimento / PSA original /
-Comparação / Revenda / as três métricas econômicas líquidas da política
-2026-09-05.4, definidas em docs/EBAY_PSA.md / Desconto / Decisão / **Longo
+14 colunas do `render` (Carta / Compra / Investimento / PSA original /
+Comparação / Revenda / Lucro / Desconto / **Margem bruta**, que é o número que
+DECIDE no modo `gross_margin` / Margem líquida / ROI líquido — as três últimas
+são informativas e estão definidas em docs/EBAY_PSA.md / Decisão / **Longo
 prazo** / Links) + uma seção por carta com motivos, variante, idioma, custos e
 as vendas usadas na referência + funil no rodapé.
 
