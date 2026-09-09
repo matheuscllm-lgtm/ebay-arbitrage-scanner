@@ -25,7 +25,8 @@ import statistics
 from collections import Counter
 
 from .models import FairValue, WatchCard
-from . import grading, groups, pc_sales, pricecharting, scorer, tcg_reference, title_parser
+from . import (grading, groups, longterm, pc_sales, pricecharting, scorer, tcg_reference,
+               title_parser)
 from .ebay_api import EbayApiError, EbayAuthError, EbayBudgetExceeded, EbayClient
 
 log = logging.getLogger(__name__)
@@ -180,6 +181,16 @@ class CardRefs:
             self._memo[key] = pc_sales.sales_reference(comps, self.url, "LP", allow_thin=False)
         return self._memo[key]
 
+    def sales_history(self, grade, variants=frozenset()):
+        """Cesta de vendas comparaveis da nota (MESMA certificadora+nota+qualificador+
+        variante e a mesma guarda de identidade da referencia) -- SO LEITURA, para a
+        coluna informativa "Longo prazo" (tendencia B5 e `dispersao` no caminho
+        legado). Nunca vira referencia, nunca recalcula a mediana, nenhum fetch novo;
+        `slab()` e identico antes e depois. Copias rasas: o chamador nao altera `_sales`."""
+        comps = pc_sales.comparable_sales(self._sales, grade.grader, grade.value,
+                                          grade.qualifier, frozenset(variants), card=self.card)
+        return [dict(sale) for sale in comps]
+
 
 class PcBreaker:
     """Circuit breaker do PriceCharting: apos N falhas SEGUIDAS a fonte e suspensa
@@ -286,6 +297,41 @@ def _annotate_ref_alignment(opp, asks):
             "estar defasada pra baixo")
 
 
+# --- coluna informativa "Longo prazo" (src/longterm.py) ----------------------------
+
+def _count_listings_by_grade(listings, allow):
+    """Anuncios unicos do run por nota lida no titulo ('PSA 9', 'RAW'...), contados
+    ANTES do loop de avaliacao: insumo de `LP:concentracao` (mesma carta+nota com >=4
+    anuncios), aplicado a todas as linhas daquela nota -- inclusive as primeiras.
+    Independe de `asks` (que a politica deixa vazio). Titulo ambiguo/fora do escopo
+    nao conta (nao tem nota unica)."""
+    counts = Counter()
+    for listing in listings:
+        gr = grading.grade_from_title(listing.title, allow)
+        if gr.status == "graded" and gr.grade is not None:
+            counts[gr.grade.key] += 1
+        elif gr.status == "raw":
+            counts["RAW"] += 1
+    return counts
+
+
+def _annotate_longterm(card, opp, fair, refs, same_grade_counts, config, iconic_scores,
+                       stats, log):
+    """Coluna informativa `Longo prazo` nos DOIS caminhos (legado e `slab_strategy`),
+    calculada DEPOIS do veredito final e sem toca-lo (`longterm.assess` e pura;
+    `annotate` grava so os campos novos). Erro interno aqui nunca derruba a linha nem
+    a carta: a coluna fica n/d, o erro e logado e contado (`longterm_error`)."""
+    try:
+        result = longterm.assess(card, opp.listing, opp, fair, refs,
+                                 same_grade_counts.get(opp.grade), config,
+                                 iconic_scores=iconic_scores)
+        longterm.annotate(opp, result)
+    except Exception as exc:  # noqa: BLE001 -- contado e logado, nunca engolido
+        stats["longterm_error"] += 1
+        log(f"  AVISO: coluna Longo prazo indisponivel (n/d) para o anuncio "
+            f"{opp.listing.item_id or '(sem id)'}: {type(exc).__name__}: {exc}")
+
+
 # --- scan --------------------------------------------------------------------------
 
 _DETAIL_ASPECTS = ('Language', 'Set', 'Card Number', 'Professional Grader', 'Grade',
@@ -387,6 +433,11 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
     stats["seen"] += len(unique_listings)
 
     asks = {} if 'slab_strategy' in config else _clean_ask_prices(card, unique_listings)
+    # Coluna "Longo prazo": contagem por nota feita ANTES do loop de avaliacao (1a
+    # passagem); `assess` roda depois de cada veredito final (2a passagem).
+    same_grade_counts = _count_listings_by_grade(
+        unique_listings, frozenset(config.get("graded_allow") or grading.DEFAULT_GRADED_ALLOW))
+    iconic_scores = longterm.load_iconic_scores()
 
     opportunities = []
     # Linhas por veredito desta carta: so entram em `stats["rows_*"]` quando a
@@ -445,6 +496,10 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
         if opp is not None:
             if not opp.strategy:
                 _annotate_ref_alignment(opp, asks)
+            # Ponto unico de plug da coluna informativa "Longo prazo": depois do
+            # veredito final, nos dois caminhos; nao toca veredito, gate nem ranking.
+            _annotate_longterm(card, opp, fair, refs, same_grade_counts, config,
+                               iconic_scores, stats, log)
             # Veredito FINAL (apos rebaixamento por referencia desalinhada) e o
             # que conta no funil -- review Codex 2026-09-03.
             row_counts[scorer.VERDICT_STAT.get(opp.verdict, "rows_review")] += 1
