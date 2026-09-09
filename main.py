@@ -154,6 +154,17 @@ def main(argv=None):
         pricing_only=args.pricing_only, group=args.group,
     )
 
+    # O artefato JSON (meta + funil + rows) e montado ANTES de imprimir: o console
+    # da politica usa o MESMO meta da entrega canonica (review do PR #33 -- sem
+    # meta o relatorio saia com "Coleta: n/d" e um funil zerado inventado).
+    payload = None
+    if not effective_pricing_only:
+        payload = report.scan_payload(
+            opportunities, watchlist_count=len(cards_in_scope), config=config,
+            group=args.group, funnel=stats,
+            aborted=aborted,
+        )
+
     print()
     if args.pricing_only or not opportunities:
         print("## Referencias por carta (PriceCharting -- colunas informativas)\n")
@@ -162,7 +173,7 @@ def main(argv=None):
             print()
     if opportunities:
         print("## Candidatos avaliados — APROVAR / REJEITAR / REVISAR\n")
-        print(report.to_markdown(opportunities))
+        print(report.to_markdown(opportunities, meta=payload["meta"] if payload else None))
         csv_path = args.csv
         if aborted:
             base, ext = os.path.splitext(csv_path)
@@ -181,12 +192,7 @@ def main(argv=None):
         print("AVISO: busca real indisponivel (chaves eBay ausentes; pricing-only nao executado) "
               f"-- artefato JSON NAO gravado ({args.out} preservado). "
               "Configure EBAY_CLIENT_ID/SECRET e rode de novo.")
-    if not effective_pricing_only:
-        payload = report.scan_payload(
-            opportunities, watchlist_count=len(cards_in_scope), config=config,
-            group=args.group, funnel=stats,
-            aborted=aborted,
-        )
+    if payload is not None:
         out = args.out
         if aborted:
             # Scan parcial NUNCA sobrescreve o ultimo scan completo no path

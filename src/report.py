@@ -376,12 +376,18 @@ def render_rejected_table(rows):
     return render_rows_table(rows, REJECTED_COLS)
 
 
-def to_markdown(opportunities):
+def to_markdown(opportunities, meta=None):
+    """Modo console: TODAS as linhas na tabela canonica, ordem do ranking.
+
+    Politica ativa (linha com `strategy`): delega ao gerador vigente
+    (`slab_report.render`) com o MESMO `meta` do artefato JSON (quando, o que
+    e com qual regra coletou + funil). Sem `meta`, o relatorio diz n/d -- nunca
+    inventa zero (review do PR #33)."""
     if any(o.strategy for o in opportunities):
         from .slab_report import render
-        return render({"rows": sort_rows([opportunity_row(o) for o in opportunities])})
+        return render({"rows": sort_rows([opportunity_row(o) for o in opportunities]),
+                       "meta": meta})
 
-    """Modo console: TODAS as linhas na tabela canonica, ordem do ranking."""
     if not opportunities:
         return "_Nenhum anuncio passou do desconto minimo neste scan._"
     rows = sort_rows([opportunity_row(o) for o in opportunities])

@@ -51,7 +51,8 @@ def render(payload):
     meta = payload.get('meta') or {}
     lines = ['# EBAY PSA — avaliação de cartas certificadas', '',
              f'{len(rows)} candidatos: {counts["APROVAR"]} APROVAR, {counts["REVISAR"]} REVISAR, {counts["REJEITAR"]} REJEITAR.', '',
-             'Coleta: ' + escape_md(collection_line(meta)), '',
+             'Coleta: ' + (escape_md(collection_line(meta)) if meta
+                           else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)'), '',
              'APROVAR é aprovação na análise; nenhuma compra é executada.', '',
              '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem líquida % | ROI líquido % | Decisão | Links |',
              '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|']
@@ -105,9 +106,12 @@ def render(payload):
                 lines.append('Vendas excluídas por motivo: '+escape_md(json.dumps(evidence['excluded_counts'], ensure_ascii=False))+'.')
             for sale in s[kind+'_sales']:
                 lines.append(f'- {sale["date"]} · US$ {num(sale["price"])} · [{escape_md(sale["title"])}]({md_url(sale["url"])})')
-    if payload.get('meta',{}).get('aborted'):
+    if meta.get('aborted'):
         lines += ['', 'EXECUÇÃO ABORTADA: resultado parcial; não representa busca completa.']
     # Funil com rotulos humanos (nada some: contador sem rotulo sai em "outros: ...").
-    lines += ['', 'Funil da busca: '+escape_md(' · '.join(policy_funnel_lines(payload.get('meta', {}).get('funnel', {}))))+'.']
+    # Sem funil no meta = n/d: um dict vazio viraria "analisados: 0", zero inventado.
+    funnel = meta.get('funnel')
+    lines += ['', 'Funil da busca: ' + (escape_md(' · '.join(policy_funnel_lines(funnel))) if funnel is not None
+                                       else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)') + '.']
     lines += ['', 'Desconto = (comparação − compra)/comparação. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.', '']
     return '\n'.join(lines)
