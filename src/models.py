@@ -9,16 +9,9 @@ Termos:
 from dataclasses import dataclass, field
 
 
-# Grades aceitas pelo escopo do projeto (escopo fixo do operador).
-ACCEPTED_GRADES = (
-    "RAW",       # ungraded, somente Near Mint
-    "PSA 10",
-    "PSA 9",
-    "BGS 10",
-    "BGS 9.5",
-    "CGC 10",
-    "CGC 9.5",
-)
+# Notas aceitas: `grading.DEFAULT_GRADED_ALLOW` (allowlist editavel no config.yaml,
+# chave `graded_allow`). A constante ACCEPTED_GRADES que morava aqui estava morta
+# (zero usos) e contradizia a allowlist -- removida no review do PR #33.
 
 
 @dataclass
@@ -102,11 +95,13 @@ class Opportunity:
     liquidity_per_month: float
     liquidity_tier: str       # A / B / C / D
     trend_delta: float        # variacao recente do preco justo (USD)
-    spread_psa9_pct: float    # quanto a PSA 9 vale acima do raw (%)  (so p/ RAW)
+    # Premio do bucket GENERICO "Grade 9" do PriceCharting (mistura
+    # certificadoras) sobre o raw (%) -- so informacao, so p/ RAW; nunca "PSA 9".
+    spread_grade9_pct: float
     spread_psa10_pct: float   # quanto a PSA 10 vale acima do raw (%) (so p/ RAW)
     risk_flags: list = field(default_factory=list)
     score: float = 0.0        # 0-100
-    verdict: str = ""         # OPORTUNIDADE / REVISAR / SUSPEITO / REJEITADO
+    verdict: str = ""         # APROVAR / REVISAR / REJEITAR (politica) · OPORTUNIDADE / SUSPEITO / REJEITADO (legado)
     fair_value_source: str = ""  # URL do PriceCharting (link de referencia)
     median_ask: float = 0.0   # mediana dos anuncios eBay da mesma grade (sanity check)
     trust_score: float = 0.0  # 0-100: confiabilidade do vendedor/anuncio (separado da margem)

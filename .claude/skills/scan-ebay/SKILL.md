@@ -1,59 +1,63 @@
 ---
 name: scan-ebay
 description: >-
-  Rodar o scan de arbitragem do eBay (anúncios de preço fixo vs referência —
-  slab = mediana de vendas concluídas no PriceCharting; raw NM = TCGplayer
-  market) e entregar via ebay_summary.py no layout COMC. Use SEMPRE que o
-  operador pedir para rodar o scanner do eBay / "roda o eBay" / "scan eBay" /
-  escanear a watchlist do eBay: antes de rodar, PERGUNTE o grupo canônico
-  (1–12, UM por vez; --list-groups mostra os títulos) e o modo (comercial =
-  --min-discount 20; diagnóstico =
-  --min-price 5 --min-discount 10 --include-raw + --sensitivity 10,15,20) e
-  entregue SEMPRE a saída do ebay_summary.py verbatim (2 links em toda linha,
-  todos os buckets, funil no cabeçalho).
+  Rodar o scan de cartas certificadas (slabs) do eBay — anúncios de preço fixo
+  nos EUA comparados com vendas concluídas PSA da mesma carta no PriceCharting,
+  pela política 2026-09-05.4 (bloco `slab_strategy` do config.yaml) — e entregar
+  a tabela do ebay_summary.py verbatim no chat. Use SEMPRE que o operador pedir
+  para rodar o scanner do eBay / "roda o eBay" / "scan eBay" / escanear a
+  watchlist do eBay: antes de rodar, PERGUNTE o grupo canônico (1–12, UM por
+  vez; --list-groups mostra os títulos) e os ajustes do run (--max-pages,
+  --min-discount, --grades) e entregue SEMPRE a saída do ebay_summary.py
+  verbatim (2 links em toda linha, todos os candidatos APROVAR / REVISAR /
+  REJEITAR, funil no rodapé).
 ---
 
-REGRA VIGENTE DO OPERADOR: ler DELIVERY_CHAT.md na raiz do repositório. Entrega somente no chat, preço de referência clicável, coleta nova sob demanda; não executar scans no GitHub Actions nem publicar resultados. Esta regra substitui instruções antigas conflitantes abaixo.
-
-
+REGRA VIGENTE DO OPERADOR: ler DELIVERY_CHAT.md na raiz do repositório. Entrega somente no chat, preço de referência clicável, coleta nova sob demanda; não executar scans no GitHub Actions nem publicar resultados. Esta regra substitui instruções antigas conflitantes.
 
 # Scan do eBay — pergunte, rode, entregue
 
 O scanner compara anúncios ativos de **preço fixo** do eBay (Browse API — a API
-oficial de busca; leilão nem entra na busca) com uma referência honesta, no
-**padrão COMC** (operador, 2026-09-03):
+oficial de busca; leilão nem entra na busca), **só de cartas certificadas**
+(slabs: carta lacrada com nota de PSA / BGS / CGC / TAG — lista `graded_allow` no
+config.yaml), com a referência da política 2026-09-05.4 (definição completa em
+docs/EBAY_PSA.md):
 
-- **slab** (carta lacrada com nota: PSA 8/9/10, CGC 9/9.5/10 Gem Mint/10
-  Pristine, BGS 9/9.5/10/10 Black Label, SGC 9/9.5/10, TAG 9.5/10) → mediana
-  (valor do meio) de vendas concluídas da MESMA carta+variante+certificadora+
-  nota no PriceCharting; ≥3 vendas = OK, 1–2 = REVISAR, 0 = sem referência;
-- **raw NM** (carta solta quase perfeita; só com `--include-raw`) → market do
-  TCGplayer (via tcgcsv.com), PriceCharting como cross-check rotulado;
-- **raw LP** (leve desgaste, só com LP explícito no anúncio) → mediana de ≥3
-  vendas LP; nunca comparado ao preço NM.
-
-Gate (filtro que decide se vira linha) = **Desconto%** = (referência − preço)/
-referência, percentual INTEIRO (`min_discount_percent: 20` no config;
-`--min-discount N` por run). ROI bruto% e Spread$ são colunas. Nunca "lucro".
+- **Referência PSA** = mediana (valor do meio) das vendas concluídas PSA da MESMA
+  carta + coleção + número + variante + idioma + nota, lidas da página da carta no
+  PriceCharting (≥3 vendas em 180 dias = OK; só em 365 dias = REVISAR por baixa
+  liquidez; 1–2 vendas = REVISAR). Outras certificadoras são comparadas à PSA
+  ajustada (`graders` no config) e a revenda exige vendas da própria certificadora.
+- **Regra econômica** = `slab_strategy.economics` do config.yaml:
+  `gate_mode: profit_or_discount` — braço `min_profit_usd: 40` OU braço
+  `min_discount_percent: 30`, limites estritos, `require_positive_profit: true` —
+  com os custos COMC explícitos em `costs`. Nada disso é recomendação: é
+  classificação técnica.
+- **Carta solta (raw) não entra**: `graded_only: true` é obrigatório e a flag
+  antiga de raw é rejeitada pelo `main.py` com erro.
+- Vereditos = **APROVAR / REVISAR / REJEITAR**, sempre com motivos e evidências
+  (vendas usadas, janela, dispersão). APROVAR é aprovação na análise; nenhuma
+  compra é executada nem recomendada.
 
 ## Passo 0 — pré-requisitos
 
-- `EBAY_CLIENT_ID`/`EBAY_CLIENT_SECRET` no ambiente (env vars de usuário
-  Windows — keyset "MinhaLojaEbay"; sessão de terminal antiga pode não herdar
-  → passar inline se "ausentes"). Sem chaves, o run degrada para pricing-only
-  e NÃO grava artefato.
+- `EBAY_CLIENT_ID`/`EBAY_CLIENT_SECRET` no ambiente (env vars de usuário Windows —
+  keyset "MinhaLojaEbay"). Sessão de terminal antiga pode não herdar → rodar pela
+  ferramenta PowerShell, que herda as variáveis do usuário. Sem chaves, o run NÃO
+  consulta o eBay e NÃO grava artefato. Nunca passar chave inline nem imprimi-la.
 - `watchlist.yaml` **já vem no repo** (GERADA por `build_watchlist.py` e
-  versionada — decisão do operador 2026-09-03): um clone limpo roda sem
-  preparo. Universo = catálogo de 123 sets (`src/catalog/set_catalog.json`,
-  os mesmos 12 grupos da COMC em `src/groups.py`) × 100 "chases"
-  (`src/catalog/iconic_pokemon.csv`) × raridade ≥ Holo Rare × teto 30 cartas
-  por set; `pc_url` = página exata da carta no PriceCharting (carta sem
-  página fica fora; nunca se inventa URL). **Não editar à mão**; regenerar
-  (`python build_watchlist.py`) só quando o catálogo/grupos/chases mudarem —
-  o teste `tests/test_groups.py` falha de propósito se o catálogo crescer sem
-  os grupos acompanharem.
+  versionada — decisão do operador 2026-09-03): um clone limpo roda sem preparo.
+  Universo = catálogo de 123 sets (`src/catalog/set_catalog.json`, os mesmos 12
+  grupos da COMC em `src/groups.py`) × 100 "chases" (`src/catalog/iconic_pokemon.csv`)
+  × raridade ≥ Holo Rare × teto 30 cartas por set; `pc_url` = página exata da
+  carta no PriceCharting (carta sem página fica fora; nunca se inventa URL).
+  **Não editar à mão**; regenerar (`python build_watchlist.py`) só quando o
+  catálogo/grupos/chases mudarem — o teste `tests/test_groups.py` falha de
+  propósito se o catálogo crescer sem os grupos acompanharem.
+- `python main.py --check-config` lista as pendências da política sem rede
+  (código 0 = nada pendente; 2 = há pendências, que viram REVISAR nas linhas).
 
-## Passo 1 — perguntar grupo e modo (AskUserQuestion) — nunca assumir
+## Passo 1 — perguntar grupo e ajustes (AskUserQuestion) — nunca assumir
 
 1. **Qual grupo canônico rodar (UM por vez)?** Obtenha títulos e contagens
    DINAMICAMENTE (não precisa de chaves eBay):
@@ -81,74 +85,88 @@ referência, percentual INTEIRO (`min_discount_percent: 20` no config;
    XY/SM 2004–19; 11–12 = SWSH + Crown Zenith 2020–23.) `--group` aceita
    `N` | `N-M` | `1,3,10-12` | `all`; número fora de 1–12 erra alto. Apresente
    os grupos com a contagem de cartas que o `--list-groups` imprimiu. Padrão do
-   operador = **um grupo por vez** (cota da Browse API: 5.000 chamadas/dia,
-   ~1–3 chamadas por carta; a watchlist inteira tem ~1.600 cartas).
-2. **Qual modo?**
-   - **Comercial** (default): `--min-discount 20` (= default do config), só
-     slabs, piso US$10. Entrega em 4 buckets por veredito.
-   - **Diagnóstico** (operador 2026-09-03): `--min-price 5 --min-discount 10
-     --include-raw`. Entrega com `--sensitivity 10,15,20` — só a faixa ≥20% é
-     candidato comercial; 15–19,99% e 10–14,99% são diagnóstico, NÃO
-     oportunidade.
-   - Opcionais em qualquer modo: `--grades "PSA 10, CGC 10 Pristine"` (funil
-     restrito a notas; nota desconhecida erra alto) e `--confiavel` (só
-     vendedores ≥50 avaliações/≥98%, sem SUSPEITO/REJEITADO — tabela 100%
-     acionável).
+   operador = **um grupo por vez** (orçamento `max_ebay_calls: 500` por run e
+   cota grátis da Browse API de 5.000 chamadas/dia; a watchlist inteira tem
+   ~1.600 cartas).
+2. **Ajustes do run** (todos opcionais; o default é a política do config):
+   - `--max-pages N` — páginas de 200 anúncios por carta (default 3; os runs
+     validados de #29/#30 usaram `--max-pages 1`);
+   - `--min-discount N` — inteiro; altera SÓ o braço `min_discount_percent` da
+     regra `profit_or_discount` daquele run (nos dois lugares do config);
+   - `--min-price USD` — piso do preço do item (default `min_price_usd: 10`);
+   - `--grades "PSA 10, CGC 10 Pristine"` — funil restrito a notas; nota
+     desconhecida erra alto; RAW é rejeitado;
+   - `--confiavel` — compatibilidade (o histórico do vendedor já é sempre
+     verificado; todos os candidatos continuam visíveis).
+   Orçamento: cada carta gasta 1 busca por página + até
+   `max_item_details_per_card: 10` consultas de detalhe (idioma); estourar o teto
+   de 500 encerra o run como parcial.
 
 ## Passo 2 — rodar (rota determinística local)
 
 ```powershell
 $env:PYTHONIOENCODING="utf-8"
-# comercial (um grupo por vez; artefato nomeado pelo grupo)
-.venv\Scripts\python main.py --group <N> --min-discount 20 --out results\last_scan_g<N>.json
-# diagnóstico (padrão COMC do operador, 2026-09-03)
-.venv\Scripts\python main.py --group <N> --min-price 5 --min-discount 10 --include-raw --out results\last_scan_g<N>.json
+.venv\Scripts\python main.py --group <N> --max-pages 1 --out results\last_scan_g<N>.json
 ```
 
+- Estimar antes de rodar: cartas do grupo × (páginas + até 10 detalhes) contra
+  o teto de 500 chamadas, e dizer a conta na entrega.
 - `--out results\last_scan_g<N>.json` = um artefato por grupo (o run do grupo
   seguinte não sobrescreve o anterior). Sem `--group` = watchlist inteira
-  (~1.600 cartas — não cabe na cota diária; só sob pedido explícito).
-  `--pricing-only` não gera artefato JSON (não há anúncios avaliados).
-- Cota da Browse API: 5.000 chamadas/dia grátis; cada carta gasta ~1–3
-  chamadas (1 busca paginada, até `max_pages` = 3 páginas de 200 anúncios).
-  O funil da entrega mostra "Chamadas à Browse API" — reportar.
-- **Exit code 1 = run abortado** (falha de autenticação no eBay ou 3 erros
-  seguidos da API): o artefato sai marcado `aborted: true` e a entrega mostra
-  "RUN ABORTADO — cartas restantes não varridas". Entregar assim mesmo, dizendo
-  que é parcial; nunca tratar como scan completo.
-- Erro por carta (PriceCharting fora do ar, carta sem vendas comparáveis) NÃO
-  derruba o run: é contado no funil (`pc_error`, `pc_breaker`, `card_error`,
-  "sem referência") e aparece no cabeçalho.
+  (~1.600 cartas — não cabe na cota; só sob pedido explícito). `--pricing-only`
+  mostra só as colunas informativas do PriceCharting (não gera artefato e não
+  é evidência de venda).
+- **Exit code 1 = run parcial** (`aborted: true`): o artefato vai para
+  `<out>.aborted.json` e o `--out` anterior é preservado. A mensagem final diz a
+  causa: parada antecipada (autenticação, cota ou API — cartas restantes NÃO
+  varridas) ou erros contados no funil com todas as cartas visitadas. Entregar
+  assim mesmo, dizendo que é parcial; nunca tratar como scan completo.
+- Erro por carta não interrompe a varredura das outras cartas, mas cada caso
+  tem um destino diferente: PriceCharting fora do ar ou sem tabelas
+  (`pc_error`, `pc_breaker`) → a carta ainda é buscada no eBay e as linhas dela
+  saem em REVISAR com o motivo `sem-vendas-PSA-comparaveis` (o mesmo motivo de
+  "página sem vendas"; a causa aparece no funil); erro interno ou da Browse API
+  na carta (`card_error`, `ebay_error`) → carta pulada, SEM linhas, só contada
+  no funil. Em todos esses casos o run termina como parcial (`aborted: true`,
+  exit 1, artefato `.aborted.json`). "Carta sem vendas comparáveis" não é erro:
+  é motivo REVISAR normal.
 
 ## Passo 3 — entregar (ritual FIXO, contrato do repo, não negociável)
 
 ```powershell
-# comercial
 .venv\Scripts\python ebay_summary.py results\last_scan_g<N>.json -o results\ebay-g<N>-<AAAA-MM-DD>.md
-# diagnóstico
-.venv\Scripts\python ebay_summary.py results\last_scan_g<N>.json -o results\ebay-g<N>-<AAAA-MM-DD>.md --sensitivity 10,15,20
 ```
 
+(Passar `results\last_scan_g<N>.aborted.json` quando o run foi parcial.) O gerador
+vigente é `src/slab_report.py` (`render`), chamado pelo `ebay_summary.py` sempre
+que o JSON é da política: linha "Coleta:" (quando, o quê e com qual regra
+coletou, lida só do meta do JSON) + tabela única com todos os candidatos, nas
+12 colunas do `render` (Carta / Compra / Investimento / PSA original /
+Comparação / Revenda / as três métricas econômicas líquidas da política
+2026-09-05.4, definidas em docs/EBAY_PSA.md / Desconto / Decisão / Links)
++ uma seção por carta com motivos, variante, idioma, custos e as vendas usadas
+na referência + funil no rodapé.
+
 1. Colar o conteúdo do `.md` **VERBATIM** no chat — **proibido** remontar
-   tabela à mão, renomear/reordenar colunas ou dropar o link de referência.
-2. **Todas as linhas, todos os buckets.** Comercial: 🟢 OPORTUNIDADE / ⚠️
-   REVISAR / 🚨 SUSPEITO / ⛔ REJEITADO (tabela própria, com motivo).
-   Diagnóstico: faixa ≥20% (candidato comercial + REVISAR/SUSPEITO), faixas
-   🔬 15–19,99% e 10–14,99% ("NÃO é oportunidade"), tabela de contagens por
-   limiar, REJEITADO de todas as faixas. Nunca amostra.
-3. Toda linha tem os **DOIS links**: `[oferta]` (anúncio eBay) e
-   `[referência]` (página da carta no PriceCharting — também para raw; `[TCG]`
-   só quando não há página PC). URLs vêm do JSON — nunca inventar.
-4. Reportar as linhas do cabeçalho: **Parâmetros**, **Cobertura de
-   referência** (slabs por mediana · raw NM c/ TCG · raw LP · raw só PC · sem
-   referência) e **Funil** (inclusive chamadas à API e erros/breaker).
-5. **Sem recomendação de compra** — vereditos são classificação técnica;
-   capital é decisão do operador. Faixas de diagnóstico não são oportunidade.
+   tabela à mão, renomear/reordenar colunas ou dropar link.
+2. **Todas as linhas, todos os vereditos** (APROVAR / REVISAR / REJEITAR, cada
+   um com motivos). Nunca amostra. `--sensitivity` (faixas de diagnóstico) só
+   vale para JSON do motor legado, anterior à política; num JSON da política a
+   ferramenta avisa no topo e ignora as faixas.
+3. Toda linha tem os **DOIS links**: `[oferta]` (anúncio eBay) e `[referência]`
+   (página da carta no PriceCharting); o preço de referência também é clicável.
+   URLs vêm do JSON — nunca inventar.
+4. Reportar o cabeçalho e o rodapé da ferramenta: a linha **Coleta** (data/hora
+   UTC, grupo, cartas da watchlist, versão da política e chaves do gate, chamadas
+   à Browse API usadas × teto), a contagem por veredito e o **Funil da busca**
+   (erros e, se o run foi parcial, a causa).
+5. **Sem recomendação de compra** — vereditos são classificação técnica; capital
+   é decisão do operador.
 
 ## Nota de logística (por que US-only e preço fixo são invariantes)
 
 Compras têm **Ship To = COMC mailbox (Algona, WA 98001-7409, EUA)** — mailbox
 de armazenamento do operador. Por isso o filtro `itemLocationCountry: US` da
-API + o cinto de segurança no scorer **não podem ser afrouxados**: item fora
-dos EUA não serve mesmo que a margem pareça ótima. E leilão não entra
+API + o cinto de segurança no avaliador **não podem ser afrouxados**: item fora
+dos EUA não serve mesmo que a diferença de preço pareça ótima. E leilão não entra
 (`fixed_price_only: true`): lance atual não é preço.

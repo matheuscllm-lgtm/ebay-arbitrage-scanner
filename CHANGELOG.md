@@ -1,3 +1,76 @@
+## 2026-09-09 — auditoria do sistema de honestidade de preço (PR-B `fix/honestidade-fase1`, depende do PR-A #32)
+
+Revisão de TODO caminho que leva um número até a tabela do operador, nos dois motores
+(política `slab_strategy` 2026-09-05.4 = vigente; `scorer` = legado, só testes/artefatos
+antigos) e em todos os baldes (APROVAR/REVISAR/REJEITAR + funil; SUSPEITO só no legado).
+Teto de 5 correções; nada muda em `src/slab_strategy.py` nem no bloco `slab_strategy` do
+`config.yaml` (achados lá viram pergunta ao operador, sem código); a cesta de vendas que
+alimenta a referência não muda. Cada correção nasceu de um teste vermelho (que falha antes
+do código) e foi conferida por mutation-check (desfazer a correção faz o teste falhar).
+
+- Rótulo enganoso (classe iii): a coluna "Grade 9" do PriceCharting é um bucket GENÉRICO
+  (mistura certificadoras: PSA, BGS, CGC…) e `src/pricecharting.py` a chamava de "PSA 9" —
+  o nome errado chegava ao operador em `--pricing-only` e em runs sem linha
+  (`report.fair_value_markdown`). Agora a chave é `GRADE 9`, a mesma que `src/pc_sales.py`
+  já usava para a mesma coluna; o campo `Opportunity.spread_psa9_pct` (legado, só raw)
+  virou `spread_grade9_pct`. Nenhuma referência de preço muda: essa coluna nunca foi
+  referência (só informação).
+- Ponto cego de documentação (classe iii): a skill `.claude/skills/scan-ebay/SKILL.md`, a
+  docstring e o `--help` do `main.py` e a docstring do `ebay_summary.py` ainda ofereciam o
+  "modo diagnóstico" com carta solta e piso 5 (`--min-price 5 --include-raw`, rejeitado desde a política
+  2026-09-05.4), o gate `min_discount_percent: 20` (histórico pré-#29; o config diz 30) e a
+  entrega em 4 baldes do motor legado (OPORTUNIDADE/SUSPEITO). Reescritos para a política
+  vigente, descrita por chave de config (`slab_strategy.economics`: `gate_mode:
+  profit_or_discount`, `min_profit_usd`, `min_discount_percent: 30`; `graded_only: true`;
+  link para docs/EBAY_PSA.md), com o gerador vigente (`src/slab_report.render`) e
+  `--sensitivity` declarado como só-legado. `main.py` deixa de passar `include_raw` (flag
+  rejeitada) ao artefato. `tests/test_docs_drift.py` fixa que a skill só usa flags que a
+  CLI aceita e não reoferece o modo removido.
+- Sinal descartado (classe iv): `ebay_summary.py --sensitivity` num JSON da política era aceito
+  e ignorado em silêncio — a tabela saía sem as faixas e sem aviso, e o operador podia achar que
+  as faixas tinham sido aplicadas. Agora a entrega ganha um aviso explícito no topo ("ignorado:
+  as faixas só existem para JSON do motor legado") e a tabela segue idêntica; nada muda na
+  política nem nos vereditos.
+- Rótulo enganoso (classe iii) e "nada some em silêncio" (invariante do funil): a entrega da
+  política (`src/slab_report.render`) imprimia o funil como JSON cru (chaves internas, sem os
+  rótulos humanos de `FUNNEL_LABELS`), e os rótulos dos baldes eram os do motor legado —
+  `scorer.VERDICT_STAT` manda APROVAR para `rows_opportunity` e REJEITAR para `rows_rejected`,
+  então o console do `main.py` dizia "Linhas OPORTUNIDADE" para linhas APROVAR. Agora existem
+  `report.POLICY_FUNNEL_LABELS` / `policy_funnel_lines` (APROVAR / REVISAR / REJEITAR), usados
+  pelo `render` e pelo console quando a política está ativa; contador sem rótulo continua saindo
+  em "outros: …" e o JSON legado mantém os rótulos antigos.
+- Ponto cego na entrega (classe iii; DELIVERY_CHAT.md pede horário da coleta e regra
+  identificados): a tabela da política não dizia QUANDO, O QUE nem COM QUAL REGRA foi coletado.
+  `src/slab_report.render` ganha a linha "Coleta:", lida só de `meta` do JSON (data/hora UTC,
+  grupo, cartas da watchlist, versão da política e chaves `gate_mode` / `min_profit_usd` /
+  `min_discount_percent`, `min_price_usd`, `max_pages`, chamadas à Browse API usadas e
+  `max_ebay_calls`; ausente = n/d, nunca inventado), e o aviso de execução abortada passa a
+  dizer a causa (parada antecipada = cartas restantes não varridas × todas as cartas visitadas
+  com erros contados no funil).
+
+Correções da revisão do PR #33 (dois pareceres independentes, veredito "corrigir"; nada muda
+em `src/slab_strategy.py`, `config.yaml`, veredito, gate, cesta ou ranking):
+
+- Console do `main.py` com a política ativa imprimia o relatório SEM os metadados do JSON:
+  "Coleta:" toda n/d e funil "analisados: 0" (zero inventado a partir de um dict vazio).
+  O artefato JSON é montado antes de imprimir e o console usa o MESMO `meta` da entrega;
+  sem meta/funil o relatório diz n/d.
+- Três contadores que só o caminho da política produz (`item_details_fetched`,
+  `item_details_error`, `ebay_budget_exhausted`) não tinham rótulo e saíam como chave crua em
+  "outros:"; ganharam rótulo humano, e um teste varre `src/scanner.py`/`src/scorer.py` para
+  garantir que todo contador incrementado tem rótulo.
+- A linha "Coleta:" declara `--grades` (notas do run) e `--confiavel`; com a política ativa o
+  `main.py` avisa que `--confiavel` não tem efeito (a política nunca lê `trusted_mode`);
+  as chaves do gate seguem o `gate_mode` (em `all_minima` valem `min_net_margin_percent`,
+  `min_net_roi_percent` e o `min_discount_percent` de topo); data/hora lida com
+  `datetime.fromisoformat` (sem fuso = dito; ilegível = n/d).
+- Texto operacional: `--sensitivity` no `--help` do `ebay_summary.py` marcado como só-legado;
+  `--pricing-only` e o cabeçalho impresso deixam de chamar coluna de "referência"; a skill
+  separa o destino de cada erro por carta (PriceCharting fora do ar = linhas em REVISAR;
+  `card_error`/`ebay_error` = carta pulada sem linhas; todos = run parcial) e cita as 12
+  colunas do `render`; docstrings de `src/report.py`/`src/models.py` descrevem os dois
+  caminhos (política = vigente); constante morta `ACCEPTED_GRADES` removida.
+
 ## 2026-09-09 — porte do diff local pré-#29 sobre #31 (PR-A `fix/port-local-diff`)
 
 - Resgate: o trabalho local não commitado (13 arquivos + `tests/test_slabs_regressions.py`)

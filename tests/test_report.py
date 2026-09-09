@@ -18,7 +18,7 @@ def O(ebay_url="https://ebay.com/itm/123", ref_url="https://pricecharting.com/g/
       **kw):
     base = dict(card=CARD, listing=L(ebay_url), grade="PSA 10", fair_value=1500.0,
                 gross_margin_pct=50.0, liquidity_per_month=30.0, liquidity_tier="A",
-                trend_delta=0.0, spread_psa9_pct=0, spread_psa10_pct=0,
+                trend_delta=0.0, spread_grade9_pct=0, spread_psa10_pct=0,
                 verdict="OPORTUNIDADE", fair_value_source=ref_url, pc_url=ref_url,
                 discount_pct=33.33, spread_usd=500.0, ref_source="pricecharting-sales",
                 ref_label="vendas PSA 10 (n=5, 2026-03..2026-08)", ref_n_sales=5,

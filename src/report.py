@@ -10,12 +10,19 @@ Este modulo e a FONTE UNICA da formatacao canonica compartilhada (coluna
 console rapido (`to_markdown`) quanto a entrega canonica (`ebay_summary.py`)
 usam os helpers daqui -- nunca duplicar o formato.
 
-Padrao COMC (operador, 2026-09-03) -- tres metricas, nomeadas assim e so assim:
-- Desconto%   = (ref - preco) / ref x 100   -> gate ajustavel (`--min-discount`)
-- Spread$     = ref - preco                 -> diferenca bruta, sem taxa nenhuma
-- ROI bruto%  = (ref - preco) / preco x 100 -> retorno bruto sobre o capital
-Ranking: maior ROI bruto -> maior desconto -> maior spread -> Pokemon mais
-popular (rank menor na lista dos 100 chases). Nunca "lucro".
+Dois caminhos, escolhidos pela propria linha (`row["strategy"]` presente ou nao):
+
+- POLITICA (vigente; bloco `slab_strategy` do config.yaml, docs/EBAY_PSA.md):
+  `to_markdown`/`to_csv` delegam a `src/slab_report.py` (12 colunas, metricas
+  economicas liquidas definidas la); ranking em `sort_key` = veredito
+  (APROVAR > REVISAR > REJEITAR) -> PSA primeiro -> `net_roi_percent` maior ->
+  vault confirmado.
+- LEGADO (motor `src/scorer.py`; so testes e JSON antigo, anterior a politica
+  2026-09-05.4). Padrao COMC (operador, 2026-09-03), tres metricas brutas:
+  Desconto% = (ref - preco) / ref x 100 (gate `--min-discount`); Spread$ = ref -
+  preco; ROI bruto% = (ref - preco) / preco x 100. Ranking: maior ROI bruto ->
+  maior desconto -> maior spread -> Pokemon mais popular (rank menor na lista dos
+  100 chases).
 """
 
 from .chat_format import reference_price
@@ -118,7 +125,10 @@ def _f(row, key):
 
 def sort_key(row):
     """Chave para sorted(): menor = melhor (negativos nas metricas).
-    JSON antigo (sem `roi_pct`) usa `margin_pct`, que e a mesma grandeza."""
+    Linha da POLITICA (`strategy`): veredito -> PSA primeiro -> maior
+    `net_roi_percent` -> vault confirmado. Linha LEGADA: ROI bruto -> desconto ->
+    spread -> popularidade; JSON antigo (sem `roi_pct`) usa `margin_pct`, que e a
+    mesma grandeza."""
     if row.get("strategy"):
         s = row["strategy"]
         return ({"APROVAR": 0, "REVISAR": 1, "REJEITAR": 2}.get(row.get("verdict"), 1),
@@ -156,6 +166,11 @@ FUNNEL_LABELS = [
     ("skip_invalid_payload", "Descartados: dados invalidos no anuncio recebido"),
     ("skip_evaluation_error", "Descartados: erro interno ao avaliar anuncio"),
     ("skip_details_abort", "Descartados: interrupcao (cota/autenticacao eBay) antes de avaliar o anuncio"),
+    # Contadores que so o caminho da politica produz (scanner.scan_card / run_scan):
+    # sem rotulo cairiam em "outros:" como chave crua (review do PR #33).
+    ("item_details_fetched", "Consultas de detalhe do anuncio (get_item) feitas"),
+    ("item_details_error", "Anuncios com detalhe indisponivel/ilegivel (linha segue em REVISAR)"),
+    ("ebay_budget_exhausted", "Orcamento de chamadas eBay esgotado -- run parcial"),
     ("invalid_reference", "Descartados: referencia invalida ou nao positiva"),
     ("skip_grade_filtered", "Ignorados: nota fora do funil pedido (--grades)"),
     ("skip_grade_out_of_scope", "Ignorados: certificadora/nota fora do escopo"),
@@ -184,13 +199,26 @@ FUNNEL_LABELS = [
 ]
 _KNOWN_FUNNEL_KEYS = {k for k, _ in FUNNEL_LABELS}
 
+# Mesmos contadores, vocabulario da POLITICA (`slab_strategy`, vigente): `VERDICT_STAT`
+# manda APROVAR para `rows_opportunity` e REJEITAR para `rows_rejected`, entao os
+# rotulos legados ("Linhas OPORTUNIDADE") mentiriam na entrega da politica
+# (auditoria de honestidade 2026-09-09). JSON legado continua com FUNNEL_LABELS.
+_POLICY_ROW_LABELS = {
+    "rows_opportunity": "Linhas APROVAR",
+    "rows_review": "Linhas REVISAR",
+    "rows_rejected": "Linhas REJEITAR (com motivo)",
+    "rows_suspect": "Linhas SUSPEITO (so existe no motor legado)",
+}
+POLICY_FUNNEL_LABELS = [(key, _POLICY_ROW_LABELS.get(key, label)) for key, label in FUNNEL_LABELS]
 
-def funnel_lines(counts):
+
+def funnel_lines(counts, labels=None):
     """Linhas 'rotulo: N' do funil (so as com valor > 0, mais 'analisados');
-    contadores sem rotulo conhecido aparecem como 'outros: k=v' (nunca somem)."""
+    contadores sem rotulo conhecido aparecem como 'outros: k=v' (nunca somem).
+    `labels` = FUNNEL_LABELS (legado, default) ou POLICY_FUNNEL_LABELS."""
     counts = counts or {}
     out = []
-    for key, label in FUNNEL_LABELS:
+    for key, label in (FUNNEL_LABELS if labels is None else labels):
         n = int(counts.get(key, 0) or 0)
         if n or key == "seen":
             out.append(f"{label}: {n}")
@@ -198,6 +226,12 @@ def funnel_lines(counts):
     if extra:
         out.append("outros: " + ", ".join(f"{k}={v}" for k, v in sorted(extra.items())))
     return out
+
+
+def policy_funnel_lines(counts):
+    """Funil com o vocabulario da politica (APROVAR / REVISAR / REJEITAR) -- entrega
+    vigente (`src/slab_report.render`) e console do `main.py` com a politica ativa."""
+    return funnel_lines(counts, POLICY_FUNNEL_LABELS)
 
 
 # --- status / referencia / tabela canonica --------------------------------------
@@ -357,12 +391,18 @@ def render_rejected_table(rows):
     return render_rows_table(rows, REJECTED_COLS)
 
 
-def to_markdown(opportunities):
+def to_markdown(opportunities, meta=None):
+    """Modo console: TODAS as linhas na tabela canonica, ordem do ranking.
+
+    Politica ativa (linha com `strategy`): delega ao gerador vigente
+    (`slab_report.render`) com o MESMO `meta` do artefato JSON (quando, o que
+    e com qual regra coletou + funil). Sem `meta`, o relatorio diz n/d -- nunca
+    inventa zero (review do PR #33)."""
     if any(o.strategy for o in opportunities):
         from .slab_report import render
-        return render({"rows": sort_rows([opportunity_row(o) for o in opportunities])})
+        return render({"rows": sort_rows([opportunity_row(o) for o in opportunities]),
+                       "meta": meta})
 
-    """Modo console: TODAS as linhas na tabela canonica, ordem do ranking."""
     if not opportunities:
         return "_Nenhum anuncio passou do desconto minimo neste scan._"
     rows = sort_rows([opportunity_row(o) for o in opportunities])
@@ -538,7 +578,7 @@ def fair_value_markdown(card, fair):
         "| Grade (coluna PC, informativa) | Preco | Tendencia | Vendas/mes | Liquidez |",
         "|---|---|---|---|---|",
     ]
-    for grade in ["RAW", "GRADE 7", "GRADE 8", "PSA 9", "GRADE 9.5",
+    for grade in ["RAW", "GRADE 7", "GRADE 8", "GRADE 9", "GRADE 9.5",
                   "PSA 10", "BGS 10", "BGS 10 BLACK", "CGC 10", "CGC 10 PRISTINE",
                   "SGC 10", "TAG 10"]:
         price = fair.prices.get(grade)

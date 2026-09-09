@@ -4,23 +4,28 @@ Le o artefato JSON gravado pelo `main.py --out` e gera a tabela markdown de
 entrega -- grava em `-o` (obrigatorio) e imprime no stdout. O agente cola o
 `.md` VERBATIM no chat: nunca remontar tabela a mao, nunca dropar link.
 
+Dois geradores, escolhidos pelo proprio JSON:
+- JSON da POLITICA (`meta.config.slab_strategy` presente ou linhas com
+  `strategy`; todo scan desde a politica 2026-09-05.4) -> `src/slab_report.render`:
+  tabela unica com todos os candidatos (APROVAR / REVISAR / REJEITAR) + secao por
+  carta com motivos, custos e as vendas usadas na referencia; funil no rodape.
+- JSON LEGADO (motor `src/scorer.py`, anterior a politica): cabecalho com
+  parametros / cobertura / funil e 4 baldes por veredito (OPORTUNIDADE / REVISAR /
+  SUSPEITO / REJEITADO). `--sensitivity 10,15,20` (faixas de diagnostico por
+  Desconto%: o MAIOR limiar e o operacional; as faixas abaixo NAO sao
+  oportunidade e saem com todas as linhas + tabela de contagens) so se aplica a
+  este caso; num JSON da politica a ferramenta avisa no topo e ignora as faixas.
+
 Contrato da frota (nao negociavel):
-- TODAS as linhas de TODOS os buckets (OPORTUNIDADE / REVISAR / SUSPEITO /
-  REJEITADO com motivo) -- nunca amostra.
+- TODAS as linhas de TODOS os vereditos -- nunca amostra.
 - Toda linha tem os DOIS links: `[oferta]` (anuncio eBay, onde comprar) e
   `[referência]` (pagina da carta no PriceCharting, onde validar; `[TCG]` so
   quando nao ha pagina PC). URLs lidas do JSON, NUNCA inventadas.
 - Vereditos sao classificacao tecnica; nenhuma recomendacao de compra.
 
-`--sensitivity 10,15,20` (modo diagnostico, padrao COMC): o MAIOR limiar e o
-operacional (faixa >=20% = candidato comercial: OPORTUNIDADE / REVISAR+SUSPEITO);
-as faixas abaixo (15-19,99%, 10-14,99%) sao so diagnostico -- NAO sao
-oportunidade -- e saem com TODAS as linhas da faixa, status na coluna, mais uma
-tabela de contagens por limiar. Faixa = coluna Desconto% (`discount_pct`).
-
 Uso:
-    python ebay_summary.py results/last_scan.json -o results/ebay-2026-09-03.md \
-        [--sensitivity 10,15,20]
+    python ebay_summary.py results/last_scan.json -o results/ebay-2026-09-03.md
+    python ebay_summary.py results/legado.json -o results/x.md --sensitivity 10,15,20   # so JSON legado
 """
 import argparse
 import io
@@ -170,7 +175,8 @@ def _header(meta, rows, by_verdict, sensitivity):
     if allowed:
         modes.append(f"funil restrito a {' + '.join(allowed)} (--grades)")
     if meta.get("include_raw"):
-        modes.append("raw incluído (--include-raw: NM = TCG market; LP = vendas LP)")
+        modes.append("raw incluído (run legado, anterior à política 2026-09-05.4: "
+                     "NM = TCG market; LP = vendas LP)")
     if meta.get("trusted_mode"):
         modes.append("modo confiável (--confiavel)")
     min_discount = cfg.get("min_discount_percent")
@@ -252,7 +258,17 @@ def build_markdown(payload, sensitivity=None):
     rows = payload.get("rows") or []
     if meta.get("config", {}).get("slab_strategy") or any(r.get("strategy") for r in rows):
         from src.slab_report import render
-        return render(payload)
+        text = render(payload)
+        if sensitivity:
+            # Flag aceita mas sem efeito neste JSON: dizer ALTO em vez de ignorar em
+            # silencio (auditoria de honestidade 2026-09-09) -- o operador saberia que
+            # pediu faixas e nao as recebeu. A tabela segue identica.
+            note = (f"> `--sensitivity {', '.join(str(t) for t in sensitivity)}` ignorado: "
+                    "as faixas de diagnóstico por Desconto% só existem para JSON do motor "
+                    "legado (anterior à política 2026-09-05.4); este JSON é da política e a "
+                    "entrega abaixo é a canônica, sem faixas.")
+            return note + "\n\n" + text
+        return text
     by_verdict = split_verdicts(rows)
     lines = _header(meta, rows, by_verdict, sensitivity)
     if sensitivity:
@@ -274,8 +290,9 @@ def main(argv=None):
     ap.add_argument("-o", "--output", required=True,
                     help="arquivo .md de saida (obrigatorio)")
     ap.add_argument("--sensitivity", type=parse_sensitivity, default=None, metavar="10,15,20",
-                    help="modo diagnostico: limiares de desconto crescentes; o maior e o "
-                         "operacional, os demais viram faixas 'NAO e oportunidade'")
+                    help="SO JSON do motor legado (anterior a politica 2026-09-05.4): limiares "
+                         "de desconto crescentes; o maior e o operacional, os demais viram faixas "
+                         "'NAO e oportunidade'. Num JSON da politica e ignorado, com aviso no topo")
     args = ap.parse_args(argv)
 
     with open(args.scan_json, encoding="utf-8-sig") as f:

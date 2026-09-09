@@ -14,10 +14,10 @@ CARD = WatchCard(name="Charizard", set_name="Base Set", number="4",
 
 # Colunas do PriceCharting: SO informacao (tendencia/volume) e fallback raw rotulado.
 FAIR = FairValue(
-    prices={"RAW": 338.42, "PSA 9": 3175.04, "PSA 10": 30085.73,
+    prices={"RAW": 338.42, "GRADE 9": 3175.04, "PSA 10": 30085.73,
             "GRADE 8": 1199.03, "GRADE 9.5": 8000.0},
-    deltas={"RAW": -0.62, "PSA 9": 39.13, "PSA 10": 0.0},
-    sales_per_month={"RAW": 60.0, "PSA 9": 30.0, "PSA 10": 1.0},
+    deltas={"RAW": -0.62, "GRADE 9": 39.13, "PSA 10": 0.0},
+    sales_per_month={"RAW": 60.0, "GRADE 9": 30.0, "PSA 10": 1.0},
     source_url=PC_URL,
 )
 
@@ -341,7 +341,7 @@ def test_raw_fallback_without_tcg_is_labeled_not_demoted():
 
 def test_raw_without_any_reference_is_counted():
     stats = Counter()
-    fair = FairValue(prices={"PSA 9": 3175.04})
+    fair = FairValue(prices={"GRADE 9": 3175.04})
     assert ev("Charizard 4/102 Base Set Holo NM", 230.0, cfg=CFG_RAW, fair=fair,
               stats=stats) is None
     assert stats["raw_no_reference"] == 1
@@ -396,7 +396,7 @@ def test_lp_without_nm_reference_goes_straight_to_lp_sales():
     # Sem referencia NM nao ha teto para o pre-filtro: a comparacao final continua
     # sendo SO contra vendas LP (review Codex 2026-09-03).
     stats = Counter()
-    fair = FairValue(prices={"PSA 9": 3175.04})
+    fair = FairValue(prices={"GRADE 9": 3175.04})
     o = ev("Charizard 4/102 Base Set Holo LP", 150.0, cfg=CFG_LP, fair=fair, stats=stats)
     assert o is not None and o.fair_value == 250.0 and o.ref_source == "pricecharting-sales-lp"
     assert stats["lp_no_nm_prefilter"] == 1

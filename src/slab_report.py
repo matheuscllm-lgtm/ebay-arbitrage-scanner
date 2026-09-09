@@ -1,10 +1,85 @@
 """Report every decision and the exact sales behind each calculation."""
 
 from .chat_format import reference_price
-from .report import links_cell
+from .report import links_cell, policy_funnel_lines
 import json
 from collections import Counter
+from datetime import datetime, timedelta
 from .report import escape_md, md_url
+
+
+def _nd(value):
+    """Valor de `meta` para exibição: ausente = 'n/d' (nunca inventado); número sem zeros à toa."""
+    if value is None or value == '':
+        return 'n/d'
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, (int, float)):
+        return f'{value:g}'
+    return str(value)
+
+
+def _when(stamp):
+    """Data/hora da coleta a partir do `timestamp` ISO do meta: UTC explicito ->
+    'AAAA-MM-DD HH:MM UTC'; outro fuso -> '... +HH:MM'; sem fuso -> dito; nao
+    parseia -> 'n/d' (review do PR #33: nunca colar pedacos da string as cegas)."""
+    if not stamp:
+        return 'n/d'
+    try:
+        dt = datetime.fromisoformat(str(stamp).replace('Z', '+00:00'))
+    except (ValueError, TypeError):
+        return 'n/d'
+    base = dt.strftime('%Y-%m-%d %H:%M')
+    if dt.tzinfo is None:
+        return base + ' (fuso não informado)'
+    if dt.utcoffset() == timedelta(0):
+        return base + ' UTC'
+    return base + ' ' + dt.strftime('%z')[:3] + ':' + dt.strftime('%z')[3:]
+
+
+def _gate_keys(cfg, economics):
+    """Chaves da regra economica que valem no `gate_mode` ativo (mesmo ramo de
+    `policy_validation.pending_config`): `profit_or_discount` -> min_profit_usd +
+    economics.min_discount_percent; `all_minima` -> min_profit_usd +
+    min_net_margin_percent + min_net_roi_percent + o `min_discount_percent` de TOPO
+    do config (o braco de desconto efetivo nesse modo). Review do PR #33."""
+    mode = economics.get('gate_mode')
+    items = [f"`gate_mode: {_nd(mode)}`", f"`min_profit_usd: {_nd(economics.get('min_profit_usd'))}`"]
+    if mode == 'all_minima':
+        items += [f"`min_net_margin_percent: {_nd(economics.get('min_net_margin_percent'))}`",
+                  f"`min_net_roi_percent: {_nd(economics.get('min_net_roi_percent'))}`",
+                  f"`min_discount_percent: {_nd(cfg.get('min_discount_percent'))}` (topo do config)"]
+    else:
+        items.append(f"`min_discount_percent: {_nd(economics.get('min_discount_percent'))}`")
+    return items
+
+
+def collection_line(meta):
+    """QUANDO, O QUE e COM QUAL REGRA a coleta rodou — tudo lido de `meta` do JSON do scan
+    (DELIVERY_CHAT.md: horário da coleta e regra identificados na entrega). Nada é
+    recalculado aqui; campo ausente sai como n/d (auditoria de honestidade 2026-09-09)."""
+    meta = meta or {}
+    cfg = meta.get('config') or {}
+    policy = cfg.get('slab_strategy') or {}
+    economics = policy.get('economics') or {}
+    funnel = meta.get('funnel') or {}
+    when = _when(meta.get('timestamp'))
+    group = f"grupo `{meta['group']}`" if meta.get('group') else 'grupo n/d'
+    parts = [
+        when, group, f"{_nd(meta.get('watchlist_count'))} carta(s) da watchlist",
+        f"política `{_nd(policy.get('version'))}` ({' · '.join(_gate_keys(cfg, economics))})",
+        f"`min_price_usd: {_nd(cfg.get('min_price_usd'))}`", f"`max_pages: {_nd(cfg.get('max_pages'))}`",
+        f"chamadas à Browse API: {_nd(funnel.get('ebay_calls'))} (`max_ebay_calls: {_nd(cfg.get('max_ebay_calls'))}`)",
+    ]
+    # Flags do run gravadas no mesmo meta (review do PR #33): `--grades` restringe o
+    # funil (anuncio de outra nota vira REJEITAR `nota-fora-do-filtro-da-execucao`);
+    # `--confiavel` e so compatibilidade -- a politica nunca le `trusted_mode`.
+    allowed = cfg.get('allowed_grades') or []
+    if allowed:
+        parts.append(f"notas do run: {' + '.join(str(g) for g in allowed)} (--grades)")
+    if meta.get('trusted_mode'):
+        parts.append('--confiavel (sem efeito na política; histórico do vendedor já é sempre verificado)')
+    return ' · '.join(parts)
 
 
 def render(payload):
@@ -12,13 +87,20 @@ def render(payload):
         return 'pendente' if value is None else f'{value:.2f}'
     rows = payload.get('rows', [])
     counts = Counter(r['verdict'] for r in rows)
+    meta = payload.get('meta') or {}
     lines = ['# EBAY PSA — avaliação de cartas certificadas', '',
              f'{len(rows)} candidatos: {counts["APROVAR"]} APROVAR, {counts["REVISAR"]} REVISAR, {counts["REJEITAR"]} REJEITAR.', '',
+             'Coleta: ' + (escape_md(collection_line(meta)) if meta
+                           else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)'), '',
              'APROVAR é aprovação na análise; nenhuma compra é executada.', '',
              '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem líquida % | ROI líquido % | Decisão | Links |',
              '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|']
-    if payload.get('meta', {}).get('aborted'):
-        lines[2:2] = ['**EXECUÇÃO ABORTADA: resultado parcial; não representa busca completa.**', '']
+    if meta.get('aborted'):
+        # Causa da parcialidade (review #32): parada antecipada x erros contados no funil.
+        cause = ('parada antecipada (autenticação, cota ou API): cartas restantes NÃO foram varridas'
+                 if (meta.get('funnel') or {}).get('stopped_early')
+                 else 'todas as cartas foram visitadas, mas houve erros contados no funil')
+        lines[2:2] = [f'**EXECUÇÃO ABORTADA: resultado parcial; não representa busca completa — {cause}.**', '']
     for r in rows:
         s=r['strategy']
         label=escape_md(f'{r["card"]} #{r["number"]} / {r["set"]} / {s.get("listing_language") or "idioma não confirmado"} / {r["grade"]}')
@@ -63,8 +145,12 @@ def render(payload):
                 lines.append('Vendas excluídas por motivo: '+escape_md(json.dumps(evidence['excluded_counts'], ensure_ascii=False))+'.')
             for sale in s[kind+'_sales']:
                 lines.append(f'- {sale["date"]} · US$ {num(sale["price"])} · [{escape_md(sale["title"])}]({md_url(sale["url"])})')
-    if payload.get('meta',{}).get('aborted'):
+    if meta.get('aborted'):
         lines += ['', 'EXECUÇÃO ABORTADA: resultado parcial; não representa busca completa.']
-    lines += ['', 'Funil da busca: '+escape_md(json.dumps(payload.get('meta', {}).get('funnel', {}), ensure_ascii=False))+'.']
+    # Funil com rotulos humanos (nada some: contador sem rotulo sai em "outros: ...").
+    # Sem funil no meta = n/d: um dict vazio viraria "analisados: 0", zero inventado.
+    funnel = meta.get('funnel')
+    lines += ['', 'Funil da busca: ' + (escape_md(' · '.join(policy_funnel_lines(funnel))) if funnel is not None
+                                       else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)') + '.']
     lines += ['', 'Desconto = (comparação − compra)/comparação. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.', '']
     return '\n'.join(lines)

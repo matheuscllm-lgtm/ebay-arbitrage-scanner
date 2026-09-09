@@ -45,7 +45,10 @@ MAIN_TABLE_GRADE_BY_ID = {
     "used_price": "RAW",        # Ungraded
     "complete_price": "GRADE 7",
     "new_price": "GRADE 8",
-    "graded_price": "PSA 9",    # "Grade 9"
+    # "Grade 9" e bucket GENERICO do PriceCharting (mistura certificadoras) --
+    # so informacao, nunca referencia, e nunca rotulado "PSA 9" (auditoria de
+    # honestidade 2026-09-09; mesma chave de src/pc_sales.py).
+    "graded_price": "GRADE 9",
     "box_only_price": "GRADE 9.5",
     "manual_only_price": "PSA 10",
 }
@@ -55,7 +58,7 @@ FULL_TABLE_GRADE_BY_LABEL = {
     "Ungraded": "RAW",
     "Grade 7": "GRADE 7",
     "Grade 8": "GRADE 8",
-    "Grade 9": "PSA 9",
+    "Grade 9": "GRADE 9",      # bucket generico (todas as certificadoras)
     "Grade 9.5": "GRADE 9.5",
     "PSA 10": "PSA 10",
     "BGS 10": "BGS 10",

@@ -1,22 +1,24 @@
-"""eBay Pokemon TCG Arbitrage Scanner -- CLI (padrao COMC, metricas ajustaveis).
+"""EBAY PSA -- scanner de cartas certificadas (slabs) -- CLI.
 
 Uso:
-  python main.py                              # scan completo (precisa das chaves eBay)
-  python main.py --group 3 --min-price 5 --min-discount 10   # diagnostico (grupo 3)
-  python main.py --pricing-only               # so referencias da watchlist (sem chaves)
-  python main.py --watchlist w.yaml           # watchlist alternativa
+  python main.py --group 3 --max-pages 1 --out results/last_scan_g3.json   # um grupo por vez
+  python main.py --check-config               # regras e pendências da política, sem rede
   python main.py --list-groups                # lista os grupos da watchlist e sai
-  python main.py --check-config               # regras e pendências, sem rede
+  python main.py --pricing-only               # so colunas informativas do PriceCharting (sem chaves)
   python main.py --grades "PSA 10, CGC 10 Pristine"   # funil restrito a notas
-  python main.py --out results/last_scan.json # artefato JSON (default)
+  python main.py --min-discount 35            # altera so o braço de desconto da regra deste run
+  python main.py --watchlist w.yaml           # watchlist alternativa
 
 Depois do scan, a ENTREGA canonica sai de:
-  python ebay_summary.py results/last_scan.json -o results/ebay-<data>.md \
-      [--sensitivity 10,15,20]
+  python ebay_summary.py results/last_scan_g3.json -o results/ebay-<data>.md
+  (JSON da política -> `src/slab_report.render`; `--sensitivity` so vale para JSON legado)
 
-Convencao de threshold deste repo: percentuais INTEIROS (20 = 20%).
-`--min-discount` altera o braço de desconto da regra lucro OU desconto.
-Lucro estimado, margem e ROI líquidos consideram custos COMC explícitos.
+Convencao de threshold deste repo: percentuais INTEIROS (30 = 30%).
+Política vigente = bloco `slab_strategy` do config.yaml (docs/EBAY_PSA.md):
+`economics.gate_mode: profit_or_discount` com `min_profit_usd` e
+`min_discount_percent`; `--min-discount` altera so o braço `min_discount_percent`
+daquele run. Carta solta (raw) nao entra (`graded_only: true`): a flag antiga de
+raw e rejeitada com erro.
 """
 import argparse
 import io
@@ -69,7 +71,8 @@ def main(argv=None):
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument('--check-config', action='store_true', help='verifica regras e lista pendências sem consultar fontes')
     ap.add_argument("--pricing-only", action="store_true",
-                    help="so referencias da watchlist (PriceCharting); nao consulta eBay")
+                    help="so colunas informativas do PriceCharting por carta (nao sao referencia "
+                         "nem evidencia de venda); nao consulta eBay")
     ap.add_argument("--confiavel", action="store_true",
                     help="compatibilidade: o histórico do vendedor é sempre verificado; todos os candidatos permanecem visíveis")
     ap.add_argument("--include-raw", action="store_true",
@@ -77,13 +80,13 @@ def main(argv=None):
     ap.add_argument("--grades", default="",
                     help='restringe o funil DESTE run a notas especificas, separadas '
                          'por virgula (ex.: --grades "PSA 10, CGC 10 Pristine, BGS 10 '
-                         'Black"). RAW so tem efeito com --include-raw. Nota fora da '
+                         'Black"). RAW e rejeitado (so cartas certificadas). Nota fora da '
                          'allowlist erra ALTO')
     ap.add_argument("--min-discount", type=int, default=None, metavar="N",
                     help="Desconto%% minimo (INTEIRO) deste run; sobrescreve "
-                         "min_discount_percent do config (diagnostico: 10)")
+                         "min_discount_percent do config (so o braço de desconto da regra)")
     ap.add_argument("--min-price", type=float, default=None, metavar="USD",
-                    help="piso de preco deste run; sobrescreve min_price_usd (diagnostico: 5)")
+                    help="piso de preco (US$) deste run; sobrescreve min_price_usd")
     ap.add_argument("--max-pages", type=int, default=None, metavar="N",
                     help="paginas de 200 anuncios por busca na Browse API (default 3)")
     ap.add_argument("--group", default="",
@@ -115,6 +118,11 @@ def main(argv=None):
         return 2 if pending else 0
     if args.confiavel:
         config["trusted_mode"] = True
+        if "slab_strategy" in config:
+            # A politica nunca le `trusted_mode` (review do PR #33): dizer alto, em vez
+            # de aceitar a flag em silencio. O historico do vendedor e verificado sempre.
+            print("AVISO: --confiavel sem efeito na política vigente (o histórico do vendedor "
+                  "já é verificado em toda linha); a flag fica registrada no meta do JSON.")
     if args.include_raw:
         ap.error("EBAY PSA aceita apenas cartas certificadas; --include-raw foi removido da estrategia")
     if args.min_discount is not None:
@@ -152,22 +160,36 @@ def main(argv=None):
         pricing_only=args.pricing_only, group=args.group,
     )
 
+    # O artefato JSON (meta + funil + rows) e montado ANTES de imprimir: o console
+    # da politica usa o MESMO meta da entrega canonica (review do PR #33 -- sem
+    # meta o relatorio saia com "Coleta: n/d" e um funil zerado inventado).
+    payload = None
+    if not effective_pricing_only:
+        payload = report.scan_payload(
+            opportunities, watchlist_count=len(cards_in_scope), config=config,
+            group=args.group, funnel=stats,
+            aborted=aborted,
+        )
+
     print()
     if args.pricing_only or not opportunities:
-        print("## Referencias por carta (PriceCharting -- colunas informativas)\n")
+        print("## Colunas informativas do PriceCharting por carta (nao sao referencia)\n")
         for card, fair in fair_values.values():
             print(report.fair_value_markdown(card, fair))
             print()
     if opportunities:
         print("## Candidatos avaliados — APROVAR / REJEITAR / REVISAR\n")
-        print(report.to_markdown(opportunities))
+        print(report.to_markdown(opportunities, meta=payload["meta"] if payload else None))
         csv_path = args.csv
         if aborted:
             base, ext = os.path.splitext(csv_path)
             csv_path = f"{base}.aborted{ext or '.csv'}"
         path = report.to_csv(opportunities, csv_path)
         print(f"\nRegistro local: {path} ({len(opportunities)} linhas)")
-    print("Funil: " + " · ".join(report.funnel_lines(stats)))
+    # Rotulos do funil no vocabulario do motor ativo (politica: APROVAR/REJEITAR).
+    funnel = (report.policy_funnel_lines(stats) if "slab_strategy" in config
+              else report.funnel_lines(stats))
+    print("Funil: " + " · ".join(funnel))
 
     if effective_pricing_only and not args.pricing_only:
         # Scan degradou (EBAY_CLIENT_ID/SECRET ausentes): gravar um artefato
@@ -176,12 +198,7 @@ def main(argv=None):
         print("AVISO: busca real indisponivel (chaves eBay ausentes; pricing-only nao executado) "
               f"-- artefato JSON NAO gravado ({args.out} preservado). "
               "Configure EBAY_CLIENT_ID/SECRET e rode de novo.")
-    if not effective_pricing_only:
-        payload = report.scan_payload(
-            opportunities, watchlist_count=len(cards_in_scope), config=config,
-            include_raw=args.include_raw, group=args.group, funnel=stats,
-            aborted=aborted,
-        )
+    if payload is not None:
         out = args.out
         if aborted:
             # Scan parcial NUNCA sobrescreve o ultimo scan completo no path
