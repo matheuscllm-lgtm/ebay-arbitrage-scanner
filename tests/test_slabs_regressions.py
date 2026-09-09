@@ -7,6 +7,21 @@ Cobrem, sobre a base #31:
   CGC "Pristine" antes da nota, nome com limite de palavra + numero completo,
   preco/referencia nao finitos (`invalid_reference`).
 
+Rodada de review do PR #32 (secoes "rodada de review" abaixo): numero alfanumerico
+com zero a esquerda, codigo de serie antes da fracao, matcher de nota da cesta
+revertido, guarda de identidade da cesta so por contradicao, get_item ilegivel,
+interrupcao no meio da carta, `skip_no_price`, mediana de asks com preco None,
+mensagem do run parcial por causa.
+
+Testes que NASCEM VERDES contra os fontes da `main` (guarda de comportamento
+vigente, nao prova de correcao -- mutation-check do review):
+- test_card_identity_with_empty_name_checks_only_number_and_exclusions
+- test_pricecharting_breaker_opens_on_fifth_consecutive_failure (duplica cobertura)
+- test_discount_gate_boundary_at_30_percent (x3)
+- test_discount_gate_compares_rounded_percent_today (x2)
+- test_invalid_listing_price_never_emits_row[-1] e [0]
+- test_policy_resale_basket_reads_pristine_before_the_grader (fixa efeito na politica)
+
 NAO portados (com o porque):
 - bloco 1 (escopo "somente slabs" via `scan_config`/`parse_grades_arg`/CLI): o PR #29
   ja cobre o escopo com outro mecanismo (`slab_strategy`, `conditionIds:{2750}`);
