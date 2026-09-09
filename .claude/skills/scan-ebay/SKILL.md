@@ -141,11 +141,11 @@ $env:PYTHONIOENCODING="utf-8"
 vigente é `src/slab_report.py` (`render`), chamado pelo `ebay_summary.py` sempre
 que o JSON é da política: linha "Coleta:" (quando, o quê e com qual regra
 coletou, lida só do meta do JSON) + tabela única com todos os candidatos, nas
-12 colunas do `render` (Carta / Compra / Investimento / PSA original /
+13 colunas do `render` (Carta / Compra / Investimento / PSA original /
 Comparação / Revenda / as três métricas econômicas líquidas da política
-2026-09-05.4, definidas em docs/EBAY_PSA.md / Desconto / Decisão / Links)
-+ uma seção por carta com motivos, variante, idioma, custos e as vendas usadas
-na referência + funil no rodapé.
+2026-09-05.4, definidas em docs/EBAY_PSA.md / Desconto / Decisão / **Longo
+prazo** / Links) + uma seção por carta com motivos, variante, idioma, custos e
+as vendas usadas na referência + funil no rodapé.
 
 1. Colar o conteúdo do `.md` **VERBATIM** no chat — **proibido** remontar
    tabela à mão, renomear/reordenar colunas ou dropar link.
@@ -162,6 +162,29 @@ na referência + funil no rodapé.
    (erros e, se o run foi parcial, a causa).
 5. **Sem recomendação de compra** — vereditos são classificação técnica; capital
    é decisão do operador.
+6. A coluna **Longo prazo** é INFORMATIVA e sai junto: não é gate (filtro que
+   decide se a linha entra), não é veredito, não é ranking e não é recomendação.
+   Entregar como veio; se o operador perguntar, explicar assim (a legenda
+   completa já sai no rodapé do `.md`, e a régua está em docs/LONGO_PRAZO.md):
+   - Célula `LP2 64/35 (4/5·8/10)` = **classe** · **PERFIL/FRAGILIDADE DO
+     DADO** · (cobertura do perfil · cobertura da fragilidade).
+   - **PERFIL** (0-100) = características observadas da carta: personagem,
+     raridade, tempo fora de impressão, faixa da coluna PSA 10 e tendência real
+     das vendas. **FRAGILIDADE DO DADO** (0-100) = quão frágil é o dado daquela
+     linha: poucas vendas na referência, PSA 10 pouco vendida, referência
+     desalinhada, reimpressão, tiragem, dispersão, vendedor, concentração de
+     anúncios iguais no mesmo run.
+   - **Classe** LP1 forte · LP2 médio · LP3 fraco · LP4 frágil — é
+     qualidade/completude do perfil, **não** é "oportunidade" nem nota de compra.
+   - **`LP2*`** (asterisco) = seria LP1, **mas faltou insumo-chave**: um dos três
+     insumos-chave da fragilidade (`ref-fragil`, `psa10-iliquido`,
+     `ref-desalinhada`) estava em `n/d`. No caminho da política o teto desta
+     rodada é `LP2*`, porque `ref-desalinhada` é `n/d` por decisão do operador.
+   - **Cobertura** `4/5` = 4 dos 5 componentes tinham dado. Dado ausente **não
+     conta zero**: sai da conta, reduz a cobertura e aparece como `LP:<nome>: n/d`
+     nos motivos. Célula inteira `n/d` = coluna indisponível, nunca 0.
+   - Os pontos e limiares são **calibração inicial, não validada** (sem backtest).
+     Nunca apresentar a classe como previsão de preço ou razão para comprar.
 
 ## Nota de logística (por que US-only e preço fixo são invariantes)
 

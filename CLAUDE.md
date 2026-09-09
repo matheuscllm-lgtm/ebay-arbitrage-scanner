@@ -35,6 +35,14 @@ está implementado; a documentação registra a intenção.
 - Distinguir planejado, implementado, testado e validado em execução real.
 - Consolidar regras, implementar, testar, validar busca real e só então automatizar.
 
+Coluna "Longo prazo" (`src/longterm.py`, [`docs/LONGO_PRAZO.md`](docs/LONGO_PRAZO.md)) é
+**informativa**: descreve a carta e a fragilidade do dado, e nunca é gate (filtro que decide
+se a linha entra), veredito nem ranking (ordem da tabela). O ranking vigente é o da política
+`slab_strategy` versão 2026-09-05.4 (veredito, depois PSA primeiro, depois ROI líquido,
+depois vault confirmado); a escada ROI bruto → desconto → spread → rank de popularidade é
+**legada**, só de artefatos do motor `src/scorer.py` anterior à política. Calibração da
+coluna é inicial e não validada; ela não recomenda compra.
+
 ## Repositório e operação
 
 - Fluxo padrão: branch + PR, nunca push direto em main.

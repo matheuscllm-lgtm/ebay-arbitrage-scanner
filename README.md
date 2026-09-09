@@ -21,6 +21,17 @@ desconto, margem e ROI. Classifica APROVAR / REJEITAR / REVISAR sem executar com
 - Preço fixo, item nos EUA, somente certificado. Vault preferencial quando confirmado.
 - Falta de evidência não aprova. Categorias especiais sem regra ficam em REVISAR.
 
+A tabela traz ainda a coluna **Longo prazo**, puramente **informativa**: `LP2 64/35 (4/5·8/10)`
+= classe · PERFIL (características observadas da carta: personagem, raridade, tempo fora de
+impressão, faixa da coluna PSA 10, tendência real das vendas) / FRAGILIDADE DO DADO (poucas
+vendas na referência, PSA 10 pouco vendida, referência desalinhada, reimpressão, tiragem,
+dispersão, vendedor, concentração de anúncios) · coberturas (`4/5` = 4 dos 5 componentes tinham
+dado; ausente é `n/d`, nunca zero). As classes vão de LP1 (forte) a LP4 (frágil), e `LP2*` marca
+"seria LP1, mas faltou insumo-chave". Ela **não** entra no gate, no veredito, no ranking nem em
+qualquer recomendação de compra — só descreve a carta e a qualidade do dado da linha —, e seus
+pontos são calibração inicial, ainda não validada contra o mercado. Régua completa em
+[docs/LONGO_PRAZO.md](docs/LONGO_PRAZO.md).
+
 As regras detalhadas estão em [docs/EBAY_PSA.md](docs/EBAY_PSA.md), as tarifas
 consultadas em [docs/COMC_COSTS.md](docs/COMC_COSTS.md), os parâmetros em
 [config.yaml](config.yaml), e as mudanças em [CHANGELOG.md](CHANGELOG.md).

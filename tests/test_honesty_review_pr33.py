@@ -6,6 +6,7 @@ Vocabulario: "console" = o que `main.py` imprime no terminal no fim do run;
 "meta" = bloco de metadados do JSON (quando, o que e com qual regra a coleta rodou);
 "funil" = contadores de quantos anuncios entraram/sairam em cada etapa.
 """
+import inspect
 import re
 from collections import Counter
 from pathlib import Path
@@ -169,13 +170,22 @@ def test_pricing_only_help_and_header_do_not_call_columns_references(capsys):
     assert "## Colunas informativas do PriceCharting por carta" in src
 
 
-# --- review 8: skill descreve o que acontece com cada erro por carta e as 12 colunas --
+# --- review 8: skill descreve o que acontece com cada erro por carta e as colunas ---
 
 def test_skill_separates_card_error_from_pricecharting_error_and_counts_columns():
+    """A skill precisa declarar o numero REAL de colunas do `slab_report.render`.
+
+    O numero e lido do cabecalho do proprio gerador, nunca escrito a mao aqui: a versao
+    anterior fixava "12 colunas" e ficou factualmente errada quando a coluna informativa
+    "Longo prazo" entrou no `render` (13). Assim o teste acompanha o codigo.
+    """
     text = SKILL.read_text(encoding="utf-8")
     assert "carta pulada" in text and "card_error" in text
     assert "sem-vendas-PSA-comparaveis" in text
-    assert "12 colunas" in text
+    header = next(line for line in inspect.getsource(slab_report.render).splitlines()
+                  if "Carta / coleção" in line)
+    n_cols = len([c for c in header.strip().strip("',").split("|") if c.strip()])
+    assert f"{n_cols} colunas" in text, f"a skill nao declara as {n_cols} colunas do render"
     assert "aborted: true" in text
 
 

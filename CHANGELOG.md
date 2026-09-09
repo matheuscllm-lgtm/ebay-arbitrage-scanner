@@ -1,3 +1,90 @@
+## 2026-09-09 — coluna informativa "Longo prazo" (PR-C `feat/longterm-risk-benefit`)
+
+Nova coluna na tabela de entrega dos DOIS geradores (`src/slab_report.render`, vigente, e a
+tabela legada de `src/report.py`), posicionada logo antes de `Links`. Ela descreve a CARTA e a
+QUALIDADE DO DADO que sustenta aquela linha — e só isso.
+
+**O que ela NÃO é** (invariante desta rodada): não é gate (filtro obrigatório que decide se um
+anúncio entra na tabela), não é veredito, não é ranking (a ordem em que as linhas saem) e não é
+recomendação de compra. O veredito e a ordem continuam vindo só da política `slab_strategy`
+(chaves `slab_strategy.economics.gate_mode`, `.min_profit_usd`, `.min_discount_percent`,
+`.require_positive_profit` e `slab_strategy.evidence.*`), que NÃO foi tocada: `src/slab_strategy.py`
+e o bloco `slab_strategy` do `config.yaml` têm diff vazio contra a `main`. A cesta de vendas que
+alimenta a referência também não muda: a coluna só LÊ a referência e a cesta já montadas
+(`ref_*`, `psa_evidence`, `refs.sales_history`) e nunca cria uma segunda referência. Os motivos
+`LP:` aparecem só na coluna `Flags` (tabela legada) ou na linha "Motivos:" da seção por carta
+(política); nunca entram em `risk_flags` nem em `reasons`, que são o que alimenta veredito e score.
+
+- **Como a célula é lida.** `LP2 64/35 (4/5·8/10)` = classe · PERFIL/FRAGILIDADE DO DADO ·
+  (cobertura do perfil · cobertura da fragilidade). O cabeçalho da entrega ganha a contagem por
+  classe (`LP2*` conta como LP2) e o rodapé ganha a legenda única dos dois geradores
+  (`report.LONGTERM_LEGEND`).
+- **PERFIL (0-100)** = média dos pontos dos componentes QUE TÊM DADO, em cinco eixos, todos lidos
+  de sinal que o run já tinha (custo zero: nenhuma consulta nova à rede). B1 personagem
+  (`pokemon_rank` da watchlist, a lista dos 100 "chases" — as cartas mais procuradas; o `score` de
+  `src/catalog/iconic_pokemon.csv` entra só como sinal de proveniência). B2 raridade (texto cru
+  `rarity` do tcgcsv, classificado por faixa). B3 supply (anos desde o `year` da watchlist, com
+  teto quando o nome do set indica reimpressão forte — reimpressão que aumenta a oferta). B4 faixa
+  de preço da COLUNA PSA 10 do PriceCharting (só informação: nunca é a referência nem o preço do
+  anúncio). B5 tendência real de 12 meses.
+- **B5 (tendência) tem duas fontes, nesta ordem.** Primeiro a mediana (valor do meio) das vendas
+  da NOTA EXATA em 0-180 dias contra 180-365 dias, só com ao menos três vendas em cada janela,
+  lida da mesma cesta da referência (`refs.sales_history`, só leitura). Se não houver, a série
+  mensal do PriceCharting (`VGPC.chart_data`, leitura nova em `src/pricecharting.py`), bucket
+  PSA 10 — anúncio de outra nota recebe o rótulo `chart_data:psa10-proxy` no sinal `trend_source`,
+  porque a série PSA 10 não é a série daquela nota. Na série, zero significa "sem dado", nunca
+  preço zero.
+- **FRAGILIDADE DO DADO (0-100)** = soma de dez sinais de fragilidade, com teto 100: `ref-fragil`
+  (poucas vendas sustentando a referência, pela mesma régua de `pc_sales.sales_reference`),
+  `psa10-iliquido` (vendas por mês da coluna PSA 10), `ref-desalinhada`, `reprint-forte`,
+  `preco-absoluto-alto`, `vendedor-fraco` (os MESMOS cortes `trusted_min_feedback` e
+  `trusted_min_feedback_pct` do config que a política já usa), `tiragem` (variante de impressão
+  ambígua), `dispersao` (o MESMO valor que já rebaixa uma linha para REVISAR, pelo corte
+  `slab_strategy.evidence.max_dispersion_percent` — uma definição, um nome), `ref-stale` e
+  `concentracao` (mesma carta e mesma nota com muitos anúncios no run, corte
+  `longterm.concentration_min_listings`, contado ANTES do loop de avaliação e aplicado também às
+  primeiras linhas daquela carta+nota).
+- **Classe LP1-LP4** = faixa de qualidade/completude do perfil (forte / médio / fraco / frágil),
+  pelos limites do bloco `longterm:` do `config.yaml`. Não ordena a tabela e não é nota de compra.
+  O asterisco (`LP2*`) marca "seria LP1, mas faltou insumo-chave": um dos três insumos-chave da
+  fragilidade (`ref-fragil`, `psa10-iliquido`, `ref-desalinhada`) estava em `n/d`.
+- **`n/d` nunca vira zero.** Componente sem dado sai da média e reduz a cobertura; sinal de
+  fragilidade sem dado sai da soma. Abaixo de `longterm.min_profile_sources` /
+  `longterm.min_fragility_sources` a nota inteira fica `n/d`, e a classe também. Cada ausência sai
+  escrita como `LP:<nome>: n/d` nos motivos — nada some em silêncio.
+- **O que fica `n/d` em cada caminho, e por quê.** No caminho da POLÍTICA (vigente):
+  `ref-desalinhada` fica `n/d` porque a política deixa `asks = {}` (decisão documentada do
+  operador) e nada é recomputado só para uma flag informativa; `ref-stale` fica `n/d` porque
+  nesse caminho não há cross-check com o market de carta solta do TCGplayer. Consequência
+  declarada: nesta rodada o teto da classe no caminho da política é `LP2*`. No caminho LEGADO,
+  `ref-desalinhada` reaproveita a flag existente `REF DESALINHADA`, `ref-stale` só existe quando
+  há market TCG para conferir, e a `dispersao` é calculada pela MESMA fórmula sobre a cesta já
+  lida. Nos dois caminhos, insumo ausente na fonte (sem `pokemon_rank`, sem `rarity`, sem `year`,
+  sem coluna PSA 10, sem série mensal e sem vendas suficientes) vira `n/d` naquele componente.
+- **Erro interno na coluna nunca derruba a linha nem a carta**: a coluna fica `n/d`, o erro é
+  logado e contado no funil com rótulo humano (`longterm_error`). `longterm.assess` é função pura
+  (não altera a `Opportunity` nem a referência) e `longterm.annotate` grava só os campos novos
+  `longterm_*` / `trend_*`.
+- **Configuração**: bloco novo `longterm:` no `config.yaml`, dez chaves inteiras (`enabled`,
+  limites das classes, coberturas mínimas e `concentration_min_listings`). Nenhuma chave já
+  existente foi alterada. `longterm.enabled: false` desliga a coluna (todas as linhas ficam
+  `n/d`) sem mexer em mais nada.
+- **Calibração inicial, NÃO validada** (`longterm.CALIBRATION_NOTE`): os pontos por componente,
+  as bandas e os limiares nunca foram medidos contra o mercado real — não há backtest (teste
+  contra o passado) e existe um único snapshot. É triagem descritiva, não previsão de preço;
+  "valorização" (subida de preço ao longo do tempo) não é medida aqui. Por isso os pontos ficam
+  no código, e não no config: mexer neles é recalibrar, não configurar.
+- **Validação transversal** (`longterm_validate.py`, ferramenta separada que roda sobre o JSON de
+  um scan, sem rede): agrega por chave (carta, número, nota) ANTES de qualquer estatística —
+  vários anúncios do mesmo item contam como um, para não inflar o resultado por pseudo-replicação
+  (contar o mesmo item várias vezes) —, exige um número mínimo de chaves (`--min-keys`) e calcula
+  Spearman (correlação de postos: compara a ORDEM dos itens, não o valor) de B1, B2, B3, B5 e do
+  PERFIL-sem-B4 contra o valor de referência e contra o prêmio de nota. B4 fica DE FORA das
+  correlações por circularidade: é derivado de preço, e correlacionar preço com preço não prova
+  nada. Abaixo do mínimo a ferramenta escreve "n insuficiente" e não inventa correlação. O
+  snapshot em CSV é local, sob `results/` (fora do GitHub por `DELIVERY_CHAT.md`).
+- Régua completa, tabela por tabela, em [`docs/LONGO_PRAZO.md`](docs/LONGO_PRAZO.md).
+
 ## 2026-09-09 — auditoria do sistema de honestidade de preço (PR-B `fix/honestidade-fase1`, depende do PR-A #32)
 
 Revisão de TODO caminho que leva um número até a tabela do operador, nos dois motores
