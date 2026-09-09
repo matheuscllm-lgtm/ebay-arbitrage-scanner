@@ -137,10 +137,16 @@ class CardRefs:
     `available` False = a fonte falhou para a carta (`error`), ou breaker aberto:
     slabs/LP da carta nao sao avaliados (contados como `ref_unavailable`)."""
 
-    def __init__(self, card, body="", url="", error=None):
+    def __init__(self, card, body="", url="", error=None, *, require_number=False):
         self.card = card
         self.url = url or card.pc_url
         self.error = error
+        # Regua da cesta da REFERENCIA legada, vinda de
+        # `legacy_reference.require_number_in_sale_title` (default False). True = o
+        # titulo da venda tem de NOMEAR o numero da carta, como o caminho vigente ja
+        # exige. Vale so para `slab()`: `sales_history()` alimenta a tendencia (B5) da
+        # coluna informativa, e apertar aquela cesta mudaria a coluna sem pedido.
+        self._require_number = bool(require_number)
         self._body = body or ""
         self._sales = pc_sales.parse_sales(self._body) if self._body else []
         self._columns = pc_sales.parse_grade_prices(self._body) if self._body else {}
@@ -165,7 +171,8 @@ class CardRefs:
             # (outro nome/numero) nunca entra na mediana. So o caminho legado
             # passa por aqui; `slab_strategy` monta a propria cesta.
             comps = pc_sales.comparable_sales(self._sales, grade.grader, grade.value,
-                                              grade.qualifier, variants, card=self.card)
+                                              grade.qualifier, variants, card=self.card,
+                                              require_number=self._require_number)
             ref = pc_sales.sales_reference(comps, self.url, grade.label, allow_thin=True)
             column_key = grading.pc_price_key(grade)
             column = self._columns.get(column_key) if column_key else None
@@ -246,7 +253,8 @@ def load_card_page(card, config=None, stats=None, breaker=None, log=print):
     if breaker is not None:
         breaker.record_ok()
     fair = pricecharting.parse_product_page(body, source_url=card.pc_url)
-    return fair, CardRefs(card, body, card.pc_url)
+    return fair, CardRefs(card, body, card.pc_url, require_number=bool(
+        (config.get("legacy_reference") or {}).get("require_number_in_sale_title", False)))
 
 
 # --- sanidade: referencia vs mediana dos anuncios ---------------------------------
