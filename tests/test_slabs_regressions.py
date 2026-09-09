@@ -495,3 +495,21 @@ def test_policy_resale_basket_reads_pristine_before_the_grader(qualifier, expect
                           frozenset(), cfg()["slab_strategy"])
     assert ref["n_sales"] == expected_n
     assert all(("Pristine" in s["title"]) == (qualifier == "PRISTINE") for s in ref["sales"])
+
+
+def test_legacy_ask_median_ignores_listings_without_readable_price(no_tcg):
+    """Legado: `_clean_ask_prices` (mediana dos precos pedidos, usada para conferir
+    se a referencia esta alinhada) recebia `price=None` e `statistics.median`
+    levantava TypeError FORA do try/except da avaliacao -> carta inteira caia
+    (fixture H1 do review do PR #32). Preco ausente/nao finito/<=0 fica de fora."""
+    batch = [L("Charizard 4/102 Base Set PSA 9", price, item_id)
+             for price, item_id in [(75.0, "a"), (None, "b"), (73.0, "c"), (72.0, "d"),
+                                    (float("nan"), "e"), (0.0, "f")]]
+    assert scanner._clean_ask_prices(CARD, batch) == {"PSA 9": [75.0, 73.0, 72.0]}
+    stats = Counter()
+    _, rows = scanner.scan_card(CARD, FakeEbay(batch), {"min_price_usd": 0}, stats=stats,
+                                refs=FakeRefs(slab={"PSA 9": REF(100.0)}),
+                                fair=FairValue(), log=lambda *a: None)
+    assert [row.listing.item_id for row in rows] == ["a", "c", "d"]
+    assert stats["skip_no_price"] == 1 and stats["skip_price_floor"] == 2
+    assert stats["seen"] == 6 == _per_listing_buckets(stats)

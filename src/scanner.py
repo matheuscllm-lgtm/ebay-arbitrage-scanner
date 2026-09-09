@@ -19,6 +19,7 @@ falha de autenticacao no eBay ou erros seguidos da API ABORTAM o run
 """
 import dataclasses
 import logging
+import math
 import re
 import statistics
 from collections import Counter
@@ -251,7 +252,12 @@ def _clean_ask_prices(card, listings):
         if grade == "RAW" and not title_parser.is_nm_acceptable(
                 listing.title, listing.condition):
             continue
-        asks.setdefault(grade, []).append(listing.price)
+        # Preco ausente (None), NaN/infinito ou <= 0 nao entra na mediana
+        # (`statistics.median` com None derrubava a carta inteira -- review #32).
+        price = listing.price
+        if price is None or not math.isfinite(price) or price <= 0:
+            continue
+        asks.setdefault(grade, []).append(price)
     return asks
 
 
