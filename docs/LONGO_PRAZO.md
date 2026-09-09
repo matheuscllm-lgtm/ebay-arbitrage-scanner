@@ -78,7 +78,7 @@ em silêncio.
 | `tiragem` | título com token de tiragem (reverse, 1st, edition, shadowless, unlimited, promo), `variant_tokens` não vazio, ou set de subconjunto (Shiny Vault, Galarian Gallery, Classic Collection, Radiant Collection, Trainer Gallery) | +10 |
 | `dispersao` | **o mesmo valor que já rebaixa para REVISAR na política**: (máx − mín) ÷ mediana × 100 das vendas usadas na referência, corte `evidence.max_dispersion_percent` (30). Política: lido de `psa_evidence.dispersion_percent`; legado: a mesma fórmula sobre `refs.sales_history` (janela da referência, 10 vendas mais recentes). Uma definição, um nome | +10 |
 | `ref-stale` | legado: flags existentes `REF GRADED < RAW TCG` / `ref-divergente` (disponível só quando há market TCG para conferir). Política: `n/d` | +10 |
-| `concentracao` | mesma carta + mesma nota com ≥4 anúncios no mesmo run (`concentration_min_listings`), contados antes da avaliação e aplicados a todas as linhas daquela carta+nota, inclusive as primeiras | +10 |
+| `concentracao` | mesma carta + mesma nota com ≥4 anúncios no mesmo run (`concentration_min_listings`), contados antes da avaliação e aplicados a todas as linhas daquela carta+nota, inclusive as primeiras. Só entram na contagem os anúncios cujo TÍTULO é mesmo daquela carta (mesma guarda de identidade — `title_parser.card_matches_title` — que `_clean_ask_prices` já usava): a busca do eBay devolve anúncios de outras cartas junto, e eles são descartados logo depois (`skip_no_match`) | +10 |
 
 ## Classe (avaliar nesta ordem)
 

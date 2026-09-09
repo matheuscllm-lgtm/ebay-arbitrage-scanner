@@ -808,3 +808,30 @@ def test_e6_disabled_config_leaves_fields_empty_and_seller_cut_is_the_documented
     assert lt.assess(PCARD, o.listing, o, fair(), prefs(psales()), 1,
                      {"longterm": {"enabled": False}}, today=TODAY) is None
     assert o.longterm_tier == "" and o.longterm_profile is None and o.longterm_reasons == []
+
+
+# ── revisao do PR-C (2026-09-09): achados confirmados pelos dois revisores ───────
+# Cada teste abaixo nasceu VERMELHO: reproduz o defeito relatado antes da correcao.
+
+
+def test_r1_concentration_counts_only_listings_of_the_same_card(monkeypatch):
+    """`LP:concentracao` = "mesma CARTA + mesma nota com >=4 anuncios no run"
+    (docs/LONGO_PRAZO.md). A contagem feita ANTES do loop nao pode somar anuncios de
+    OUTRAS cartas que a busca do eBay devolveu (eles sao descartados logo depois por
+    `skip_no_match`) -- senao a tabela afirma "4 anuncios da mesma carta+nota" quando
+    ha 1, e ainda soma +10 na FRAGILIDADE DO DADO."""
+    monkeypatch.setattr(scanner.tcg_reference, "get_tcg_reference", lambda c: None)
+    from tests.test_scan_funnel import FakeEbay
+    from tests.test_scan_funnel import L as LF
+    refs = LTRefs(slab={"PSA 9": REF(3175.0), "PSA 10": REF(320.0, what="PSA 10")},
+                  pc_url=PC_URL)
+    batch = [LF("Charizard 4/102 Base Set PSA 9", 2200.0, "1"),
+             LF("Blastoise 2/102 Base Set PSA 9", 2100.0, "2"),
+             LF("Venusaur 15/102 Base Set PSA 9", 2150.0, "3"),
+             LF("Pikachu 58/102 Base Set PSA 9", 2180.0, "4")]
+    stats = Counter()
+    _, opps = scanner.scan_card(CARD, FakeEbay(batch), {"graded_only": True},
+                                log=lambda *a: None, stats=stats, refs=refs, fair=fair())
+    assert len(opps) == 1 and stats["skip_no_match"] == 3
+    assert opps[0].longterm_signals["listings_same_grade"] == 1
+    assert not any(r.startswith("LP:concentracao") for r in opps[0].longterm_reasons)

@@ -299,14 +299,21 @@ def _annotate_ref_alignment(opp, asks):
 
 # --- coluna informativa "Longo prazo" (src/longterm.py) ----------------------------
 
-def _count_listings_by_grade(listings, allow):
+def _count_listings_by_grade(card, listings, allow):
     """Anuncios unicos do run por nota lida no titulo ('PSA 9', 'RAW'...), contados
     ANTES do loop de avaliacao: insumo de `LP:concentracao` (mesma carta+nota com >=4
     anuncios), aplicado a todas as linhas daquela nota -- inclusive as primeiras.
     Independe de `asks` (que a politica deixa vazio). Titulo ambiguo/fora do escopo
-    nao conta (nao tem nota unica)."""
+    nao conta (nao tem nota unica).
+
+    Guarda de identidade (mesma primeira linha de `_clean_ask_prices`): a busca do eBay
+    devolve anuncios de OUTRAS cartas junto (descartados depois por `skip_no_match`) e
+    eles nunca podem entrar nesta contagem -- a flag diz "mesma CARTA + mesma nota"
+    (review do PR-C 2026-09-09)."""
     counts = Counter()
     for listing in listings:
+        if not title_parser.card_matches_title(card, listing.title):
+            continue
         gr = grading.grade_from_title(listing.title, allow)
         if gr.status == "graded" and gr.grade is not None:
             counts[gr.grade.key] += 1
@@ -436,7 +443,8 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
     # Coluna "Longo prazo": contagem por nota feita ANTES do loop de avaliacao (1a
     # passagem); `assess` roda depois de cada veredito final (2a passagem).
     same_grade_counts = _count_listings_by_grade(
-        unique_listings, frozenset(config.get("graded_allow") or grading.DEFAULT_GRADED_ALLOW))
+        card, unique_listings,
+        frozenset(config.get("graded_allow") or grading.DEFAULT_GRADED_ALLOW))
     iconic_scores = longterm.load_iconic_scores()
 
     opportunities = []
