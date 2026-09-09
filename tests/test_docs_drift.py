@@ -67,18 +67,24 @@ def test_skill_and_docs_declare_the_gate_mode_the_config_actually_has():
 
 
 def test_longterm_docs_use_the_real_fragility_flag_count():
-    """Guarda de drift da COLUNA: toda cobertura escrita nas docs no formato `k/N`
-    (flags, fontes de fragilidade, testes) tem de usar o N real de
-    `longterm.FRAGILITY_FLAGS`. Acrescentar ou remover uma flag sem mexer no texto
-    operacional passa a quebrar aqui."""
+    """Guarda de drift da COLUNA: toda contagem de flags de fragilidade escrita no
+    texto operacional tem de bater com `len(longterm.FRAGILITY_FLAGS)`. Cobre as tres
+    formas em que ela aparece: a celula de cobertura (`4/5·9/11`), a cobertura solta
+    entre parenteses (`0 (3/11)`) e a contagem por extenso ("9 das 11 flags", "3 dos 11
+    testes"). Acrescentar ou remover uma flag sem mexer nas docs quebra aqui."""
     from src import longterm
     n = len(longterm.FRAGILITY_FLAGS)
-    denom = re.compile(r"/(\d+)\s*(?:flags|fontes de fragilidade|testes)")
+    cell = re.compile(r"·\s*(\d+)/(\d+)")          # 4/5·9/11 -> denominador da fragilidade
+    paren = re.compile(r"\((\d+)/(\d+)\)")              # 0 (3/11)
+    spelled = re.compile(r"d[oa]s (\d+) (?:flags|fontes|testes)")
     for name in ("docs/LONGO_PRAZO.md", "README.md",
                  ".claude/skills/scan-ebay/SKILL.md"):
         text = (ROOT / name).read_text(encoding="utf-8")
-        assert f"/{n}" in text, f"{name} nao menciona a cobertura /{n}"
-        wrong = [d for d in denom.findall(text) if int(d) != n]
+        found = ([int(d) for _, d in cell.findall(text)]
+                 + [int(d) for _, d in paren.findall(text)]
+                 + [int(d) for d in spelled.findall(text)])
+        assert found, f"{name} sem nenhuma contagem de fragilidade para conferir"
+        wrong = [d for d in found if d != n]
         assert not wrong, f"{name} com contagem desatualizada: {wrong} (real: {n})"
 def test_main_docstring_and_help_do_not_advertise_the_removed_diagnostic_mode(capsys):
     doc = main.__doc__
