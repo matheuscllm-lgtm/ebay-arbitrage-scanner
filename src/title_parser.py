@@ -222,7 +222,16 @@ def card_matches_title(card, title):
             return any(_norm_num_token(a) == num and
                        (len(expected) == 1 or _norm_num_token(b) == _norm_num_token(expected[1]))
                        for a, b in fracs)
-        pattern = r"(?:#|no\.?\s*|\b)0*%s\b" % re.escape(num)
+        # Zero a esquerda opcional ENTRE o prefixo de letras e os digitos: "H02"
+        # e "H2", "TG03" e "TG3", "SV049" e "SV49" sao a mesma carta (review do
+        # PR #32: o zero nunca vem antes do prefixo, e 32 cartas da watchlist com
+        # numero alfanumerico deixavam de casar o titulo com o zero).
+        parts = re.match(r"^([a-z]*)(\d+)([a-z]?)$", num)
+        if parts:
+            pattern = r"(?:#|no\.?\s*|\b)%s0*%s%s\b" % (
+                re.escape(parts.group(1)), parts.group(2), re.escape(parts.group(3)))
+        else:
+            pattern = r"(?:#|no\.?\s*|\b)0*%s\b" % re.escape(num)
         if not re.search(pattern, clean):
             return False
     return True

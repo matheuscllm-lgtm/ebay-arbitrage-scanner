@@ -83,3 +83,20 @@ def test_small_multi_card_offers_and_sales_never_approve(prefix):
         sale['title'] = title
     o = evaluate(CARD, listing(price=50), config=policy_config(), refs=refs(pool))
     assert o.strategy['psa_evidence']['n_used'] == 0
+
+
+@pytest.mark.parametrize('number,title,expected', [
+    ('H02', 'Arcanine H02 Aquapolis English PSA 9', True),
+    ('H02', 'Arcanine H2 Aquapolis English PSA 9', True),
+    ('H02', 'Arcanine #H02 Aquapolis English PSA 9', True),
+    ('H02', 'Arcanine H12 Aquapolis English PSA 9', False),
+    ('SV049', 'Charizard GX SV049 Hidden Fates English PSA 10', True),
+    ('SV049', 'Charizard GX SV49/SV94 Hidden Fates English PSA 10', True),
+    ('SV049', 'Charizard GX SV050 Hidden Fates English PSA 10', False),
+])
+def test_alphanumeric_number_with_leading_zero_in_policy_identity(number, title, expected):
+    """Politica (`identity_matches`) com numero alfanumerico e zero a esquerda:
+    o titulo pode trazer "H02" ou "H2" -- ambos identificam a mesma carta."""
+    name, set_name = ('Arcanine', 'Aquapolis') if number.startswith('H') else ('Charizard GX', 'Hidden Fates')
+    card = replace(CARD, name=name, set_name=set_name, number=number)
+    assert identity_matches(card, title) is expected

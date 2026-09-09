@@ -279,3 +279,38 @@ def test_discount_gate_compares_rounded_percent_today(reference, price, eligible
                           {"min_discount_percent": 30},
                           refs=FakeRefs(slab={"PSA 9": REF(reference)}), stats=stats)
     assert (row is not None) == eligible_today
+
+
+# ── rodada de review do PR #32 ───────────────────────────────────────────────
+
+@pytest.mark.parametrize("name,number,title", [
+    ("Arcanine", "H02", "Arcanine H02 Aquapolis PSA 9"),
+    ("Arcanine", "H02", "Arcanine H2 Aquapolis PSA 9"),
+    ("Arcanine", "H02", "Arcanine #H02 Aquapolis PSA 9"),
+    ("Charizard V", "TG03", "Charizard V TG03 Brilliant Stars Trainer Gallery PSA 10"),
+    ("Charizard V", "TG03", "Charizard V TG3 Brilliant Stars PSA 10"),
+    ("Charizard V", "TG03", "Charizard V TG03/TG30 Brilliant Stars PSA 10"),
+    ("Charizard GX", "SV049", "Charizard GX SV049 Hidden Fates Shiny Vault PSA 10"),
+    ("Charizard GX", "SV049", "Charizard GX SV49/SV94 Hidden Fates PSA 10"),
+    ("Charizard", "004", "Charizard 004/102 Base Set PSA 9"),
+    ("Charizard", "004", "Charizard #4 Base Set PSA 9"),
+])
+def test_alphanumeric_number_with_leading_zero_matches_both_spellings(name, number, title):
+    """Numero com letras + zero a esquerda (H02, TG03, SV049): o titulo pode trazer
+    o zero ("H02") ou nao ("H2"); os dois casam. Regressao apontada no review
+    (32 cartas da watchlist): o zero fica ENTRE o prefixo de letras e os digitos."""
+    card = dataclasses.replace(CARD, name="", number=number)   # como identity_matches
+    assert title_parser.card_matches_title(card, title)
+    assert title_parser.card_matches_title(dataclasses.replace(card, name=name), title)
+
+
+@pytest.mark.parametrize("number,title", [
+    ("H02", "Arcanine H12 Aquapolis PSA 9"),
+    ("H02", "Arcanine H20 Aquapolis PSA 9"),
+    ("TG03", "Charizard V TG13 Brilliant Stars PSA 10"),
+    ("4", "Charizard 14/102 Base Set PSA 9"),
+    ("14", "Charizard 4/102 Base Set PSA 9"),
+])
+def test_alphanumeric_number_does_not_match_other_numbers(number, title):
+    card = dataclasses.replace(CARD, name="", number=number)
+    assert not title_parser.card_matches_title(card, title)
