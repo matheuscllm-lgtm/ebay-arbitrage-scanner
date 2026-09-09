@@ -48,6 +48,29 @@ do código) e foi conferida por mutation-check (desfazer a correção faz o test
   dizer a causa (parada antecipada = cartas restantes não varridas × todas as cartas visitadas
   com erros contados no funil).
 
+Correções da revisão do PR #33 (dois pareceres independentes, veredito "corrigir"; nada muda
+em `src/slab_strategy.py`, `config.yaml`, veredito, gate, cesta ou ranking):
+
+- Console do `main.py` com a política ativa imprimia o relatório SEM os metadados do JSON:
+  "Coleta:" toda n/d e funil "analisados: 0" (zero inventado a partir de um dict vazio).
+  O artefato JSON é montado antes de imprimir e o console usa o MESMO `meta` da entrega;
+  sem meta/funil o relatório diz n/d.
+- Três contadores que só o caminho da política produz (`item_details_fetched`,
+  `item_details_error`, `ebay_budget_exhausted`) não tinham rótulo e saíam como chave crua em
+  "outros:"; ganharam rótulo humano, e um teste varre `src/scanner.py`/`src/scorer.py` para
+  garantir que todo contador incrementado tem rótulo.
+- A linha "Coleta:" declara `--grades` (notas do run) e `--confiavel`; com a política ativa o
+  `main.py` avisa que `--confiavel` não tem efeito (a política nunca lê `trusted_mode`);
+  as chaves do gate seguem o `gate_mode` (em `all_minima` valem `min_net_margin_percent`,
+  `min_net_roi_percent` e o `min_discount_percent` de topo); data/hora lida com
+  `datetime.fromisoformat` (sem fuso = dito; ilegível = n/d).
+- Texto operacional: `--sensitivity` no `--help` do `ebay_summary.py` marcado como só-legado;
+  `--pricing-only` e o cabeçalho impresso deixam de chamar coluna de "referência"; a skill
+  separa o destino de cada erro por carta (PriceCharting fora do ar = linhas em REVISAR;
+  `card_error`/`ebay_error` = carta pulada sem linhas; todos = run parcial) e cita as 12
+  colunas do `render`; docstrings de `src/report.py`/`src/models.py` descrevem os dois
+  caminhos (política = vigente); constante morta `ACCEPTED_GRADES` removida.
+
 ## 2026-09-09 — porte do diff local pré-#29 sobre #31 (PR-A `fix/port-local-diff`)
 
 - Resgate: o trabalho local não commitado (13 arquivos + `tests/test_slabs_regressions.py`)
