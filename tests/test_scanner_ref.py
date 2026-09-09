@@ -21,7 +21,7 @@ def O(grade, fair, verdict="OPORTUNIDADE"):
     return Opportunity(card=CARD, listing=L("t", 1.0), grade=grade,
                        fair_value=fair, gross_margin_pct=50.0,
                        liquidity_per_month=30.0, liquidity_tier="A",
-                       trend_delta=0.0, spread_psa9_pct=0, spread_psa10_pct=0,
+                       trend_delta=0.0, spread_grade9_pct=0, spread_psa10_pct=0,
                        verdict=verdict)
 
 
@@ -92,7 +92,7 @@ class _FakeEbay:
 
 def test_scan_card_dedupe_ignores_empty_item_id(monkeypatch):
     monkeypatch.setattr(scanner.tcg_reference, "get_tcg_reference", lambda card: None)
-    fair = FairValue(prices={"PSA 9": 3175.0}, deltas={}, sales_per_month={"PSA 9": 30.0})
+    fair = FairValue(prices={"GRADE 9": 3175.0}, deltas={}, sales_per_month={"GRADE 9": 30.0})
     refs = FakeRefs(slab={"PSA 9": REF(3175.0)}, pc_url=CARD_CHZ.pc_url)
     batch = [
         L("Charizard 4/102 Base Set PSA 9", 2000.0, condition="Graded", item_id="1"),

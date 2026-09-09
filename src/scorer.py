@@ -380,8 +380,10 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
     raw_price = prices.get("RAW") or 0.0
     spread9 = spread10 = 0.0
     if grade == "RAW" and raw_price:
-        psa9, psa10 = prices.get("PSA 9"), prices.get("PSA 10")
-        spread9 = ((psa9 - raw_price) / raw_price * 100.0) if psa9 else 0.0
+        # "GRADE 9" = bucket generico do PriceCharting (mistura certificadoras):
+        # so informacao do premio de nota sobre o raw, nunca referencia.
+        grade9, psa10 = prices.get("GRADE 9"), prices.get("PSA 10")
+        spread9 = ((grade9 - raw_price) / raw_price * 100.0) if grade9 else 0.0
         spread10 = ((psa10 - raw_price) / raw_price * 100.0) if psa10 else 0.0
 
     w = cfg["weights"]
@@ -425,7 +427,7 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
         card=card, listing=listing, grade=grade, fair_value=fair_price,
         gross_margin_pct=roi_pct, liquidity_per_month=liquidity_sales,
         liquidity_tier=tier, trend_delta=delta,
-        spread_psa9_pct=round(spread9, 0), spread_psa10_pct=round(spread10, 0),
+        spread_grade9_pct=round(spread9, 0), spread_psa10_pct=round(spread10, 0),
         risk_flags=flags, score=round(score, 1), verdict=verdict,
         fair_value_source=card.pc_url,
         trust_score=round(trust_score(listing), 0),

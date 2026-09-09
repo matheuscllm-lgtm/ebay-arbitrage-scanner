@@ -1,3 +1,21 @@
+## 2026-09-09 — auditoria do sistema de honestidade de preço (PR-B `fix/honestidade-fase1`, depende do PR-A #32)
+
+Revisão de TODO caminho que leva um número até a tabela do operador, nos dois motores
+(política `slab_strategy` 2026-09-05.4 = vigente; `scorer` = legado, só testes/artefatos
+antigos) e em todos os baldes (APROVAR/REVISAR/REJEITAR + funil; SUSPEITO só no legado).
+Teto de 5 correções; nada muda em `src/slab_strategy.py` nem no bloco `slab_strategy` do
+`config.yaml` (achados lá viram pergunta ao operador, sem código); a cesta de vendas que
+alimenta a referência não muda. Cada correção nasceu de um teste vermelho (que falha antes
+do código) e foi conferida por mutation-check (desfazer a correção faz o teste falhar).
+
+- Rótulo enganoso (classe iii): a coluna "Grade 9" do PriceCharting é um bucket GENÉRICO
+  (mistura certificadoras: PSA, BGS, CGC…) e `src/pricecharting.py` a chamava de "PSA 9" —
+  o nome errado chegava ao operador em `--pricing-only` e em runs sem linha
+  (`report.fair_value_markdown`). Agora a chave é `GRADE 9`, a mesma que `src/pc_sales.py`
+  já usava para a mesma coluna; o campo `Opportunity.spread_psa9_pct` (legado, só raw)
+  virou `spread_grade9_pct`. Nenhuma referência de preço muda: essa coluna nunca foi
+  referência (só informação).
+
 ## 2026-09-09 — porte do diff local pré-#29 sobre #31 (PR-A `fix/port-local-diff`)
 
 - Resgate: o trabalho local não commitado (13 arquivos + `tests/test_slabs_regressions.py`)

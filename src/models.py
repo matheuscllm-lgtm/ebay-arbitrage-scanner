@@ -102,7 +102,9 @@ class Opportunity:
     liquidity_per_month: float
     liquidity_tier: str       # A / B / C / D
     trend_delta: float        # variacao recente do preco justo (USD)
-    spread_psa9_pct: float    # quanto a PSA 9 vale acima do raw (%)  (so p/ RAW)
+    # Premio do bucket GENERICO "Grade 9" do PriceCharting (mistura
+    # certificadoras) sobre o raw (%) -- so informacao, so p/ RAW; nunca "PSA 9".
+    spread_grade9_pct: float
     spread_psa10_pct: float   # quanto a PSA 10 vale acima do raw (%) (so p/ RAW)
     risk_flags: list = field(default_factory=list)
     score: float = 0.0        # 0-100

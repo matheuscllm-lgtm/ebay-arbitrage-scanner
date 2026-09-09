@@ -538,7 +538,7 @@ def fair_value_markdown(card, fair):
         "| Grade (coluna PC, informativa) | Preco | Tendencia | Vendas/mes | Liquidez |",
         "|---|---|---|---|---|",
     ]
-    for grade in ["RAW", "GRADE 7", "GRADE 8", "PSA 9", "GRADE 9.5",
+    for grade in ["RAW", "GRADE 7", "GRADE 8", "GRADE 9", "GRADE 9.5",
                   "PSA 10", "BGS 10", "BGS 10 BLACK", "CGC 10", "CGC 10 PRISTINE",
                   "SGC 10", "TAG 10"]:
         price = fair.prices.get(grade)

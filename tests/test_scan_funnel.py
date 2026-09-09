@@ -54,7 +54,7 @@ def no_tcg(monkeypatch):
 def test_scan_card_funnel_counts_everything_and_jp_in_middle_does_not_stop(no_tcg):
     refs = FakeRefs(slab={"PSA 9": REF(3175.0), "PSA 10": REF(30000.0, what="PSA 10")},
                     lp=REF(250.0, n=4, what="LP"), pc_url=PC_URL)
-    fair = FairValue(prices={"RAW": 340.0, "PSA 9": 3175.0}, sales_per_month={"RAW": 50.0})
+    fair = FairValue(prices={"RAW": 340.0, "GRADE 9": 3175.0}, sales_per_month={"RAW": 50.0})
     batch = [
         L("Charizard 4/102 Base Set PSA 9", 2000.0, "1"),                        # OPORTUNIDADE
         L("Charizard 4/102 Base Set Japanese PSA 9", 2400.0, "2"),               # JP -> REVISAR (flag idioma)
