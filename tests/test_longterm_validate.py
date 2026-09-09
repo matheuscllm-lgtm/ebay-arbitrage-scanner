@@ -33,7 +33,7 @@ def _row(card, number, grade, fair_value, rank, rarity="Rare Holo", era="vintage
     row = {"card": card, "number": number, "grade": grade, "price": price,
            "fair_value": fair_value, "longterm_profile": profile,
            "longterm_fragility": fragility, "longterm_tier": tier,
-           "longterm_coverage": "4/5·8/10", "longterm_reasons": [],
+           "longterm_coverage": "4/5·9/11", "longterm_reasons": [],
            "longterm_signals": {"pokemon_rank": rank, "rarity_raw": rarity, "era": era,
                                 "year": year, "age_years": (2026 - year) if year else None,
                                 "heavy_reprint": heavy, "trend_12m_pct": trend,

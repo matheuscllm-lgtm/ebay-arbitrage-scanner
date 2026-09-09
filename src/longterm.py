@@ -11,16 +11,18 @@ Por anuncio, duas notas 0-100 e uma classe, so para LEITURA na tabela de entrega
   poucas vendas, PSA 10 pouco vendida, referencia desalinhada dos anuncios, reprint
   forte (reimpressao que aumenta a oferta), preco absoluto alto, vendedor fraco,
   tiragem (variante de impressao) ambigua, precos dispersos, referencia possivelmente
-  defasada e concentracao de anuncios. Dez flags, cada uma com pontos ou None; soma
-  com teto 100.
+  defasada, concentracao de anuncios e MESES DE ESTOQUE (anuncios ativos da mesma nota
+  divididos pelas vendas PSA 10 por mes -- o unico sinal de oferta x demanda real da
+  coluna). Onze flags, cada uma com pontos ou None; soma com teto 100.
 - Classe LP1-LP4 = faixa de qualidade/completude do perfil (forte / medio / fraco /
   fragil). `LP2*` = seria LP1, mas um insumo-chave da fragilidade estava em n/d
   ("classe limitada por dado ausente").
 
 Regras fixas:
 - Sem dado = None = "n/d" -- NUNCA zero. Componente ausente sai da soma e reduz a
-  cobertura (`k/5`, `k/10`); PERFIL e n/d com menos de 3 de 5 fontes, FRAGILIDADE e
-  n/d com menos de 3 de 10 (soma vazia nao e 0).
+  cobertura (`k/5`, `k/11` -- denominadores sempre de `len(PROFILE_COMPONENTS)` e
+  `len(FRAGILITY_FLAGS)`, nunca escritos a mao); PERFIL e n/d com menos de 3 de 5
+  fontes, FRAGILIDADE e n/d com menos de 3 de 11 (soma vazia nao e 0).
 - `assess` e uma funcao PURA: le `card`, `listing`, `opp`, `fair`, `refs` e nunca os
   altera; `annotate` grava so os campos `longterm_*`/`trend_*` da Opportunity.
   Veredito, Desconto%, ROI bruto%, `risk_flags`, `reasons`, `strategy` e o ranking
@@ -64,9 +66,18 @@ CALIBRATION_NOTE = ("calibração inicial, não validada: limiares, pontos e ban
 PROFILE_COMPONENTS = ("personagem", "raridade", "supply", "faixa-psa10", "tendencia")
 FRAGILITY_FLAGS = ("ref-fragil", "psa10-iliquido", "ref-desalinhada", "reprint-forte",
                    "preco-absoluto-alto", "vendedor-fraco", "tiragem", "dispersao",
-                   "ref-stale", "concentracao")
+                   "ref-stale", "concentracao", "estoque-alto")
 # Sem estes tres em dado, a classe nunca chega a LP1 (vira LP2*).
 KEY_FRAGILITY_INPUTS = ("ref-fragil", "psa10-iliquido", "ref-desalinhada")
+
+# Pisos e cortes que o `config.yaml` pode mudar. As constantes do modulo continuam
+# sendo o VALOR PADRAO -- `DEFAULT_CONFIG` so as espelha, para nunca existirem dois
+# numeros diferentes para o mesmo corte.
+LP1_MIN_PROFILE_COVERAGE = 4       # de 5 componentes
+LP1_MIN_FRAGILITY_COVERAGE = 9     # de 11 flags -- mesma proporcao (~80%) do piso acima
+SUPPLY_MONTHS_HIGH = 24            # meses de estoque: >= isto -> 20 pontos
+SUPPLY_MONTHS_MID = 12             # >= isto -> 10 pontos; abaixo -> 0
+SUPPLY_MIN_SALES_PM = 0.05         # vendas/mes abaixo disto: divisao instavel -> n/d
 
 # Espelho do bloco `longterm:` do config.yaml (inteiros; percentuais 0-100).
 DEFAULT_CONFIG = {
@@ -80,6 +91,11 @@ DEFAULT_CONFIG = {
     "min_profile_sources": 3,
     "min_fragility_sources": 3,
     "concentration_min_listings": 4,
+    "lp1_min_profile_coverage": LP1_MIN_PROFILE_COVERAGE,
+    "lp1_min_fragility_coverage": LP1_MIN_FRAGILITY_COVERAGE,
+    "supply_months_high": SUPPLY_MONTHS_HIGH,
+    "supply_months_mid": SUPPLY_MONTHS_MID,
+    "supply_min_sales_pm": SUPPLY_MIN_SALES_PM,
 }
 
 SIGNAL_KEYS = (
@@ -87,14 +103,17 @@ SIGNAL_KEYS = (
     "era", "heavy_reprint", "psa10_col", "raw_col", "psa10_sales_pm", "trend_source",
     "trend_12m_pct", "trend_36m_pct", "ref_liquidity", "ref_n_sales", "ref_window_days",
     "ref_source", "dispersion_pct", "dispersion_source", "ask_ratio", "ask_n",
-    "listings_same_grade", "trust_score", "printing_tokens",
+    "listings_same_grade", "months_of_supply", "trust_score", "printing_tokens",
 )
 
 # --- calibracao inicial (hardcoded de proposito; ver CALIBRATION_NOTE) ------------
 MAX_POINTS_PER_COMPONENT = 20
 FRAGILITY_CAP = 100
-LP1_MIN_PROFILE_COVERAGE = 4          # de 5 componentes
-LP1_MIN_FRAGILITY_COVERAGE = 8        # de 10 flags -- mesma proporcao (80%) do piso acima
+# Cortes da razao referencia/mediana dos anuncios: ESPELHO de `scanner.REF_*_RATIO` /
+# `scanner.REF_MIN_SAMPLES`. Espelhados (e nao importados) porque e `scanner` que
+# importa `longterm` -- importar de volta seria ciclo. `tests/test_longterm_demand.py`
+# trava os tres contra os do scanner para que nunca divirjam em silencio.
+_REF_HIGH_RATIO, _REF_LOW_RATIO, _REF_MIN_SAMPLES = 1.5, 0.6, 3
 _RARITY_POINTS = {"special-illustration": 20, "illustration": 16, "hyper-secret": 14,
                   "ultra": 12, "holo-vintage": 12, "holo": 6, "outra": 4}
 _REPRINT_SUPPLY_CAP = 8               # reprint forte: teto do B3
@@ -120,8 +139,8 @@ class LongTerm:
     profile: float | None            # PERFIL 0-100 ou None (n/d)
     fragility: float | None          # FRAGILIDADE DO DADO 0-100 ou None (n/d)
     tier: str                        # "LP1".."LP4", "LP2*", "n/d"
-    profile_coverage: tuple          # (disponiveis, 5)
-    fragility_coverage: tuple        # (disponiveis, 10)
+    profile_coverage: tuple          # (disponiveis, len(PROFILE_COMPONENTS))
+    fragility_coverage: tuple        # (disponiveis, len(FRAGILITY_FLAGS))
     reasons: list = field(default_factory=list)     # "LP:<flag>[(detalhe)]" / "LP:<nome>: n/d"
     signals: dict = field(default_factory=dict)     # insumos crus rotulados (proveniencia)
     profile_points: dict = field(default_factory=dict)    # componente -> pontos | None
@@ -397,14 +416,16 @@ def profile_score(points, min_sources=3):
 
 
 def fragility_score(points, min_sources=3):
-    """(FRAGILIDADE | None, (disponiveis, 10)): soma das flags com dado, teto 100; menos
-    de `min_sources` fontes -> None (soma vazia nunca vira 0).
+    """(FRAGILIDADE | None, (disponiveis, len(FRAGILITY_FLAGS))): soma das flags com dado,
+    teto 100; menos de `min_sources` fontes -> None (soma vazia nunca vira 0).
 
     LEIA JUNTO COM A COBERTURA: por ser uma SOMA, a nota mede os problemas DETECTADOS
     entre os testes que puderam rodar -- flag em n/d sai da soma, o que aritmeticamente
-    e o mesmo que valer 0. Uma FRAGILIDADE 0 com cobertura 3/10 nao e "dado impecavel",
-    e "so 3 dos 10 testes rodaram e nenhum acusou problema". Por isso a classe LP1 exige
-    `LP1_MIN_FRAGILITY_COVERAGE` (ver `classify`)."""
+    e o mesmo que valer 0. Uma FRAGILIDADE 0 com cobertura 3/11 nao e "dado impecavel",
+    e "so 3 dos 11 testes rodaram e nenhum acusou problema". Por isso a classe LP1 exige
+    `lp1_min_fragility_coverage` (ver `classify`). O denominador sai SEMPRE de
+    `len(FRAGILITY_FLAGS)` -- nunca de um numero escrito na mao, que passaria a mentir
+    na celula e no JSON assim que uma flag entra ou sai."""
     available = [points.get(name) for name in FRAGILITY_FLAGS if points.get(name) is not None]
     coverage = (len(available), len(FRAGILITY_FLAGS))
     if len(available) < min_sources:
@@ -416,13 +437,15 @@ def classify(profile, fragility, profile_coverage, key_inputs_available, cfg=Non
              fragility_coverage=None):
     """Classe, nesta ordem: n/d (nota ausente) -> LP4 (FRAGILIDADE > 70 ou PERFIL < 30)
     -> LP1 (PERFIL >= 70, FRAGILIDADE <= 30, cobertura do perfil >= 4/5, cobertura da
-    fragilidade >= 8/10 e os 3 insumos-chave com dado; faltando insumo-chave OU
+    fragilidade >= 9/11 e os 3 insumos-chave com dado; faltando insumo-chave OU
     cobertura de fragilidade -> LP2*) -> LP2 (PERFIL >= 50 e FRAGILIDADE <= 50) -> LP3.
-    `cfg` = bloco `longterm` (limites inclusivos).
+    `cfg` = bloco `longterm` (limites inclusivos). Os dois pisos de cobertura sao chave
+    de config (`lp1_min_profile_coverage` / `lp1_min_fragility_coverage`), com as
+    constantes do modulo como valor padrao.
 
-    O piso `LP1_MIN_FRAGILITY_COVERAGE` existe porque a FRAGILIDADE e uma SOMA: sem ele,
-    uma linha em que 7 dos 10 testes nem puderam rodar sairia com nota 0 e classe LP1
-    ("forte") igual a uma linha com os 10 testes limpos -- dado ausente parecendo dado
+    O piso de cobertura da fragilidade existe porque a FRAGILIDADE e uma SOMA: sem ele,
+    uma linha em que 7 dos 11 testes nem puderam rodar sairia com nota 0 e classe LP1
+    ("forte") igual a uma linha com os 11 testes limpos -- dado ausente parecendo dado
     impecavel (review do PR-C 2026-09-09). `fragility_coverage=None` (cobertura
     desconhecida, chamada antiga) nao aplica piso nenhum."""
     c = dict(DEFAULT_CONFIG, **(cfg or {}))
@@ -433,9 +456,9 @@ def classify(profile, fragility, profile_coverage, key_inputs_available, cfg=Non
     covered = int(profile_coverage[0]) if profile_coverage else 0
     frag_covered = int(fragility_coverage[0]) if fragility_coverage else None
     thin_fragility = (frag_covered is not None
-                      and frag_covered < LP1_MIN_FRAGILITY_COVERAGE)
+                      and frag_covered < int(c["lp1_min_fragility_coverage"]))
     if (profile >= c["lp1_min_profile"] and fragility <= c["lp1_max_fragility"]
-            and covered >= LP1_MIN_PROFILE_COVERAGE):
+            and covered >= int(c["lp1_min_profile_coverage"])):
         return "LP1" if (key_inputs_available and not thin_fragility) else "LP2*"
     if profile >= c["lp2_min_profile"] and fragility <= c["lp2_max_fragility"]:
         return "LP2"
@@ -443,11 +466,43 @@ def classify(profile, fragility, profile_coverage, key_inputs_available, cfg=Non
 
 
 def coverage_text(profile_coverage, fragility_coverage):
-    """(4, 5), (8, 10) -> '4/5·8/10' (texto da celula e do JSON)."""
+    """(4, 5), (9, 11) -> '4/5·9/11' (texto da celula e do JSON). Os denominadores vem
+    das proprias coberturas (`len(PROFILE_COMPONENTS)` / `len(FRAGILITY_FLAGS)`)."""
     return f"{profile_coverage[0]}/{profile_coverage[1]}·{fragility_coverage[0]}/{fragility_coverage[1]}"
 
 
 # --- insumos da fragilidade -------------------------------------------------------
+
+def months_of_supply(listings_same_grade, sales_per_month, min_sales_pm=SUPPLY_MIN_SALES_PM):
+    """MESES DE ESTOQUE = anuncios ativos da mesma carta+nota no run / vendas PSA 10 por
+    mes (1 casa). E o UNICO sinal de oferta x demanda real da coluna: o componente
+    "supply" do PERFIL mede idade e reimpressao, nao estoque parado.
+
+    n/d (None), nunca 0, quando falta qualquer um dos dois insumos ou quando a demanda e
+    fina demais para a divisao (`sales_per_month < min_sales_pm`, padrao 0,05/mes): com
+    denominador quase zero o quociente explode e diria "estoque altissimo" onde o que
+    existe e ausencia de medida. Zero ANUNCIO, esse sim, e um numero (0 meses)."""
+    listings = _int_or_none(listings_same_grade)
+    pm = _float_or_none(sales_per_month)
+    floor = _float_or_none(min_sales_pm)
+    floor = float(SUPPLY_MIN_SALES_PM) if floor is None else floor
+    if listings is None or listings < 0 or pm is None or pm < floor or pm <= 0:
+        return None
+    return round(listings / pm, 1)
+
+
+def stock_points(months, high=SUPPLY_MONTHS_HIGH, mid=SUPPLY_MONTHS_MID):
+    """Meses de estoque: >= `high` (24) -> 20 · >= `mid` (12) -> 10 · abaixo -> 0 ·
+    None -> None (n/d nunca vira 0, que aqui significaria "estoque saudavel")."""
+    m = _float_or_none(months)
+    if m is None:
+        return None
+    if m >= float(high):
+        return 20
+    if m >= float(mid):
+        return 10
+    return 0
+
 
 def _liquidity_from(n_sales, window_days):
     """Mesma regua de pc_sales.sales_reference: 1-2 vendas -> thin; >=3 so na janela de
@@ -609,7 +664,7 @@ def assess(card, listing, opp, fair, refs, listings_same_grade, cfg=None, *,
         "tendencia": trend_points(trend_12),
     }
 
-    # --- FRAGILIDADE DO DADO (10 flags) ---
+    # --- FRAGILIDADE DO DADO (11 flags) ---
     details = {}
     ref_liq, ref_n, ref_window, ref_source = _reference_inputs(opp)
     signals.update(ref_liquidity=ref_liq, ref_n_sales=ref_n, ref_window_days=ref_window,
@@ -629,23 +684,34 @@ def assess(card, listing, opp, fair, refs, listings_same_grade, cfg=None, *,
     if psa10_illiquid:
         details["psa10-iliquido"] = f"{psa10_pm:g}/mês"
 
-    # `asks = {}` no caminho da politica (decisao documentada do operador): n/d, nada e
-    # recomputado. Legado: flag existente de `scanner._annotate_ref_alignment`.
-    ask_ratio = None
+    # Referencia x mediana dos precos pedidos. A coluna NUNCA recomputa a mediana: le a
+    # que `scanner._annotate_median_ask` ja gravou -- e esse calculo agora roda nos DOIS
+    # caminhos. Quem continua so no LEGADO e o EFEITO NO VEREDITO (rebaixamento,
+    # `risk_flags`, `reasons`), que fica em `scanner._annotate_ref_alignment`.
+    median_ask = _float_or_none(getattr(opp, "median_ask", None))
+    fair_value = _float_or_none(getattr(opp, "fair_value", None))
+    has_median = bool(median_ask and median_ask > 0)
+    raw_ratio = (fair_value / median_ask) if (has_median and fair_value) else None
+    ask_ratio = None if raw_ratio is None else round(raw_ratio, 2)
     if strategy:
-        misaligned = None
-    else:
-        median_ask = _float_or_none(getattr(opp, "median_ask", None))
-        fair_value = _float_or_none(getattr(opp, "fair_value", None))
-        if median_ask and median_ask > 0 and fair_value:
-            ask_ratio = round(fair_value / median_ask, 2)
-        if any(f.startswith("REF DESALINHADA") for f in risk_flags):
-            misaligned = 20
-            details["ref-desalinhada"] = f"{ask_ratio:g}x" if ask_ratio else ""
-        elif median_ask and median_ask > 0:
-            misaligned = 0
-        else:
+        # Politica: nao existe `risk_flags` de referencia desalinhada (a politica nao
+        # rebaixa por isso), entao a flag sai da MESMA razao com os MESMOS cortes do
+        # legado (`scanner.REF_HIGH_RATIO` / `REF_LOW_RATIO`, espelhados acima). Sem
+        # mediana (menos de `REF_MIN_SAMPLES` anuncios limpos) segue n/d, nunca 0.
+        if raw_ratio is None:
             misaligned = None
+        elif raw_ratio > _REF_HIGH_RATIO or raw_ratio < _REF_LOW_RATIO:
+            misaligned = 20
+            details["ref-desalinhada"] = f"{ask_ratio:g}x"
+        else:
+            misaligned = 0
+    elif any(f.startswith("REF DESALINHADA") for f in risk_flags):
+        misaligned = 20
+        details["ref-desalinhada"] = f"{ask_ratio:g}x" if ask_ratio else ""
+    elif has_median:
+        misaligned = 0
+    else:
+        misaligned = None
     signals.update(ask_ratio=ask_ratio, ask_n=None)
 
     reprint = None if heavy is None else (15 if heavy else 0)
@@ -727,18 +793,28 @@ def assess(card, listing, opp, fair, refs, listings_same_grade, cfg=None, *,
     else:
         concentration = 0
 
+    # MESES DE ESTOQUE (unico sinal de oferta x demanda real da coluna): anuncios da
+    # mesma carta+nota no run divididos pelas vendas PSA 10 por mes. Sem os dois
+    # insumos -- ou com demanda abaixo de `supply_min_sales_pm` -- fica n/d, nunca 0.
+    months = months_of_supply(same_grade, psa10_pm, lt_cfg["supply_min_sales_pm"])
+    stock_high = stock_points(months, lt_cfg["supply_months_high"],
+                              lt_cfg["supply_months_mid"])
+    if stock_high:
+        details["estoque-alto"] = f"{months:g}m"
+
     fragility_points = {
         "ref-fragil": ref_fragil, "psa10-iliquido": psa10_illiquid,
         "ref-desalinhada": misaligned, "reprint-forte": reprint,
         "preco-absoluto-alto": price_high, "vendedor-fraco": weak_seller,
         "tiragem": printing_flag, "dispersao": dispersed, "ref-stale": stale,
-        "concentracao": concentration,
+        "concentracao": concentration, "estoque-alto": stock_high,
     }
     try:
         trust = round(scorer.trust_score(listing), 0)
     except (AttributeError, TypeError):
         trust = _float_or_none(getattr(opp, "trust_score", None))
-    signals.update(listings_same_grade=same_grade, trust_score=trust, printing_tokens=printing)
+    signals.update(listings_same_grade=same_grade, months_of_supply=months,
+                   trust_score=trust, printing_tokens=printing)
 
     # --- notas, classe, motivos ---
     profile, profile_cov = profile_score(profile_points, int(lt_cfg["min_profile_sources"]))

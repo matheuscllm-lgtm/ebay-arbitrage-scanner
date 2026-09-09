@@ -280,16 +280,39 @@ def _clean_ask_prices(card, listings):
     return asks
 
 
-def _annotate_ref_alignment(opp, asks):
-    """Compara a referencia com a mediana dos anuncios da mesma grade."""
+def _annotate_median_ask(opp, asks):
+    """SO A CONTA: grava `opp.median_ask` (mediana dos anuncios limpos da mesma grade) e
+    devolve a razao referencia/mediana -- ou None quando nao ha amostra suficiente
+    (< `REF_MIN_SAMPLES`), quando a mediana nao e positiva ou quando a linha ainda nao
+    tem referencia. `fair_value` E None no caminho da politica sempre que nao houve
+    vendas PSA comparaveis (`src/slab_strategy.py`: a Opportunity nasce com referencia
+    None e o veredito fica REVISAR): a mediana dos anuncios continua sendo um fato e e
+    gravada, mas razao sem referencia nao existe -- e n/d, nunca um numero inventado.
+
+    Roda nos DOIS caminhos (legado e `slab_strategy`) porque a coluna informativa
+    "Longo prazo" precisa desse insumo (`LP:ref-desalinhada`); sem ele a flag ficava em
+    n/d na politica e a classe travava em `LP2*`. NUNCA toca veredito, `risk_flags` nem
+    `reasons`: esse efeito e do LEGADO e mora em `_annotate_ref_alignment`."""
     prices = asks.get(opp.grade, [])
     if len(prices) < REF_MIN_SAMPLES:
-        return
+        return None
     median = statistics.median(prices)
     opp.median_ask = round(median, 2)
-    if median <= 0:
+    reference = opp.fair_value
+    if median <= 0 or reference is None or not math.isfinite(reference) or reference <= 0:
+        return None
+    return reference / median
+
+
+def _annotate_ref_alignment(opp, asks):
+    """Compara a referencia com a mediana dos anuncios da mesma grade -- e, SO NO
+    CAMINHO LEGADO, rebaixa o veredito e escreve `risk_flags`/`reasons`. A conta em si
+    fica em `_annotate_median_ask`, que roda tambem no caminho da politica."""
+    ratio = _annotate_median_ask(opp, asks)
+    if ratio is None:
         return
-    ratio = opp.fair_value / median
+    prices = asks.get(opp.grade, [])
+    median = statistics.median(prices)
     if ratio > REF_HIGH_RATIO:
         opp.risk_flags.append(
             f"REF DESALINHADA: referencia e {ratio:.1f}x a mediana de "
@@ -447,7 +470,10 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
         stats["skip_invalid_payload"] += max(0, int(getattr(ebay, "parse_dropped", 0) or 0) - invalid_before)
     stats["seen"] += len(unique_listings)
 
-    asks = {} if 'slab_strategy' in config else _clean_ask_prices(card, unique_listings)
+    # Precos pedidos por nota: calculados nos DOIS caminhos, porque alimentam a coluna
+    # informativa "Longo prazo" (`LP:ref-desalinhada`). O que continua exclusivo do
+    # LEGADO e o EFEITO NO VEREDITO (`_annotate_ref_alignment`).
+    asks = _clean_ask_prices(card, unique_listings)
     # Coluna "Longo prazo": contagem por nota feita ANTES do loop de avaliacao (1a
     # passagem); `assess` roda depois de cada veredito final (2a passagem).
     same_grade_counts = _count_listings_by_grade(
@@ -511,7 +537,9 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
             continue
         if opp is not None:
             if not opp.strategy:
-                _annotate_ref_alignment(opp, asks)
+                _annotate_ref_alignment(opp, asks)   # conta + efeito no veredito
+            else:
+                _annotate_median_ask(opp, asks)      # so a conta (insumo da coluna)
             # Ponto unico de plug da coluna informativa "Longo prazo": depois do
             # veredito final, nos dois caminhos; nao toca veredito, gate nem ranking.
             _annotate_longterm(card, opp, fair, refs, same_grade_counts, config,

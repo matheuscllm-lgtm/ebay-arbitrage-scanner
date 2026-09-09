@@ -303,11 +303,12 @@ LONGTERM_TIERS = ("LP1", "LP2", "LP3", "LP4")
 # Legenda unica dos dois geradores (rodape da entrega). Termos: PERFIL, FRAGILIDADE DO
 # DADO, classe LP1-LP4, asterisco, cobertura -- e o que a coluna NAO e.
 LONGTERM_LEGEND = (
-    "_Longo prazo (coluna informativa): `LP2 64/35 (4/5·8/10)` = classe · PERFIL/FRAGILIDADE · "
+    "_Longo prazo (coluna informativa): `LP2 64/35 (4/5·9/11)` = classe · PERFIL/FRAGILIDADE · "
     "coberturas. PERFIL = características observadas da carta (personagem, raridade, tempo fora "
     "de impressão, faixa da coluna PSA 10, tendência real das vendas); FRAGILIDADE DO DADO = "
     "fragilidade da referência, da liquidez e da identidade da carta (poucas vendas, PSA 10 pouco "
-    "vendida, referência desalinhada, reprint, tiragem, dispersão, vendedor, concentração); "
+    "vendida, referência desalinhada, reprint, tiragem, dispersão, vendedor, concentração e meses "
+    "de estoque = anúncios ativos da nota ÷ vendas PSA 10 por mês); "
     "classe LP1-LP4 = qualidade/completude do perfil (forte / médio / fraco / frágil), não é "
     "oportunidade nem recomendação; `*` = classe limitada por dado ausente (seria LP1, mas um "
     "insumo-chave estava em n/d); cobertura `4/5` = 4 dos 5 insumos existiam (ausente = n/d, "
@@ -326,16 +327,16 @@ def _score_text(value):
 
 
 def longterm_cell(row):
-    """Celula `Longo prazo`: 'LP2 64/35 (4/5·8/10)' = classe · PERFIL/FRAGILIDADE ·
+    """Celula `Longo prazo`: 'LP2 64/35 (4/5·9/11)' = classe · PERFIL/FRAGILIDADE ·
     (cobertura do perfil · cobertura da fragilidade). Sem URL: a celula nao carrega link.
 
     Sem classe -> 'n/d', nunca inventada. Sao DOIS casos, e os dois saem 'n/d':
     - row sem o campo (JSON anterior a coluna, coluna desligada, erro interno) -> 'n/d';
     - classe calculada como a string 'n/d' (PERFIL ou FRAGILIDADE abaixo do minimo de
-      fontes) -> 'n/d (2/5·8/10)': a cobertura fica, porque explica POR QUE a classe
+      fontes) -> 'n/d (2/5·9/11)': a cobertura fica, porque explica POR QUE a classe
       esta indisponivel, mas as notas somem junto com a classe. Antes esse segundo caso
       escapava do guard (a string 'n/d' e verdadeira para o `if`) e saia grudado, tipo
-      'n/d n/d/40 (2/5·8/10)' -- ilegivel (review do PR-C 2026-09-09)."""
+      'n/d n/d/40 (2/5·9/11)' -- ilegivel (review do PR-C 2026-09-09)."""
     tier = str(row.get("longterm_tier") or "").strip()
     coverage = str(row.get("longterm_coverage") or "").strip()
     if not tier or tier == "n/d":
@@ -421,7 +422,7 @@ def _cells_for(row, rank):
     # `LP:<nome>: n/d` podem ser 15 numa linha so e empurravam para longe o sinal de
     # risco real (FRAUDE PROVAVEL, REF DESALINHADA...) numa tabela que e colada verbatim
     # no chat. Nada se perde: as ausencias seguem inteiras no JSON (`longterm_reasons`)
-    # e resumidas na cobertura `k/5·k/10` da propria coluna (review do PR-C 2026-09-09).
+    # e resumidas na cobertura `k/5·k/11` da propria coluna (review do PR-C 2026-09-09).
     lp_reasons = [str(r) for r in (row.get("longterm_reasons") or [])
                   if r and not str(r).endswith(": n/d")]
     flags_txt = escape_md("; ".join(flags + lp_reasons)) if (flags or lp_reasons) else "-"

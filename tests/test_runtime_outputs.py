@@ -41,3 +41,37 @@ def test_missing_resale_is_not_reported_as_missing_fee_configuration():
     assert 'armazenamento-sem-base-de-revenda' in opp.reasons
     assert 'custos-COMC-indefinidos' not in opp.reasons
     assert opp.verdict == 'REVISAR'
+
+
+def test_gate_keys_header_names_the_threshold_that_actually_decides():
+    """Cabecalho da entrega da politica: no `gate_mode: gross_margin` quem decide e
+    `min_gross_margin_percent`. Antes nao havia ramo para esse modo -- o cabecalho caia
+    no `else` e anunciava `min_profit_usd` e `min_discount_percent` (chaves dos modos
+    LEGADOS, sem efeito nenhum) como se fossem a regra em vigor. As duas continuam
+    impressas, porque estao no config e o operador as ve la, mas ROTULADAS como sem
+    efeito neste modo -- o que decide vem primeiro e sozinho."""
+    cfg = {'min_discount_percent': 30}
+    eco = {'gate_mode': 'gross_margin', 'min_gross_margin_percent': 43,
+           'min_profit_usd': 40, 'min_discount_percent': 30}
+    items = slab_report._gate_keys(cfg, eco)
+    text = ' · '.join(items)
+    assert items[0] == '`gate_mode: gross_margin`'
+    assert items[1] == '`min_gross_margin_percent: 43`'
+    assert 'sem efeito neste modo' in text
+    assert text.index('min_gross_margin_percent') < text.index('sem efeito neste modo')
+    assert text.index('sem efeito neste modo') < text.index('min_profit_usd')
+    # chave ausente no config sai n/d, nunca um numero inventado
+    assert '`min_gross_margin_percent: n/d`' in ' · '.join(
+        slab_report._gate_keys(cfg, {'gate_mode': 'gross_margin'}))
+    # os modos legados seguem exatamente como estavam
+    legacy = ' · '.join(slab_report._gate_keys(
+        cfg, {'gate_mode': 'profit_or_discount', 'min_profit_usd': 40,
+              'min_discount_percent': 30}))
+    assert legacy == '`gate_mode: profit_or_discount` · `min_profit_usd: 40` · `min_discount_percent: 30`'
+    assert 'sem efeito neste modo' not in legacy
+    minima = ' · '.join(slab_report._gate_keys(
+        cfg, {'gate_mode': 'all_minima', 'min_profit_usd': 40,
+              'min_net_margin_percent': 5, 'min_net_roi_percent': 6}))
+    assert minima == ('`gate_mode: all_minima` · `min_profit_usd: 40` · '
+                      '`min_net_margin_percent: 5` · `min_net_roi_percent: 6` · '
+                      '`min_discount_percent: 30` (topo do config)')
