@@ -19,6 +19,7 @@ falha de autenticacao no eBay ou erros seguidos da API ABORTAM o run
 """
 import dataclasses
 import logging
+import math
 import re
 import statistics
 from collections import Counter
@@ -159,8 +160,11 @@ class CardRefs:
     def slab(self, grade, variants=frozenset()):
         key = ("slab", grade.key, frozenset(variants))
         if key not in self._memo:
+            # `card=` = guarda de identidade: venda cujo titulo nao e desta carta
+            # (outro nome/numero) nunca entra na mediana. So o caminho legado
+            # passa por aqui; `slab_strategy` monta a propria cesta.
             comps = pc_sales.comparable_sales(self._sales, grade.grader, grade.value,
-                                              grade.qualifier, variants)
+                                              grade.qualifier, variants, card=self.card)
             ref = pc_sales.sales_reference(comps, self.url, grade.label, allow_thin=True)
             column_key = grading.pc_price_key(grade)
             column = self._columns.get(column_key) if column_key else None
@@ -248,7 +252,12 @@ def _clean_ask_prices(card, listings):
         if grade == "RAW" and not title_parser.is_nm_acceptable(
                 listing.title, listing.condition):
             continue
-        asks.setdefault(grade, []).append(listing.price)
+        # Preco ausente (None), NaN/infinito ou <= 0 nao entra na mediana
+        # (`statistics.median` com None derrubava a carta inteira -- review #32).
+        price = listing.price
+        if price is None or not math.isfinite(price) or price <= 0:
+            continue
+        asks.setdefault(grade, []).append(price)
     return asks
 
 
@@ -279,6 +288,33 @@ def _annotate_ref_alignment(opp, asks):
 
 # --- scan --------------------------------------------------------------------------
 
+_DETAIL_ASPECTS = ('Language', 'Set', 'Card Number', 'Professional Grader', 'Grade',
+                   'Certification Number')
+
+
+def _hydrate_from_item(listing, item, detail_url):
+    """Anuncio da busca + payload de detalhe (get_item) -> anuncio atualizado.
+    So os campos presentes no payload sao trocados (nunca se adivinha o resto).
+    Payload ilegivel levanta ValueError/TypeError/... -- o chamador trata."""
+    aspects = {}
+    for aspect in item.get('localizedAspects', []):
+        name = aspect.get('name')
+        if name in _DETAIL_ASPECTS:
+            aspects.setdefault(name, []).append(aspect.get('value', ''))
+    changes = {'item_aspects': aspects, 'details_url': detail_url}
+    if 'price' in item:
+        from .ebay_api import parse_search_payload
+        fresh = parse_search_payload({'itemSummaries': [item]})[0]
+        changes.update(price=fresh.price, currency=fresh.currency)
+    if 'title' in item:
+        changes['title'] = item['title']
+    if 'condition' in item:
+        changes['condition'] = item['condition']
+    if 'qualifiedPrograms' in item:
+        changes['authenticity_guarantee'] = 'AUTHENTICITY_GUARANTEE' in item['qualifiedPrograms']
+    return dataclasses.replace(listing, **changes)
+
+
 def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
               refs=None, fair=None):
     """Escaneia uma carta da watchlist. Retorna (fair_value, [Opportunity]).
@@ -294,6 +330,12 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
 
     calls_before = int(getattr(ebay, "calls", 0) or 0)
     dups_before = int(getattr(ebay, "dedup_dropped", 0) or 0)
+    # Funil da coleta (contagem de por que cada anuncio foi descartado):
+    # `fetched` = itens recebidos da API antes de qualquer filtro;
+    # `parse_dropped` = itens cujo payload (dados recebidos) nao deu para ler.
+    fetched_before = int(getattr(ebay, "fetched", 0) or 0)
+    invalid_before = int(getattr(ebay, "parse_dropped", 0) or 0)
+    scanner_dups_before = stats["dedup_dropped"]
     seen_ids = set()
     unique_listings = []
     base_query = card.default_query()
@@ -324,17 +366,34 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                 seen_ids.add(listing.item_id)
             seen_ids.add(fingerprint)
             unique_listings.append(listing)
+    except Exception:
+        # A busca estourou no meio (pagina/consulta seguinte falhou): os anuncios
+        # das paginas ja concluidas sao descartados junto com a carta. Eles contam
+        # no funil como `skip_fetch_error` (nada some em silencio) e o erro sobe.
+        fetched = int(getattr(ebay, "fetched", 0) or 0) - fetched_before
+        duplicates = (int(getattr(ebay, "dedup_dropped", 0) or 0) - dups_before
+                      + stats["dedup_dropped"] - scanner_dups_before)
+        invalid = int(getattr(ebay, "parse_dropped", 0) or 0) - invalid_before
+        lost = max(len(unique_listings), fetched - duplicates - invalid)
+        stats["seen"] += lost
+        stats["skip_fetch_error"] += lost
+        raise
     finally:
         # Cota e duplicados contam mesmo quando a busca estoura no meio.
         stats["ebay_calls"] += max(0, int(getattr(ebay, "calls", 0) or 0) - calls_before)
         stats["dedup_dropped"] += max(0, int(getattr(ebay, "dedup_dropped", 0) or 0) - dups_before)
+        stats["fetched"] += max(0, int(getattr(ebay, "fetched", 0) or 0) - fetched_before)
+        stats["skip_invalid_payload"] += max(0, int(getattr(ebay, "parse_dropped", 0) or 0) - invalid_before)
     stats["seen"] += len(unique_listings)
 
     asks = {} if 'slab_strategy' in config else _clean_ask_prices(card, unique_listings)
 
     opportunities = []
+    # Linhas por veredito desta carta: so entram em `stats["rows_*"]` quando a
+    # carta termina -- linha que se perde numa interrupcao nao e "linha".
+    row_counts = Counter()
     details_used = 0
-    for listing in unique_listings:
+    for index, listing in enumerate(unique_listings):
         if 'slab_strategy' in config and callable(getattr(ebay, 'get_item', None)):
             from .slab_strategy import identity_matches, language, risk_title
             parsed_grade = grading.grade_from_title(listing.title)
@@ -346,41 +405,51 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                 before = ebay.calls
                 try:
                     item, detail_url = ebay.get_item(listing.item_id)
-                    aspects = {}
-                    for aspect in item.get('localizedAspects', []):
-                        name = aspect.get('name')
-                        if name in ('Language', 'Set', 'Card Number', 'Professional Grader', 'Grade', 'Certification Number'):
-                            aspects.setdefault(name, []).append(aspect.get('value', ''))
-                    changes = {'item_aspects': aspects, 'details_url': detail_url}
-                    # Refresh only provided fields, preserving unknowns instead of guessing.
-                    if 'price' in item:
-                        from .ebay_api import parse_search_payload
-                        fresh = parse_search_payload({'itemSummaries': [item]})[0]
-                        changes.update(price=fresh.price, currency=fresh.currency)
-                    if 'title' in item:
-                        changes['title'] = item['title']
-                    if 'condition' in item:
-                        changes['condition'] = item['condition']
-                    if 'qualifiedPrograms' in item:
-                        changes['authenticity_guarantee'] = 'AUTHENTICITY_GUARANTEE' in item['qualifiedPrograms']
-                    listing = dataclasses.replace(listing, **changes)
-                    stats['item_details_fetched'] += 1
                 except (EbayAuthError, EbayBudgetExceeded):
+                    # Cota/autenticacao estourou NO MEIO da carta: o erro sobe (run
+                    # parcial) e nada some em silencio -- as linhas ja avaliadas
+                    # que nao chegam ao artefato contam em `rows_lost_abort`; os
+                    # anuncios ainda nao avaliados (este inclusive) em
+                    # `skip_details_abort`. `seen` == soma dos baldes (review #32).
+                    stats["rows_lost_abort"] += len(opportunities)
+                    stats["skip_details_abort"] += len(unique_listings) - index
                     raise
                 except EbayApiError:
                     listing = dataclasses.replace(listing, details_error='detalhes-do-anuncio-indisponiveis')
                     stats['item_details_error'] += 1
+                else:
+                    try:
+                        listing = _hydrate_from_item(listing, item, detail_url)
+                        stats['item_details_fetched'] += 1
+                    except (ValueError, TypeError, AttributeError, OverflowError,
+                            IndexError, KeyError):
+                        # Payload de detalhe ilegivel (ex.: `price` sem valor): o
+                        # anuncio segue com os dados da busca, marcado para
+                        # REVISAR, e a carta NAO cai inteira (review do PR #32 --
+                        # mesmo bug de `skip_invalid_payload`, no outro parse).
+                        listing = dataclasses.replace(listing, details_error='detalhes-do-anuncio-ilegiveis')
+                        stats['item_details_error'] += 1
                 finally:
                     stats['ebay_calls'] += max(0, ebay.calls - before)
-        opp = scorer.evaluate(card, listing, fair, config, tcg_ref=tcg_ref,
-                              refs=refs, stats=stats)
+        try:
+            # Vale para os DOIS caminhos (legado e `slab_strategy`): erro interno
+            # ao avaliar UM anuncio nao derruba a carta inteira -- conta no funil
+            # (`skip_evaluation_error`), e logado e o run fica marcado parcial.
+            opp = scorer.evaluate(card, listing, fair, config, tcg_ref=tcg_ref,
+                                  refs=refs, stats=stats)
+        except Exception as exc:  # noqa: BLE001 -- contado e logado, nunca engolido
+            stats["skip_evaluation_error"] += 1
+            log(f"  ERRO ao avaliar anuncio {listing.item_id or '(sem id)'}: "
+                f"{type(exc).__name__}: {exc}")
+            continue
         if opp is not None:
             if not opp.strategy:
                 _annotate_ref_alignment(opp, asks)
             # Veredito FINAL (apos rebaixamento por referencia desalinhada) e o
             # que conta no funil -- review Codex 2026-09-03.
-            stats[scorer.VERDICT_STAT.get(opp.verdict, "rows_review")] += 1
+            row_counts[scorer.VERDICT_STAT.get(opp.verdict, "rows_review")] += 1
             opportunities.append(opp)
+    stats.update(row_counts)
 
     log(f"  {card.name} #{card.number}: {len(unique_listings)} anuncios vistos, "
         f"{len(opportunities)} candidatos avaliados"
@@ -440,11 +509,15 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
         except EbayBudgetExceeded as e:
             log(f'{e} -- execução parcial; cartas restantes não consultadas')
             stats['ebay_budget_exhausted'] = 1
+            # `stopped_early` = parada ANTECIPADA (cartas restantes nao varridas),
+            # distinta de "todas visitadas com erros contados" (so `aborted`).
+            stats['stopped_early'] = 1
             stats['aborted'] = 1
             aborted = True
             break
         except EbayAuthError as e:
             log(f"ERRO de autenticacao eBay: {e} -- RUN ABORTADO")
+            stats["stopped_early"] = 1
             stats["aborted"] = 1
             aborted = True
             break
@@ -455,6 +528,7 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
             if ebay_errors_in_a_row >= EBAY_MAX_CONSECUTIVE_ERRORS:
                 log(f"ERRO: {ebay_errors_in_a_row} falhas seguidas da Browse API -- "
                     "RUN ABORTADO (cartas restantes nao varridas)")
+                stats["stopped_early"] = 1
                 stats["aborted"] = 1
                 aborted = True
                 break
@@ -462,7 +536,10 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
             stats["card_error"] += 1
             log(f"  ERRO em {card.name} #{card.number}: {type(e).__name__}: {e} "
                 "-- carta pulada (contada no funil)")
-    if any(stats[k] for k in ('pc_error', 'pc_breaker', 'ebay_error', 'card_error', 'item_details_error')):
+    # `skip_evaluation_error` entra na mesma regra: cobertura parcial nunca passa
+    # por scan completo (antes o mesmo erro virava `card_error`, ja listado aqui).
+    if any(stats[k] for k in ('pc_error', 'pc_breaker', 'ebay_error', 'card_error',
+                              'item_details_error', 'skip_evaluation_error')):
         aborted = True
         stats['aborted'] = 1
     return fair_values, all_opportunities, pricing_only, stats, aborted

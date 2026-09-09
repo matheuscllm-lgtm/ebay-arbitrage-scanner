@@ -50,6 +50,7 @@ import datetime as _dt
 import gzip
 import html as html_mod
 import logging
+import math
 import os
 import re
 import time
@@ -58,6 +59,9 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+
+from . import title_parser
+from .models import WatchCard
 
 BASE_URL = "https://www.pricecharting.com"
 HEADERS = {
@@ -380,20 +384,31 @@ def _grade_mentions(title: str) -> set[tuple[str, float]]:
 
 
 def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: str = "",
-                     variants: frozenset[str] = frozenset()) -> list[dict]:
+                     variants: frozenset[str] = frozenset(), *,
+                     card: WatchCard | None = None) -> list[dict]:
     """Só vendas cujo título nomeia a MESMA certificadora e nota — e SÓ ela —, em inglês,
     com preço > 0, na MESMA subcategoria e com o MESMO conjunto de tokens de variante.
     'PSA 9' não casa 'PSA 9.5' nem 'BGS 9'; CGC 10 exige 'Pristine' logo após a nota
     quando qualifier=PRISTINE (e a ausência dele para GEM); BGS 10 exige "black" no
     título quando qualifier=BLACK (e a ausência dele para o BGS 10 comum/dourado);
-    "1st Edition" no título não casa listagem sem token, e vice-versa."""
+    "1st Edition" no título não casa listagem sem token, e vice-versa.
+    `card` = guarda de identidade (venda de OUTRA carta nunca entra) e e obrigatorio
+    nos caminhos de referencia. O matcher de nota da cesta (`_grade_mentions` +
+    `_CGC_PRISTINE_RE`) e o de antes do PR #32: nesta rodada a cesta so muda por
+    identidade; unificar com `grading.grade_from_title` e assunto do PR-B."""
     grader = grader.upper()
     wanted = {(grader, float(value))}
     variants = frozenset(variants)
     out = []
     for s in sales:
         t = s["title"]
-        if s.get("price", 0) <= 0 or _LANG_NOISE.search(t) or _NOISE_SALE_RE.search(t):
+        if (not math.isfinite(s.get("price", 0)) or s.get("price", 0) <= 0
+                or _LANG_NOISE.search(t) or _NOISE_SALE_RE.search(t)):
+            continue
+        # Guarda de identidade: a venda esta na pagina da PROPRIA carta, entao so
+        # sai por CONTRADICAO (outro nome/prefixo/sufixo/numero), nunca por falta
+        # de numero no titulo (review do PR #32).
+        if card is not None and title_parser.sale_contradicts_card(card, t):
             continue
         if _grade_mentions(t) != wanted:
             continue  # nenhuma menção, outra nota, ou mais de uma nota citada
@@ -754,7 +769,9 @@ def graded_reference(card_name, number, set_label, grade, cache_dir: str | None 
     if found is None:
         return None
     url, page = found
-    comps = comparable_sales(parse_sales(page), grade.grader, grade.value, grade.qualifier, variants)
+    card = WatchCard(clean_card_name(card_name), set_label, str(number), "EN", url)
+    comps = comparable_sales(parse_sales(page), grade.grader, grade.value,
+                             grade.qualifier, variants, card=card)
     ref = sales_reference(comps, url, grade.label, allow_thin=True)
     if ref is None:
         log.info("PC: %s #%s sem vendas comparáveis de %s%s em %d dias (%d fora da janela).",

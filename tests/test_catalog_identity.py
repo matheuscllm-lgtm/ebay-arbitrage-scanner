@@ -83,3 +83,35 @@ def test_small_multi_card_offers_and_sales_never_approve(prefix):
         sale['title'] = title
     o = evaluate(CARD, listing(price=50), config=policy_config(), refs=refs(pool))
     assert o.strategy['psa_evidence']['n_used'] == 0
+
+
+@pytest.mark.parametrize('number,title,expected', [
+    ('H02', 'Arcanine H02 Aquapolis English PSA 9', True),
+    ('H02', 'Arcanine H2 Aquapolis English PSA 9', True),
+    ('H02', 'Arcanine #H02 Aquapolis English PSA 9', True),
+    ('H02', 'Arcanine H12 Aquapolis English PSA 9', False),
+    ('SV049', 'Charizard GX SV049 Hidden Fates English PSA 10', True),
+    ('SV049', 'Charizard GX SV49/SV94 Hidden Fates English PSA 10', True),
+    ('SV049', 'Charizard GX SV050 Hidden Fates English PSA 10', False),
+])
+def test_alphanumeric_number_with_leading_zero_in_policy_identity(number, title, expected):
+    """Politica (`identity_matches`) com numero alfanumerico e zero a esquerda:
+    o titulo pode trazer "H02" ou "H2" -- ambos identificam a mesma carta."""
+    name, set_name = ('Arcanine', 'Aquapolis') if number.startswith('H') else ('Charizard GX', 'Hidden Fates')
+    card = replace(CARD, name=name, set_name=set_name, number=number)
+    assert identity_matches(card, title) is expected
+
+
+@pytest.mark.parametrize('number,title,expected', [
+    ('4', 'Charizard #4 Base Set English PSA 9 pop 12', True),
+    ('12', 'Charizard #4 Base Set English PSA 9 pop 12', False),
+    ('4', 'Charizard Base Set English PSA 9 cert 4', False),
+    ('4', 'Charizard #4 Base Set English PSA 9 cert 12345678', True),
+])
+def test_policy_identity_ignores_pop_and_cert_numbers(number, title, expected):
+    """O strip "pop/cert/qty + numero" de `card_matches_title` atravessa para a
+    politica (`identity_matches` chama a mesma funcao com nome vazio): "pop 12"
+    nunca identifica a carta 12, e "cert 4" nunca identifica a carta 4.
+    Declarado no CHANGELOG do PR #32 como mudanca nos DOIS caminhos."""
+    card = replace(CARD, number=number)
+    assert identity_matches(card, title) is expected

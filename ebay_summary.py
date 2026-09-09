@@ -195,7 +195,11 @@ def _header(meta, rows, by_verdict, sensitivity):
     if funnel:
         lines.append("- Funil: " + " · ".join(funnel_lines(funnel)))
     if meta.get("aborted"):
-        lines.append("- ⚠️ RUN ABORTADO antes do fim: as cartas restantes NÃO foram varridas.")
+        if funnel.get("stopped_early"):
+            lines.append("- ⚠️ RUN ABORTADO antes do fim: as cartas restantes NÃO foram varridas.")
+        else:
+            lines.append("- ⚠️ RUN ABORTADO (cobertura parcial): todas as cartas foram visitadas, "
+                         "mas houve erros contados no funil (carta, anúncio ou fonte).")
     if sensitivity:
         operational = max(sensitivity)
         lines.append(f"- Modo diagnóstico: scan com desconto mínimo {min_discount}% · "

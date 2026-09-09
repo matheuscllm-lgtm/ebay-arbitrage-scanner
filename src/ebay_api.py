@@ -159,6 +159,10 @@ class EbayClient:
         self.calls = 0
         self.max_calls = 500
         self.dedup_dropped = 0  # itens repetidos entre paginas (vao pro funil)
+        # Funil da coleta: itens recebidos da API (antes de qualquer filtro) e
+        # itens cujo payload (dados recebidos) nao deu para interpretar.
+        self.fetched = 0
+        self.parse_dropped = 0
         # `total` reportado pela API na ultima busca (None antes da 1a).
         self.last_total = None
 
@@ -306,7 +310,16 @@ class EbayClient:
             total = payload.get("total")
             self.last_total = int(total) if total is not None else None
             items = payload.get("itemSummaries", []) or []
-            for listing in parse_search_payload(payload):
+            self.fetched += len(items)
+            for item in items:
+                try:
+                    listing = parse_search_payload({"itemSummaries": [item]})[0]
+                except (ValueError, TypeError, AttributeError, OverflowError,
+                        IndexError, KeyError):
+                    # Um item com estrutura inesperada nao derruba a pagina
+                    # inteira: conta (`parse_dropped` -> funil) e segue.
+                    self.parse_dropped += 1
+                    continue
                 # item_id vazio nao identifica nada -> nao entra no set.
                 if listing.item_id:
                     if listing.item_id in seen_ids:

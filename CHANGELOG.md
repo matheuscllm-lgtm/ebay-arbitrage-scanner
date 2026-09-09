@@ -1,3 +1,105 @@
+## 2026-09-09 — porte do diff local pré-#29 sobre #31 (PR-A `fix/port-local-diff`)
+
+- Resgate: o trabalho local não commitado (13 arquivos + `tests/test_slabs_regressions.py`)
+  foi congelado na branch `wip/local-slabs-diff-2026-09-04` (cópia de segurança; não
+  mergear) e portado aqui por hunk (trecho de diff), nunca por arquivo inteiro.
+- Identidade da venda usada na referência (caminho legado): `pc_sales.comparable_sales(...,
+  card=)` descarta, antes da mediana (valor do meio), venda cujo título CONTRADIZ a
+  carta (`title_parser.sale_contradicts_card`: outro nome, prefixo/sufixo que muda a
+  carta — "Dark Charizard", "Charizard ex" —, palavra de exclusão, fração ou "#N" com
+  outro número). A AUSÊNCIA de número no título não exclui (a venda está na página da
+  própria carta): no fixture real da Charizard 4/102 as cestas PSA 9 / PSA 10 / BGS 9.5 /
+  CGC 9 ficam iguais às de antes e só as 2 vendas de outra carta (#39/#40 de 165) saem.
+  `CardRefs.slab` e `graded_reference` passam a carta; preço não finito (NaN/infinito)
+  também fica fora. O matcher de NOTA da cesta (`_grade_mentions` + `_CGC_PRISTINE_RE`)
+  é o de antes: nesta rodada a cesta só muda por identidade (review do PR #32 — a troca
+  pelo parser dos anúncios movia referências no fixture e foi revertida; unificar os dois
+  matchers, com a evidência, é decisão do operador para o PR-B). Raw LP (`lp_sales`,
+  `CardRefs.lp`) NÃO recebe guarda de identidade nem checagem de preço finito — caminho
+  morto (`--include-raw` rejeitado), declarado aqui e não coberto.
+  **Pergunta ao operador:** manter "só contradição" (cesta igual à de antes) ou exigir o
+  número no título da venda, como a política já faz (fail-closed, cesta menor)?
+  **Ressalva:** a guarda cobre SÓ o caminho legado — `src/slab_strategy.py` monta a
+  própria cesta de vendas e não chama `comparable_sales` (0 ocorrências); replicar a
+  guarda lá é pergunta ao operador (backlog), nada foi tocado nesse módulo.
+- Parser de nota compartilhado (`grading.grade_from_title`, usado nos DOIS caminhos):
+  CGC "Pristine" ANTES da sigla ("Pristine CGC 10") é CGC 10 PRISTINE. Efeito na
+  política também: o anúncio "Pristine CGC 10" deixa de ser classificado CGC 10 GEM, e
+  em `slab_strategy.reference_sales` uma venda assim sai da cesta de revenda CGC 10 GEM
+  e entra na PRISTINE (teste `test_policy_resale_basket_reads_pristine_before_the_grader`
+  fixa isso; o módulo `slab_strategy` não foi tocado).
+- Identidade do anúncio (`title_parser.card_matches_title`, função usada nos dois
+  caminhos): nome como palavra inteira ("Mew" não casa "Mewtwo"); prefixo/sufixo que
+  mudam a carta ("Dark Charizard", "Charizard ex") não casam; número completo com
+  denominador quando a watchlist o traz. A chamada com nome vazio (é como
+  `slab_strategy.identity_matches` a usa) confere só número e exclusões, mas a leitura
+  do NÚMERO mudou nos DOIS caminhos (declarado após o review do PR #32): "pop/cert/qty +
+  número" nunca conta como número da carta ("pop 12" não identifica a carta 12 —
+  `identity_matches` também); código de série + número ("SM12", "SWSH 45") é o set, não
+  a carta, exceto quando vem uma fração logo depois ("SM 150/147") ou quando o número
+  esperado tem esse prefixo (promo "SM211"); número alfanumérico com zero à esquerda
+  casa com e sem o zero ("H02" = "H2", "TG03" = "TG3", "SV049" = "SV49" — regressão do
+  review: 32 cartas da watchlist deixavam de casar).
+- Funil da coleta nos DOIS caminhos (contagem de por que cada anúncio foi descartado):
+  `fetched` (recebidos da API antes de qualquer filtro), `skip_invalid_payload` (item com
+  estrutura ilegível), `skip_fetch_error` (páginas já concluídas descartadas quando a busca
+  estoura no meio) e `skip_evaluation_error` (erro interno ao avaliar UM anúncio, que não
+  derruba a carta inteira e marca o run como parcial, como já fazia `card_error`).
+  `invalid_reference` (referência ausente/NaN/infinita/≤0) e `below_discount` só existem
+  no caminho legado; a política (`slab_strategy`) rejeita com motivos próprios.
+- Fase de detalhes da política (`get_item`, review do PR #32): payload de detalhe
+  ilegível não derruba mais a carta — o anúncio segue com os dados da busca, marcado
+  `detalhes-do-anuncio-ilegiveis` (REVISAR) e contado em `item_details_error`. Cota ou
+  autenticação estourando NO MEIO da carta: as linhas já avaliadas que se perdem contam em
+  `rows_lost_abort` (não em `rows_*`, que só contam linhas que chegam ao artefato) e os
+  anúncios não avaliados em `skip_details_abort` — `seen` volta a ser a soma dos baldes.
+- Preço do anúncio AUSENTE (`None`) conta em `skip_no_price` ("sem preço legível");
+  NaN/infinito/≤0 contam em `skip_price_floor` (caminho legado). A mediana dos preços
+  pedidos (`_clean_ask_prices`, legado) ignora esses anúncios em vez de derrubar a carta.
+  `report.sort_key` tolera rank infinito (OverflowError = número grande demais); rótulo do
+  funil `skip_raw` diz "escopo exclusivo de slabs" (o texto antigo sugeria `--include-raw`,
+  que a base atual rejeita).
+- Run parcial com a CAUSA na mensagem: `stopped_early` marca parada antecipada
+  (autenticação, cota, erros seguidos da API — "cartas restantes NÃO foram varridas");
+  sem ele, o console e o cabeçalho do `ebay_summary` dizem "todas as cartas foram
+  visitadas, mas houve erros contados no funil". A entrega da política
+  (`slab_report.render`) segue imprimindo o funil como JSON cru — rótulos humanos novos
+  não chegam lá (fora desta rodada).
+- Gate em Decimal (aritmética exata) **não portado**: o gate vigente compara o Desconto%
+  já arredondado a 2 casas (`report.compute_metrics`); com centavos reais um caso de
+  fronteira mudaria de lado (29,996% é admitido hoje como 30,00% e seria rejeitado em
+  aritmética exata). Freio (f)7 do prompt: pergunta ao operador; teste de fronteira em
+  `tests/test_slabs_regressions.py`. Limiar 30/30 e bloco `slab_strategy` do config
+  intactos (diff vazio).
+- Bloco "somente slabs" do diff local descartado (`scan_config`, `parse_grades_arg`
+  rejeitando RAW, `GRADED_CONDITION_ID`, README/config): já coberto pela política
+  2026-09-05.4 com outro mecanismo (`slab_strategy`, `conditionIds:{2750}`, `--include-raw`
+  rejeitado no CLI) — ver `docs/EBAY_PSA.md` e a seção 2026-09-05 abaixo. Das 17 funções
+  de teste do arquivo local, 3 (bloco 1) e 2 (Decimal) não foram portadas; 12
+  sobreviveram adaptadas à base #31 (preço ilegível vira `price=None`, não descarte na
+  coleta) + 4 testes novos (nome vazio, preço `None`, fronteira do gate, run parcial).
+- Correções órfãs do PR #27 (sem entrada própria até aqui): reverse holo sem market do
+  subtipo conta como `raw_variant_no_reference`; jumbo/metal/oversize saem do funil como
+  outro produto; em "11/25" o denominador nunca é lido como número da carta.
+- PR #26 já contido na `main` (cherry-pick vazio; patch aplica ao contrário limpo) e
+  PR #28 superado por #29 (regressão do catálogo já na `main`): comentados com
+  evidência, sem fechar (decisão do operador). Cópia do `/auto` do eBay já em sincronia.
+- 735 testes locais (682 no PR original + 53 da rodada de review). Em
+  `tests/test_slabs_regressions.py`, 9 testes nascem verdes contra a `main` (guarda de
+  comportamento vigente, não prova de correção): `test_card_identity_with_empty_name_...`,
+  `test_pricecharting_breaker_opens_on_fifth_consecutive_failure`,
+  `test_discount_gate_boundary_at_30_percent` ×3,
+  `test_discount_gate_compares_rounded_percent_today` ×2,
+  `test_invalid_listing_price_never_emits_row[-1|0]`; idem
+  `test_policy_resale_basket_reads_pristine_before_the_grader` (fixa o efeito do hunk
+  Pristine na política).
+- **Pergunta ao operador (política, sem código):** `slab_strategy.reference_sales` lê a
+  nota da venda só por `grading.grade_from_title`; "Black Label" ANTES da sigla
+  ("Charizard Black Label BGS 10") vira BGS 10 comum e entra na cesta de revenda do BGS 10
+  regular (o legado cobre via `_is_black_label_sale`). Opções: (a) reconhecer "black label"
+  antes da sigla em `grading._grade_from_match` (mesmo desenho do hunk Pristine; efeito
+  declarado nos dois caminhos + teste) ou (b) backlog. Conservador = (b).
+
 ## 2026-09-05 — revisão de execução, política 2026-09-05.4
 
 - Corrigida identidade de coleções com códigos de catálogo e grafias com apóstrofos/LV.X.

@@ -36,6 +36,8 @@ Vereditos:
 `stats` (Counter opcional) recebe o MOTIVO de cada anuncio que NAO vira linha
 (funil da entrega): nada some em silencio.
 """
+import math
+
 from . import grading, pc_sales, title_parser
 from .models import Opportunity
 from .report import compute_metrics
@@ -194,7 +196,13 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
 
     if cfg.get("fixed_price_only", True) and listing.buying_option != "FIXED_PRICE":
         return _skip(stats, "skip_not_fixed_price")
-    if listing.price <= 0 or listing.price < float(cfg["min_price_usd"]):
+    # Preco AUSENTE (payload sem valor legivel -> None) nunca vira linha e conta
+    # como "sem preco legivel" (`skip_no_price`): ausencia nao e "abaixo do piso".
+    # NaN/infinito, zero ou negativo contam no piso (`skip_price_floor`).
+    price = listing.price
+    if price is None:
+        return _skip(stats, "skip_no_price")
+    if not math.isfinite(price) or price <= 0 or price < float(cfg["min_price_usd"]):
         return _skip(stats, "skip_price_floor")
     required_country = cfg.get("required_location_country")
     if required_country and listing.country and listing.country != required_country:
@@ -349,6 +357,10 @@ def evaluate(card, listing, fair, config=None, tcg_ref=None, refs=None, stats=No
         ref_n, ref_liq, ref_window = ref.n_sales, ref.liquidity, ref.window_days
         tier = _tier_from_ref(ref)
 
+    if fair_price is None or not math.isfinite(fair_price) or fair_price <= 0:
+        # Referencia sem valor utilizavel (ausente, NaN/infinito, zero ou
+        # negativo) nunca alimenta o gate nem vira linha: `invalid_reference`.
+        return _skip(stats, "invalid_reference")
     discount_pct, roi_pct, spread_usd = compute_metrics(fair_price, listing.price)
     if discount_pct < min_discount:
         # Abaixo do gate nao interessa -- nem como linha rejeitada (senao a tabela

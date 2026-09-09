@@ -193,6 +193,9 @@ def _grade_from_match(m: re.Match, text: str) -> Grade:
     value = float(m.group("value"))
     qualifier = _qualifier(grader, value, m.group("pre"), m.group("post"),
                            text[m.end():])
+    if grader == "CGC" and value == 10.0 and re.search(
+            r"\bpristine[\s:-]*$", text[:m.start()], re.I):
+        qualifier = "PRISTINE"
     return Grade(grader=grader, value=value, qualifier=qualifier)
 
 

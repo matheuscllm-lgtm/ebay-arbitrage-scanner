@@ -128,7 +128,7 @@ def sort_key(row):
     roi = _f(row, "roi_pct") if row.get("roi_pct") is not None else _f(row, "margin_pct")
     try:
         rank = int(row.get("pokemon_rank") or UNRANKED)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         rank = UNRANKED
     return (-roi, -_f(row, "discount_pct"), -_f(row, "spread_usd"), rank)
 
@@ -143,13 +143,20 @@ def sort_rows(rows):
 FUNNEL_LABELS = [
     ("cards", "Cartas da watchlist no escopo"),
     ("ebay_calls", "Chamadas à Browse API (cota grátis 5.000/dia)"),
+    ("fetched", "Anuncios recebidos da Browse API (antes dos filtros)"),
     ("seen", "Anúncios analisados (após dedupe)"),
     ("dedup_dropped", "Duplicados removidos (mesmo item/título+preço)"),
     ("skip_not_fixed_price", "Ignorados: leilão (só preço fixo)"),
+    ("skip_no_price", "Descartados: anuncio sem preco legivel"),
     ("skip_price_floor", "Ignorados: abaixo do piso US$"),
     ("skip_country", "Ignorados: item fora dos EUA"),
     ("skip_no_match", "Ignorados: título não é a carta da watchlist"),
-    ("skip_raw", "Ignorados: carta solta (graded-only; use --include-raw)"),
+    ("skip_raw", "Ignorados: carta solta (escopo exclusivo de slabs)"),
+    ("skip_fetch_error", "Descartados: coleta parcial interrompida por erro"),
+    ("skip_invalid_payload", "Descartados: dados invalidos no anuncio recebido"),
+    ("skip_evaluation_error", "Descartados: erro interno ao avaliar anuncio"),
+    ("skip_details_abort", "Descartados: interrupcao (cota/autenticacao eBay) antes de avaliar o anuncio"),
+    ("invalid_reference", "Descartados: referencia invalida ou nao positiva"),
     ("skip_grade_filtered", "Ignorados: nota fora do funil pedido (--grades)"),
     ("skip_grade_out_of_scope", "Ignorados: certificadora/nota fora do escopo"),
     ("skip_grade_ambiguous", "Ignorados: título cita mais de uma nota (ambíguo)"),
@@ -168,10 +175,12 @@ FUNNEL_LABELS = [
     ("rows_review", "Linhas REVISAR"),
     ("rows_suspect", "Linhas SUSPEITO"),
     ("rows_rejected", "Linhas REJEITADO (com motivo)"),
+    ("rows_lost_abort", "Linhas avaliadas perdidas na interrupcao (nao chegam ao artefato)"),
     ("trusted_filtered", "Descartados pelo modo confiável (--confiavel)"),
     ("card_error", "Cartas com erro interno (puladas — ver log)"),
     ("ebay_error", "Cartas com erro na Browse API (puladas)"),
-    ("aborted", "RUN ABORTADO (autenticação eBay / API indisponível) — cartas restantes não varridas"),
+    ("stopped_early", "Parada antecipada (autenticação eBay / cota / API indisponível) — cartas restantes não varridas"),
+    ("aborted", "RUN ABORTADO — resultado parcial, não representa busca completa"),
 ]
 _KNOWN_FUNNEL_KEYS = {k for k, _ in FUNNEL_LABELS}
 
