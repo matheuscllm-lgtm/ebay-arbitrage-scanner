@@ -161,7 +161,7 @@ def test_01_lp1_full_profile_and_full_coverage_on_legacy_path():
                     iconic_scores=iconic)
     assert res.tier == "LP1"
     assert res.profile == 92.0 and res.fragility == 0.0
-    assert res.profile_coverage == (5, 5) and res.fragility_coverage == (10, 10)
+    assert res.profile_coverage == (5, 5) and res.fragility_coverage == (11, 11)
     # B1 rank 1 -> 20; B2 "Rare Holo" em era vintage -> 12; B3 27 anos -> 20;
     # B4 coluna PSA 10 US$300 -> 20; B5 +30% em 12 m -> 20  => 92/100
     assert res.profile_points == {"personagem": 20, "raridade": 12, "supply": 20,
@@ -282,7 +282,10 @@ def test_05_missing_psa10_column_drops_b4_and_caps_class_at_lp2_star():
     assert "LP:faixa-psa10: n/d" in res.reasons
     assert res.fragility_points["psa10-iliquido"] is None
     assert "LP:psa10-iliquido: n/d" in res.reasons
-    assert res.fragility == 0.0 and res.fragility_coverage == (9, 10)
+    # sem volume da PSA 10 caem DUAS flags: `psa10-iliquido` e `estoque-alto` (que
+    # divide os anuncios da nota justamente por esse volume)
+    assert res.fragility_points["estoque-alto"] is None
+    assert res.fragility == 0.0 and res.fragility_coverage == (9, 11)
     assert res.tier == "LP2*"  # seria LP1, mas insumo-chave ausente -> asterisco
 
 
@@ -291,7 +294,8 @@ def test_06_psa10_column_present_but_no_volume_is_never_lp1():
     opp, refs, _ = lp1_setup(fv=fv)
     res = assess(opp, refs, fv)
     assert res.profile == 92.0 and res.fragility == 0.0
-    assert res.profile_coverage == (5, 5) and res.fragility_coverage == (9, 10)
+    assert res.profile_coverage == (5, 5) and res.fragility_coverage == (9, 11)
+    assert res.fragility_points["estoque-alto"] is None   # sem volume, sem meses de estoque
     assert res.signals["psa10_col"] == 300.0 and res.signals["psa10_sales_pm"] is None
     assert "LP:psa10-iliquido: n/d" in res.reasons
     assert res.tier == "LP2*"
@@ -316,14 +320,14 @@ def test_07_profile_needs_three_of_five_sources_else_nd():
     assert res.fragility == 0.0  # a outra nota nao e afetada
 
 
-def test_08_fragility_needs_three_of_ten_sources_empty_sum_is_not_zero():
+def test_08_fragility_needs_three_of_eleven_sources_empty_sum_is_not_zero():
     lt = _lt()
     pts = {flag: None for flag in lt.FRAGILITY_FLAGS}
     pts["tiragem"] = 0
     pts["vendedor-fraco"] = 0
-    assert lt.fragility_score(pts) == (None, (2, 10))
+    assert lt.fragility_score(pts) == (None, (2, 11))
     pts["preco-absoluto-alto"] = 0
-    assert lt.fragility_score(pts) == (0.0, (3, 10))
+    assert lt.fragility_score(pts) == (0.0, (3, 11))
     # via assess: anuncio quase sem dado (sem preco, sem set, sem colunas, sem refs)
     c = card(set_name="")
     listing = L("", None, url=EBAY_URL)
@@ -331,21 +335,23 @@ def test_08_fragility_needs_three_of_ten_sources_empty_sum_is_not_zero():
                       gross_margin_pct=0.0, liquidity_per_month=0.0, liquidity_tier="D",
                       trend_delta=0.0, spread_grade9_pct=0, spread_psa10_pct=0)
     res = lt.assess(c, listing, opp, None, None, None, {}, today=TODAY)
-    assert res.fragility is None and res.fragility_coverage == (2, 10)
+    assert res.fragility is None and res.fragility_coverage == (2, 11)
     assert res.tier == "n/d"
     nd = {r for r in res.reasons if r.endswith(": n/d")}
     assert {"LP:ref-fragil: n/d", "LP:psa10-iliquido: n/d", "LP:ref-desalinhada: n/d",
             "LP:reprint-forte: n/d", "LP:preco-absoluto-alto: n/d", "LP:dispersao: n/d",
-            "LP:ref-stale: n/d", "LP:concentracao: n/d"} <= nd
+            "LP:ref-stale: n/d", "LP:concentracao: n/d",
+            "LP:estoque-alto: n/d"} <= nd
 
 
 def test_09_fragility_sum_is_capped_at_100_and_class_is_lp4():
     lt = _lt()
     full = {"ref-fragil": 30, "psa10-iliquido": 30, "ref-desalinhada": 20,
             "reprint-forte": 15, "preco-absoluto-alto": 15, "vendedor-fraco": 15,
-            "tiragem": 10, "dispersao": 10, "ref-stale": 10, "concentracao": 10}
-    assert sum(full.values()) == 165
-    assert lt.fragility_score(full) == (100.0, (10, 10))
+            "tiragem": 10, "dispersao": 10, "ref-stale": 10, "concentracao": 10,
+            "estoque-alto": 20}
+    assert sum(full.values()) == 185
+    assert lt.fragility_score(full) == (100.0, (11, 11))
     assert lt.classify(67.5, 100.0, (4, 5), True) == "LP4"
     # via assess (caminho legado) com TUDO disparando
     c = card(set_name="SV: Prismatic Evolutions", group="1", year=2020)
@@ -358,8 +364,9 @@ def test_09_fragility_sum_is_capped_at_100_and_class_is_lp4():
         seller_feedback_score=10, seller_feedback_pct=90.0)
     assert any(f.startswith("REF DESALINHADA") for f in opp.risk_flags)
     assert any(f.startswith("REF GRADED < RAW TCG") for f in opp.risk_flags)
-    res = assess(opp, refs, fv, n_same=4)
-    assert res.fragility == 100.0 and res.fragility_coverage == (10, 10)
+    # 12 anuncios da mesma nota contra 0,5 venda/mes = 24 meses de estoque (a 11a flag)
+    res = assess(opp, refs, fv, n_same=12)
+    assert res.fragility == 100.0 and res.fragility_coverage == (11, 11)
     assert all(v > 0 for v in res.fragility_points.values())
     assert res.tier == "LP4"
     assert res.profile == 67.5  # 20 + 6 + 8 + 20 sobre 4 componentes (sem tendencia)
@@ -607,7 +614,7 @@ def test_16_opportunity_row_serializes_longterm_year_rarity_and_trend():
     assert r["year"] == 1999 and r["rarity"] == "Rare Holo"
     assert r["longterm_tier"] == "LP1"
     assert r["longterm_profile"] == 92.0 and r["longterm_fragility"] == 0.0
-    assert r["longterm_coverage"] == "5/5·10/10"
+    assert r["longterm_coverage"] == "5/5·11/11"
     assert r["longterm_reasons"] == []
     assert r["longterm_signals"]["trend_source"] == "sales_history"
     assert r["longterm_signals"]["ref_source"] == "ref_*"
@@ -646,13 +653,19 @@ def test_17_policy_path_reads_psa_evidence_and_marks_asks_and_stale_as_nd():
     assert s["dispersion_source"] == "psa_evidence" and s["dispersion_pct"] == 100.0
     assert res.fragility_points["dispersao"] == 10
     assert any(r.startswith("LP:dispersao") for r in res.reasons)
-    # asks = {} nesse caminho (decisao documentada): flag informativa em n/d, nada recomputado
+    # Opportunity avaliada FORA de `scan_card`: nunca passou por `_annotate_median_ask`,
+    # entao `median_ask` e 0 e a flag fica em n/d -- nada e recomputado aqui. (Com os
+    # anuncios do run a flag TEM valor tambem na politica: test_a2 em
+    # tests/test_longterm_demand.py.)
+    assert popp.median_ask == 0.0
     assert res.fragility_points["ref-desalinhada"] is None
     assert s["ask_ratio"] is None and s["ask_n"] is None
     assert "LP:ref-desalinhada: n/d" in res.reasons
     # cross-check com TCG raw nao existe nesse caminho -> n/d
     assert res.fragility_points["ref-stale"] is None and "LP:ref-stale: n/d" in res.reasons
-    assert res.fragility == 10.0 and res.fragility_coverage == (8, 10)
+    # meses de estoque: 1 anuncio da nota / 5 vendas PSA 10 por mes = 0,2 mes -> 0 pontos
+    assert s["months_of_supply"] == 0.2 and res.fragility_points["estoque-alto"] == 0
+    assert res.fragility == 10.0 and res.fragility_coverage == (9, 11)
     # perfil forte (90) e fragilidade baixa, mas insumo-chave ausente -> teto LP2*
     assert res.profile == 90.0 and res.profile_coverage == (4, 5)
     assert res.tier == "LP2*"
@@ -762,16 +775,30 @@ def test_e4_config_block_has_exactly_the_declared_keys_and_defaults_match():
     wanted = {"enabled": True, "lp1_min_profile": 70, "lp1_max_fragility": 30,
               "lp2_min_profile": 50, "lp2_max_fragility": 50, "lp4_max_profile": 30,
               "lp4_min_fragility": 70, "min_profile_sources": 3, "min_fragility_sources": 3,
-              "concentration_min_listings": 4}
+              "concentration_min_listings": 4,
+              # pisos de cobertura da LP1: eram fixos no codigo, viraram chave
+              "lp1_min_profile_coverage": 4, "lp1_min_fragility_coverage": 9,
+              # meses de estoque = anuncios da nota / vendas PSA 10 por mes (11a flag)
+              "supply_months_high": 24, "supply_months_mid": 12,
+              "supply_min_sales_pm": 0.05}
     with open(Path(__file__).resolve().parents[1] / "config.yaml", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-    assert cfg["longterm"] == wanted  # so estas chaves, inteiros (percentuais inteiros)
-    assert all(type(v) is int for k, v in cfg["longterm"].items() if k != "enabled")
+    assert cfg["longterm"] == wanted  # so estas chaves, nesta ordem de grandeza
+    # inteiros, exceto `enabled` (bool) e o piso de vendas/mes (fracao de venda existe)
+    assert all(type(v) is int for k, v in cfg["longterm"].items()
+               if k not in ("enabled", "supply_min_sales_pm"))
+    assert type(cfg["longterm"]["supply_min_sales_pm"]) is float
     assert lt.DEFAULT_CONFIG == wanted
+    # e as constantes do modulo continuam sendo o VALOR PADRAO das chaves novas
+    assert lt.LP1_MIN_PROFILE_COVERAGE == wanted["lp1_min_profile_coverage"]
+    assert lt.LP1_MIN_FRAGILITY_COVERAGE == wanted["lp1_min_fragility_coverage"]
+    assert lt.SUPPLY_MONTHS_HIGH == wanted["supply_months_high"]
+    assert lt.SUPPLY_MONTHS_MID == wanted["supply_months_mid"]
+    assert lt.SUPPLY_MIN_SALES_PM == wanted["supply_min_sales_pm"]
     # gate, politica, piso e ranking intactos: nada muda fora do bloco novo
     assert cfg["min_discount_percent"] == 30 and cfg["min_price_usd"] == 10.0
     assert cfg["slab_strategy"]["economics"]["min_discount_percent"] == 30
-    assert cfg["slab_strategy"]["economics"]["gate_mode"] == "profit_or_discount"
+    assert cfg["slab_strategy"]["economics"]["gate_mode"] == "gross_margin"
     assert cfg["slab_strategy"]["version"] == "2026-09-05.4"
 
 
@@ -884,24 +911,24 @@ def test_r2_policy_path_labels_b5_basket_as_its_own_not_the_reference_basket():
 
 def test_r3_thin_fragility_coverage_can_never_be_read_as_a_clean_lp1():
     """A FRAGILIDADE DO DADO e uma SOMA: insumo em n/d sai da soma, o que
-    aritmeticamente e o mesmo que valer 0. Sem um piso, uma linha em que 7 dos 10
+    aritmeticamente e o mesmo que valer 0. Sem um piso, uma linha em que 8 dos 11
     testes NEM PUDERAM RODAR recebe a mesma nota 0 ("dado impecavel") e a mesma classe
-    LP1 ("forte") de uma linha em que os 10 rodaram e passaram limpos -- e como LP4
+    LP1 ("forte") de uma linha em que os 11 rodaram e passaram limpos -- e como LP4
     exige FRAGILIDADE > 70, dado ausente so podia MELHORAR a classe, nunca piorar."""
     lt = _lt()
     thin = {"ref-fragil": 0, "psa10-iliquido": 0, "ref-desalinhada": 0}
     full = {flag: 0 for flag in lt.FRAGILITY_FLAGS}
     # a soma nao distingue os dois casos (e por isso a COBERTURA vira o piso da classe)
-    assert lt.fragility_score(thin) == (0.0, (3, 10))
-    assert lt.fragility_score(full) == (0.0, (10, 10))
-    assert lt.LP1_MIN_FRAGILITY_COVERAGE == 8   # mesma proporcao do piso do PERFIL (4/5)
-    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(10, 10)) == "LP1"
-    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(8, 10)) == "LP1"
-    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(7, 10)) == "LP2*"
-    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(3, 10)) == "LP2*"
+    assert lt.fragility_score(thin) == (0.0, (3, 11))
+    assert lt.fragility_score(full) == (0.0, (11, 11))
+    assert lt.LP1_MIN_FRAGILITY_COVERAGE == 9   # mesma proporcao (~80%) do piso do PERFIL (4/5)
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(11, 11)) == "LP1"
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(9, 11)) == "LP1"
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(8, 11)) == "LP2*"
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(3, 11)) == "LP2*"
     # cobertura desconhecida (chamada sem o argumento) segue a regra antiga
     assert lt.classify(92.0, 0.0, (5, 5), True) == "LP1"
-    # via assess: insumos-chave presentes, mas 6 das 10 flags sem dado -> LP2*, nao LP1
+    # via assess: insumos-chave presentes, mas 7 das 11 flags sem dado -> LP2*, nao LP1
     c = card(set_name="")                      # reprint-forte -> n/d
     listing = L("Charizard 4/102 Base Set PSA 10", None, url=EBAY_URL,
                 seller_feedback_score=None, seller_feedback_pct=None)
@@ -912,7 +939,7 @@ def test_r3_thin_fragility_coverage_can_never_be_read_as_a_clean_lp1():
     opp.median_ask = 240.0
     res = lt.assess(c, listing, opp, fair(), None, None, {}, today=TODAY)
     assert all(res.fragility_points[k] == 0 for k in lt.KEY_FRAGILITY_INPUTS)
-    assert res.fragility == 0.0 and res.fragility_coverage == (4, 10)
+    assert res.fragility == 0.0 and res.fragility_coverage == (4, 11)
     assert res.profile == 90.0 and res.profile_coverage == (4, 5)
     assert res.tier == "LP2*"   # "classe limitada por dado ausente", nao "forte"
 
@@ -1015,14 +1042,14 @@ def test_r9_legacy_generators_are_coherent_column_in_every_bucket_and_legend():
     p = payload()
     p["rows"] = [
         row(longterm_tier="LP1", longterm_profile=90.0, longterm_fragility=10.0,
-            longterm_coverage="5/5·10/10", longterm_reasons=[]),
+            longterm_coverage="5/5·11/11", longterm_reasons=[]),
         row(card="Blastoise", number="2", verdict="REJEITADO", url="https://www.ebay.com/itm/444",
             item_id="444", flags=["FRAUDE PROVAVEL: titulo anuncia PSA 10 mas condicao diz UNGRADED"],
             longterm_tier="LP1", longterm_profile=88.0, longterm_fragility=12.0,
-            longterm_coverage="5/5·10/10", longterm_reasons=[]),
+            longterm_coverage="5/5·11/11", longterm_reasons=[]),
         row(card="Gengar", number="94", verdict="REJEITADO", url="https://www.ebay.com/itm/555",
             item_id="555", flags=["LOTE"], longterm_tier="LP4", longterm_profile=20.0,
-            longterm_fragility=80.0, longterm_coverage="5/5·10/10", longterm_reasons=[]),
+            longterm_fragility=80.0, longterm_coverage="5/5·11/11", longterm_reasons=[]),
     ]
     md = ebay_summary.build_markdown(p)
     assert "- Longo prazo: 2 LP1 · 0 LP2 · 0 LP3 · 1 LP4 · 0 n/d" in md.split("## ")[0]
@@ -1036,25 +1063,25 @@ def test_r9_legacy_generators_are_coherent_column_in_every_bucket_and_legend():
     opp, refs, fv = lp1_setup()
     lt.annotate(opp, assess(opp, refs, fv))
     text = report.to_markdown([opp])
-    assert "| Longo prazo |" in text and "| LP1 92/0 (5/5·10/10) |" in text
+    assert "| Longo prazo |" in text and "| LP1 92/0 (5/5·11/11) |" in text
     assert "Longo prazo (coluna informativa)" in text
     assert report.LONGTERM_LEGEND in text
 
 
 def test_r10_flags_cell_keeps_only_the_lp_reasons_that_fired():
     """A coluna `Flags` da tabela legada concatenava TODOS os motivos `LP:` -- inclusive
-    os `LP:<nome>: n/d`, que podem ser 15 numa linha so -- na MESMA celula das flags de
+    os `LP:<nome>: n/d`, que podem ser 16 numa linha so -- na MESMA celula das flags de
     risco reais (FRAUDE PROVAVEL, REF DESALINHADA...). A entrega e colada verbatim no
     chat, entao a largura importa, e o ruido informativo empurrava para longe o sinal de
     risco que o operador precisa ler primeiro. As ausencias nao se perdem: continuam
-    inteiras no JSON (`longterm_reasons`) e resumidas na cobertura `k/5·k/10` da propria
+    inteiras no JSON (`longterm_reasons`) e resumidas na cobertura `k/5·k/11` da propria
     celula da coluna."""
     lt = _lt()
     from tests.test_summary import row
     nd = [f"LP:{name}: n/d" for name in lt.PROFILE_COMPONENTS + lt.FRAGILITY_FLAGS]
     r = row(flags=["FRAUDE PROVAVEL: titulo anuncia PSA 10 mas condicao diz UNGRADED"],
             longterm_tier="LP3", longterm_profile=40.0, longterm_fragility=30.0,
-            longterm_coverage="2/5·3/10",
+            longterm_coverage="2/5·3/11",
             longterm_reasons=nd + ["LP:ref-fragil(thin)", "LP:concentracao(4)"])
     cell = report._cells_for(r, 1)["flags"]
     assert cell == ("FRAUDE PROVAVEL: titulo anuncia PSA 10 mas condicao diz UNGRADED; "
@@ -1062,4 +1089,4 @@ def test_r10_flags_cell_keeps_only_the_lp_reasons_that_fired():
     assert ": n/d" not in cell
     assert len(cell) < 130          # antes passava de 380 caracteres numa linha so
     # o JSON continua com a lista inteira -- nada se perde
-    assert len([x for x in r["longterm_reasons"] if x.endswith(": n/d")]) == 15
+    assert len([x for x in r["longterm_reasons"] if x.endswith(": n/d")]) == 16

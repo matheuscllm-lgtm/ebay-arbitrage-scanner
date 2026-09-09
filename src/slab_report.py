@@ -40,11 +40,23 @@ def _when(stamp):
 
 def _gate_keys(cfg, economics):
     """Chaves da regra economica que valem no `gate_mode` ativo (mesmo ramo de
-    `policy_validation.pending_config`): `profit_or_discount` -> min_profit_usd +
+    `policy_validation.pending_config`): `gross_margin` (regra vigente da frota) ->
+    min_gross_margin_percent; `profit_or_discount` -> min_profit_usd +
     economics.min_discount_percent; `all_minima` -> min_profit_usd +
     min_net_margin_percent + min_net_roi_percent + o `min_discount_percent` de TOPO
-    do config (o braco de desconto efetivo nesse modo). Review do PR #33."""
+    do config (o braco de desconto efetivo nesse modo). Review do PR #33.
+
+    `gross_margin` nao tinha ramo: caia no `else` e o cabecalho da entrega anunciava
+    `min_profit_usd` e `min_discount_percent` -- chaves dos modos LEGADOS, que nesse
+    modo nao decidem nada -- como se fossem a regra em vigor. Elas continuam impressas
+    (estao no config, e o operador as encontra la), mas ROTULADAS como sem efeito, e
+    depois do unico limiar que de fato decide."""
     mode = economics.get('gate_mode')
+    if mode == 'gross_margin':
+        return [f"`gate_mode: {_nd(mode)}`",
+                f"`min_gross_margin_percent: {_nd(economics.get('min_gross_margin_percent'))}`",
+                f"sem efeito neste modo: `min_profit_usd: {_nd(economics.get('min_profit_usd'))}`, "
+                f"`min_discount_percent: {_nd(economics.get('min_discount_percent'))}`"]
     items = [f"`gate_mode: {_nd(mode)}`", f"`min_profit_usd: {_nd(economics.get('min_profit_usd'))}`"]
     if mode == 'all_minima':
         items += [f"`min_net_margin_percent: {_nd(economics.get('min_net_margin_percent'))}`",
