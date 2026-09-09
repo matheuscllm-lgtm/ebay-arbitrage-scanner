@@ -394,3 +394,82 @@ def test_legacy_basket_on_real_fixture_changes_only_by_identity():
     dropped = [s["title"] for s in unguarded if s not in guarded]
     assert len(dropped) == 2 and all(re.search(r"#(?:39|40)/165", t) for t in dropped)
     assert guarded == []
+
+
+# ── caminho VIVO (slab_strategy): fase de detalhes (get_item) ────────────────
+
+class _DetailClient:
+    """Busca devolve o lote; get_item devolve um payload de detalhe por anuncio
+    (o de `broken_id` vem com `price` ilegivel)."""
+    fetched = parse_dropped = dedup_dropped = 0
+
+    def __init__(self, batch, broken_id=None):
+        self.batch, self.broken_id, self.calls = batch, broken_id, 0
+
+    def search(self, *args, **kwargs):
+        self.calls += 1
+        return list(self.batch) if self.calls == 1 else []
+
+    def get_item(self, item_id):
+        self.calls += 1
+        item = _item(item_id)
+        item["title"] = "Charizard #4/102 Base Set English PSA 9"
+        item["localizedAspects"] = [{"name": "Language", "value": "English"}]
+        if item_id == self.broken_id:
+            item["price"] = "nao-e-um-objeto"
+        return item, f"https://api.ebay.com/buy/browse/v1/item/{item_id}"
+
+
+class _BudgetClient(_DetailClient):
+    def get_item(self, item_id):
+        self.calls += 1
+        if item_id == self.broken_id:
+            raise ebay_api.EbayBudgetExceeded("Limite de chamadas eBay atingido")
+        return super().get_item(item_id)
+
+
+def _policy_batch():
+    # Sem "English" no titulo: idioma nao declarado -> get_item e chamado.
+    return [L("Charizard #4/102 Base Set PSA 9", price, item_id)
+            for price, item_id in [(75.0, "p1"), (74.0, "p2"), (73.0, "p3")]]
+
+
+def _per_listing_buckets(stats):
+    return sum(v for k, v in stats.items() if k.startswith(
+        ("rows_", "skip_", "invalid_", "slab_no", "ref_un", "below")))
+
+
+def test_unreadable_item_details_do_not_drop_the_card(no_tcg):
+    """Payload de detalhe (get_item) com `price` ilegivel: o anuncio segue com o
+    que a busca trouxe, marcado `detalhes-do-anuncio-ilegiveis` (REVISAR), e conta
+    em `item_details_error`; a carta NAO cai inteira (review do PR #32)."""
+    from src import slab_strategy
+    stats = Counter()
+    _, rows = scanner.scan_card(CARD, _DetailClient(_policy_batch(), "p2"),
+                                slab_strategy.policy_config({}), stats=stats,
+                                refs=FakeRefs(), fair=FairValue(), log=lambda *a: None)
+    assert [row.listing.item_id for row in rows] == ["p1", "p2", "p3"]
+    broken = rows[1]
+    assert broken.listing.price == 74.0 and broken.verdict == "REVISAR"
+    assert "detalhes-do-anuncio-ilegiveis" in broken.reasons
+    assert stats["item_details_error"] == 1 and stats["item_details_fetched"] == 2
+    assert stats["seen"] == 3 == _per_listing_buckets(stats)
+
+
+def test_budget_exhausted_during_item_details_keeps_the_funnel_honest(no_tcg):
+    """Cota/autenticacao estourando em get_item NO MEIO da carta: o erro sobe (run
+    parcial), mas as linhas ja avaliadas que se perdem contam em `rows_lost_abort`
+    (nao em `rows_*`, que so contam linhas que chegam ao artefato) e os anuncios
+    nao avaliados em `skip_details_abort` -- `seen` == soma dos baldes."""
+    from src import slab_strategy
+    stats = Counter()
+    with pytest.raises(ebay_api.EbayBudgetExceeded):
+        scanner.scan_card(CARD, _BudgetClient(_policy_batch(), "p3"),
+                          slab_strategy.policy_config({}), stats=stats,
+                          refs=FakeRefs(), fair=FairValue(), log=lambda *a: None)
+    assert stats["seen"] == 3
+    assert stats["rows_lost_abort"] == 2 and stats["skip_details_abort"] == 1
+    assert stats["rows_review"] == 0 and stats["rows_opportunity"] == 0
+    assert stats["seen"] == _per_listing_buckets(stats)
+    assert dict(report.FUNNEL_LABELS)["rows_lost_abort"]
+    assert dict(report.FUNNEL_LABELS)["skip_details_abort"]

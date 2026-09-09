@@ -282,6 +282,33 @@ def _annotate_ref_alignment(opp, asks):
 
 # --- scan --------------------------------------------------------------------------
 
+_DETAIL_ASPECTS = ('Language', 'Set', 'Card Number', 'Professional Grader', 'Grade',
+                   'Certification Number')
+
+
+def _hydrate_from_item(listing, item, detail_url):
+    """Anuncio da busca + payload de detalhe (get_item) -> anuncio atualizado.
+    So os campos presentes no payload sao trocados (nunca se adivinha o resto).
+    Payload ilegivel levanta ValueError/TypeError/... -- o chamador trata."""
+    aspects = {}
+    for aspect in item.get('localizedAspects', []):
+        name = aspect.get('name')
+        if name in _DETAIL_ASPECTS:
+            aspects.setdefault(name, []).append(aspect.get('value', ''))
+    changes = {'item_aspects': aspects, 'details_url': detail_url}
+    if 'price' in item:
+        from .ebay_api import parse_search_payload
+        fresh = parse_search_payload({'itemSummaries': [item]})[0]
+        changes.update(price=fresh.price, currency=fresh.currency)
+    if 'title' in item:
+        changes['title'] = item['title']
+    if 'condition' in item:
+        changes['condition'] = item['condition']
+    if 'qualifiedPrograms' in item:
+        changes['authenticity_guarantee'] = 'AUTHENTICITY_GUARANTEE' in item['qualifiedPrograms']
+    return dataclasses.replace(listing, **changes)
+
+
 def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
               refs=None, fair=None):
     """Escaneia uma carta da watchlist. Retorna (fair_value, [Opportunity]).
@@ -369,30 +396,23 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                 before = ebay.calls
                 try:
                     item, detail_url = ebay.get_item(listing.item_id)
-                    aspects = {}
-                    for aspect in item.get('localizedAspects', []):
-                        name = aspect.get('name')
-                        if name in ('Language', 'Set', 'Card Number', 'Professional Grader', 'Grade', 'Certification Number'):
-                            aspects.setdefault(name, []).append(aspect.get('value', ''))
-                    changes = {'item_aspects': aspects, 'details_url': detail_url}
-                    # Refresh only provided fields, preserving unknowns instead of guessing.
-                    if 'price' in item:
-                        from .ebay_api import parse_search_payload
-                        fresh = parse_search_payload({'itemSummaries': [item]})[0]
-                        changes.update(price=fresh.price, currency=fresh.currency)
-                    if 'title' in item:
-                        changes['title'] = item['title']
-                    if 'condition' in item:
-                        changes['condition'] = item['condition']
-                    if 'qualifiedPrograms' in item:
-                        changes['authenticity_guarantee'] = 'AUTHENTICITY_GUARANTEE' in item['qualifiedPrograms']
-                    listing = dataclasses.replace(listing, **changes)
-                    stats['item_details_fetched'] += 1
                 except (EbayAuthError, EbayBudgetExceeded):
                     raise
                 except EbayApiError:
                     listing = dataclasses.replace(listing, details_error='detalhes-do-anuncio-indisponiveis')
                     stats['item_details_error'] += 1
+                else:
+                    try:
+                        listing = _hydrate_from_item(listing, item, detail_url)
+                        stats['item_details_fetched'] += 1
+                    except (ValueError, TypeError, AttributeError, OverflowError,
+                            IndexError, KeyError):
+                        # Payload de detalhe ilegivel (ex.: `price` sem valor): o
+                        # anuncio segue com os dados da busca, marcado para
+                        # REVISAR, e a carta NAO cai inteira (review do PR #32 --
+                        # mesmo bug de `skip_invalid_payload`, no outro parse).
+                        listing = dataclasses.replace(listing, details_error='detalhes-do-anuncio-ilegiveis')
+                        stats['item_details_error'] += 1
                 finally:
                     stats['ebay_calls'] += max(0, ebay.calls - before)
         try:
