@@ -78,7 +78,7 @@ que rodaram** — leia sempre junto com a cobertura `k/10` (ver "Como ler a cél
 
 | Flag `LP:` | Fonte (caminho legado / caminho da política) | Pontos |
 |---|---|---|
-| `ref-fragil` | régua de `pc_sales.sales_reference`: <3 vendas → `thin` +30 · ≥3 só na janela de 365 d → `low` +15 · `ok` 0. Insumo: `ref_liquidity`; senão `ref_n_sales`/`ref_window_days`; senão `opp.strategy['psa_evidence']` (`n_used`, `window_days`); sem nenhum → `n/d`. O sinal `ref_source` diz de onde veio (`ref_*`, `psa_evidence`) | 0-30 |
+| `ref-fragil` | régua de `pc_sales.sales_reference`: **0 venda → `sem-vendas` +30** (rótulo próprio: "poucas vendas" onde não há venda nenhuma seria mentira) · 1-2 vendas → `thin` +30 · ≥3 só na janela de 365 d → `low` +15 · `ok` 0. Insumo: `ref_liquidity`; senão `ref_n_sales`/`ref_window_days`; senão `opp.strategy['psa_evidence']` (`n_used`, `window_days`); sem nenhum → `n/d`. O sinal `ref_source` diz de onde veio (`ref_*`, `psa_evidence`) | 0-30 |
 | `psa10-iliquido` | `fair.sales_per_month['PSA 10']`: <1/mês +30 · <3 +20 · ≥3 0 · ausente → `n/d` (corte 3 = fronteira B/C da liquidez do scorer) | 0-30 |
 | `ref-desalinhada` | legado: flag existente `REF DESALINHADA` (referência ÷ mediana dos anúncios limpos >1.5 ou <0.6; `ask_ratio` no sinal). **Política: `n/d` nesta rodada** — `asks = {}` é decisão documentada do operador; nada é recomputado | +20 |
 | `reprint-forte` | mesma regra de B3 | +15 |

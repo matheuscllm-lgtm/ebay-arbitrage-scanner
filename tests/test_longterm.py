@@ -913,3 +913,24 @@ def test_r3_thin_fragility_coverage_can_never_be_read_as_a_clean_lp1():
     assert res.fragility == 0.0 and res.fragility_coverage == (4, 10)
     assert res.profile == 90.0 and res.profile_coverage == (4, 5)
     assert res.tier == "LP2*"   # "classe limitada por dado ausente", nao "forte"
+
+
+def test_r5_zero_comparable_sales_is_labelled_sem_vendas_not_thin():
+    """Linha SEM NENHUMA venda comparavel recebia o rotulo `thin`, que a regua do
+    proprio repo (`src/pc_sales.py`) define como "1-2 vendas em 365 d". O operador lia
+    `LP:ref-fragil(thin)` = "poucas vendas" onde nao ha venda nenhuma. Zero venda
+    ganha rotulo proprio (`sem-vendas`), com os mesmos 30 pontos."""
+    lt = _lt()
+    assert lt._liquidity_from(0, 365) == "sem-vendas"
+    assert lt._liquidity_from(1, 365) == "thin"
+    assert lt._liquidity_from(2, 365) == "thin"
+    assert lt._liquidity_from(3, 365) == "low"
+    assert lt._liquidity_from(3, 180) == "ok"
+    popp = slab_evaluate(PCARD, plisting(), config=pcfg(), refs=prefs())
+    assert "sem-vendas-PSA-comparaveis" in popp.reasons
+    assert popp.ref_n_sales == 0 and popp.ref_window_days == 365
+    res = lt.assess(PCARD, popp.listing, popp, fair(), prefs(), 1, pcfg(), today=TODAY)
+    assert res.signals["ref_liquidity"] == "sem-vendas"
+    assert res.fragility_points["ref-fragil"] == 30
+    assert "LP:ref-fragil(sem-vendas)" in res.reasons
+    assert not any("thin" in r for r in res.reasons)

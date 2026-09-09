@@ -99,7 +99,7 @@ _RARITY_POINTS = {"special-illustration": 20, "illustration": 16, "hyper-secret"
 _REPRINT_SUPPLY_CAP = 8               # reprint forte: teto do B3
 _PSA10_BANDS = ((15, 4), (45, 10), (120, 16), (360, 20), (900, 14))  # < limiar -> pontos
 _PSA10_TOP_BAND_POINTS = 8            # coluna PSA 10 >= 900
-_REF_FRAGILITY_POINTS = {"thin": 30, "low": 15, "ok": 0}
+_REF_FRAGILITY_POINTS = {"sem-vendas": 30, "thin": 30, "low": 15, "ok": 0}
 _PSA10_ILLIQUID_LOW, _PSA10_ILLIQUID_MID = 1.0, 3.0   # fronteiras C/D e B/C de scorer.liquidity_tier
 _PRICE_HIGH_USD, _PRICE_MID_USD = 900.0, 300.0
 _DEFAULT_MAX_DISPERSION = 30          # = slab_strategy.evidence.max_dispersion_percent
@@ -447,8 +447,14 @@ def coverage_text(profile_coverage, fragility_coverage):
 # --- insumos da fragilidade -------------------------------------------------------
 
 def _liquidity_from(n_sales, window_days):
-    """Mesma regua de pc_sales.sales_reference: <3 vendas -> thin; >=3 so na janela de
-    365 d -> low; senao ok."""
+    """Mesma regua de pc_sales.sales_reference: 1-2 vendas -> thin; >=3 so na janela de
+    365 d -> low; senao ok. ZERO venda NAO e "thin" (que na regua do repo quer dizer
+    "1-2 vendas em 365 d"): ganha rotulo proprio `sem-vendas`, com os mesmos pontos --
+    dizer "poucas vendas" onde nao ha venda nenhuma e mentir para o operador (review do
+    PR-C 2026-09-09). Caso real e comum no caminho da politica, que grava
+    `opp.ref_n_sales = 0` sempre que nenhuma venda passa nos filtros da referencia."""
+    if n_sales <= 0:
+        return "sem-vendas"
     if n_sales < pc_sales.MIN_COMPARABLE_SALES:
         return "thin"
     if window_days > pc_sales.SALES_MAX_AGE_DAYS:
