@@ -10,12 +10,19 @@ Este modulo e a FONTE UNICA da formatacao canonica compartilhada (coluna
 console rapido (`to_markdown`) quanto a entrega canonica (`ebay_summary.py`)
 usam os helpers daqui -- nunca duplicar o formato.
 
-Padrao COMC (operador, 2026-09-03) -- tres metricas, nomeadas assim e so assim:
-- Desconto%   = (ref - preco) / ref x 100   -> gate ajustavel (`--min-discount`)
-- Spread$     = ref - preco                 -> diferenca bruta, sem taxa nenhuma
-- ROI bruto%  = (ref - preco) / preco x 100 -> retorno bruto sobre o capital
-Ranking: maior ROI bruto -> maior desconto -> maior spread -> Pokemon mais
-popular (rank menor na lista dos 100 chases). Nunca "lucro".
+Dois caminhos, escolhidos pela propria linha (`row["strategy"]` presente ou nao):
+
+- POLITICA (vigente; bloco `slab_strategy` do config.yaml, docs/EBAY_PSA.md):
+  `to_markdown`/`to_csv` delegam a `src/slab_report.py` (12 colunas, metricas
+  economicas liquidas definidas la); ranking em `sort_key` = veredito
+  (APROVAR > REVISAR > REJEITAR) -> PSA primeiro -> `net_roi_percent` maior ->
+  vault confirmado.
+- LEGADO (motor `src/scorer.py`; so testes e JSON antigo, anterior a politica
+  2026-09-05.4). Padrao COMC (operador, 2026-09-03), tres metricas brutas:
+  Desconto% = (ref - preco) / ref x 100 (gate `--min-discount`); Spread$ = ref -
+  preco; ROI bruto% = (ref - preco) / preco x 100. Ranking: maior ROI bruto ->
+  maior desconto -> maior spread -> Pokemon mais popular (rank menor na lista dos
+  100 chases).
 """
 
 from .chat_format import reference_price
@@ -118,7 +125,10 @@ def _f(row, key):
 
 def sort_key(row):
     """Chave para sorted(): menor = melhor (negativos nas metricas).
-    JSON antigo (sem `roi_pct`) usa `margin_pct`, que e a mesma grandeza."""
+    Linha da POLITICA (`strategy`): veredito -> PSA primeiro -> maior
+    `net_roi_percent` -> vault confirmado. Linha LEGADA: ROI bruto -> desconto ->
+    spread -> popularidade; JSON antigo (sem `roi_pct`) usa `margin_pct`, que e a
+    mesma grandeza."""
     if row.get("strategy"):
         s = row["strategy"]
         return ({"APROVAR": 0, "REVISAR": 1, "REJEITAR": 2}.get(row.get("verdict"), 1),

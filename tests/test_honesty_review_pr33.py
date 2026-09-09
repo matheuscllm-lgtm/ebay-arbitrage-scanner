@@ -177,3 +177,13 @@ def test_skill_separates_card_error_from_pricecharting_error_and_counts_columns(
     assert "sem-vendas-PSA-comparaveis" in text
     assert "12 colunas" in text
     assert "aborted: true" in text
+
+
+# --- review 9: docstrings de report.py/models.py descrevem os DOIS caminhos --------
+
+def test_report_docstrings_describe_policy_as_current_and_legacy_as_legacy():
+    from src import models
+    doc = report.__doc__
+    assert "slab_report" in doc and "LEGADO" in doc and "POLITICA" in doc
+    assert "POLITICA" in report.sort_key.__doc__ and "LEGADA" in report.sort_key.__doc__
+    assert not hasattr(models, "ACCEPTED_GRADES")  # constante morta que contradizia a allowlist
