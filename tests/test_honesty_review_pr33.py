@@ -111,4 +111,6 @@ def test_collection_line_states_grades_filter_and_trusted_flag():
 def test_confiavel_with_policy_prints_an_explicit_no_effect_warning(monkeypatch, tmp_path, capsys):
     assert _run_main(monkeypatch, tmp_path, Counter(seen=1, rows_opportunity=1), ["--confiavel"]) == 0
     out = capsys.readouterr().out
-    assert "--confiavel" in out and "sem efeito" in out
+    # O AVISO proprio do main.py (a linha "Coleta:" tambem declara a flag, mas so no
+    # relatorio; o aviso tem que existir mesmo sem linha nenhuma).
+    assert "AVISO: --confiavel sem efeito na política vigente" in out
