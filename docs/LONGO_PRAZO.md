@@ -40,8 +40,11 @@ cobertura da fragilidade).
   (`report.longterm_counts_line`, no formato `n LP1 · n LP2 · n LP3 · n LP4 · n n/d`, onde
   `LP2*` conta como LP2 e linha sem a coluna — JSON anterior a ela — conta como `n/d`); o
   rodapé traz a legenda única dos dois geradores (`report.LONGTERM_LEGEND`).
-- **Coluna indisponível = `n/d`, nunca 0.** Com `longterm.enabled: false` a avaliação nem roda
-  e todas as linhas saem `n/d`. Erro interno na coluna não derruba a linha nem a carta: a
+- **Coluna indisponível = `n/d`, nunca 0.** A célula sai `n/d` (sem as duas notas) tanto quando
+  a linha não tem a coluna — JSON anterior a ela, coluna desligada, erro interno — quanto quando
+  a CLASSE foi calculada como `n/d`; nesse segundo caso a cobertura fica junto
+  (`n/d (2/5·8/10)`), porque ela explica por que a classe está indisponível.
+  Com `longterm.enabled: false` a avaliação nem roda e todas as linhas saem `n/d`. Erro interno na coluna não derruba a linha nem a carta: a
   célula fica `n/d`, o erro vai para o log e é contado no funil como `longterm_error`
   ("Linhas mantidas com a coluna Longo prazo em n/d por erro interno"). `longterm.assess` é
   função pura (não altera `Opportunity` nem a referência) e `longterm.annotate` grava só os

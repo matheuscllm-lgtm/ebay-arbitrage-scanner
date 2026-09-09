@@ -960,3 +960,25 @@ def test_r6_dispersion_flag_uses_the_exact_value_the_policy_compares():
     assert res.signals["dispersion_pct"] == 30.0
     assert res.fragility_points["dispersao"] == 10     # a coluna tem de concordar
     assert any(r.startswith("LP:dispersao") for r in res.reasons)
+
+
+def test_r7_nd_class_cell_is_read_as_nd_not_as_three_glued_nd():
+    """Quando a CLASSE e `n/d` (PERFIL ou FRAGILIDADE abaixo do minimo de fontes),
+    `longterm_tier` vale a string "n/d", que e verdadeira para o `if`: o guard
+    `if not tier` nao pegava e a celula saia `n/d n/d/40 (2/5·8/10)` (ou `n/d n/d/n/d
+    (...)`), contra o proprio docstring da funcao e contra docs/LONGO_PRAZO.md
+    ("Coluna indisponivel = n/d, nunca 0"). A cobertura fica -- ela explica POR QUE a
+    classe esta indisponivel --, mas as duas notas somem junto com a classe."""
+    assert report.longterm_cell({"longterm_tier": "n/d", "longterm_profile": None,
+                                 "longterm_fragility": 40.0,
+                                 "longterm_coverage": "2/5·8/10"}) == "n/d (2/5·8/10)"
+    assert report.longterm_cell({"longterm_tier": "n/d", "longterm_profile": None,
+                                 "longterm_fragility": None,
+                                 "longterm_coverage": "2/5·8/10"}) == "n/d (2/5·8/10)"
+    assert report.longterm_cell({"longterm_tier": "n/d"}) == "n/d"
+    assert report.longterm_cell({"longterm_tier": "", "longterm_coverage": ""}) == "n/d"
+    assert report.longterm_cell({}) == "n/d"
+    # a celula normal nao muda
+    assert report.longterm_cell({"longterm_tier": "LP2", "longterm_profile": 64.0,
+                                 "longterm_fragility": 35.0,
+                                 "longterm_coverage": "4/5·8/10"}) == "LP2 64/35 (4/5·8/10)"

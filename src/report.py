@@ -327,14 +327,20 @@ def _score_text(value):
 
 def longterm_cell(row):
     """Celula `Longo prazo`: 'LP2 64/35 (4/5·8/10)' = classe · PERFIL/FRAGILIDADE ·
-    (cobertura do perfil · cobertura da fragilidade). Row sem classe (JSON anterior a
-    coluna, coluna desligada, erro interno) -> 'n/d' -- nunca inventada. Nota ausente
-    dentro da celula tambem sai 'n/d' (nunca 0). Sem URL: a celula nao carrega link."""
+    (cobertura do perfil · cobertura da fragilidade). Sem URL: a celula nao carrega link.
+
+    Sem classe -> 'n/d', nunca inventada. Sao DOIS casos, e os dois saem 'n/d':
+    - row sem o campo (JSON anterior a coluna, coluna desligada, erro interno) -> 'n/d';
+    - classe calculada como a string 'n/d' (PERFIL ou FRAGILIDADE abaixo do minimo de
+      fontes) -> 'n/d (2/5·8/10)': a cobertura fica, porque explica POR QUE a classe
+      esta indisponivel, mas as notas somem junto com a classe. Antes esse segundo caso
+      escapava do guard (a string 'n/d' e verdadeira para o `if`) e saia grudado, tipo
+      'n/d n/d/40 (2/5·8/10)' -- ilegivel (review do PR-C 2026-09-09)."""
     tier = str(row.get("longterm_tier") or "").strip()
-    if not tier:
-        return "n/d"
-    text = f"{tier} {_score_text(row.get('longterm_profile'))}/{_score_text(row.get('longterm_fragility'))}"
     coverage = str(row.get("longterm_coverage") or "").strip()
+    if not tier or tier == "n/d":
+        return f"n/d ({coverage})" if coverage else "n/d"
+    text = f"{tier} {_score_text(row.get('longterm_profile'))}/{_score_text(row.get('longterm_fragility'))}"
     return f"{text} ({coverage})" if coverage else text
 
 
