@@ -90,3 +90,17 @@ def test_policy_only_counters_are_labelled_in_both_vocabularies():
         assert "outros:" not in joined
         assert "get_item" in joined or "detalhe" in joined
         assert "run parcial" in joined
+
+
+# --- review 3: linha Coleta declara --grades e --confiavel (o cabecalho legado ja declarava) --
+
+def test_collection_line_states_grades_filter_and_trusted_flag():
+    payload = _policy_payload()
+    meta = payload["meta"]
+    plain = slab_report.collection_line(meta)
+    assert "--grades" not in plain and "--confiavel" not in plain
+    meta["config"]["allowed_grades"] = ["PSA 10", "CGC 10 Pristine"]
+    meta["trusted_mode"] = True
+    line = slab_report.collection_line(meta)
+    assert "notas do run: PSA 10 + CGC 10 Pristine (--grades)" in line
+    assert "--confiavel" in line and "sem efeito na política" in line

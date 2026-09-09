@@ -33,14 +33,23 @@ def collection_line(meta):
     else:
         when = 'n/d'
     group = f"grupo `{meta['group']}`" if meta.get('group') else 'grupo n/d'
-    return ' · '.join([
+    parts = [
         when, group, f"{_nd(meta.get('watchlist_count'))} carta(s) da watchlist",
         f"política `{_nd(policy.get('version'))}` (`gate_mode: {_nd(economics.get('gate_mode'))}` · "
         f"`min_profit_usd: {_nd(economics.get('min_profit_usd'))}` · "
         f"`min_discount_percent: {_nd(economics.get('min_discount_percent'))}`)",
         f"`min_price_usd: {_nd(cfg.get('min_price_usd'))}`", f"`max_pages: {_nd(cfg.get('max_pages'))}`",
         f"chamadas à Browse API: {_nd(funnel.get('ebay_calls'))} (`max_ebay_calls: {_nd(cfg.get('max_ebay_calls'))}`)",
-    ])
+    ]
+    # Flags do run gravadas no mesmo meta (review do PR #33): `--grades` restringe o
+    # funil (anuncio de outra nota vira REJEITAR `nota-fora-do-filtro-da-execucao`);
+    # `--confiavel` e so compatibilidade -- a politica nunca le `trusted_mode`.
+    allowed = cfg.get('allowed_grades') or []
+    if allowed:
+        parts.append(f"notas do run: {' + '.join(str(g) for g in allowed)} (--grades)")
+    if meta.get('trusted_mode'):
+        parts.append('--confiavel (sem efeito na política; histórico do vendedor já é sempre verificado)')
+    return ' · '.join(parts)
 
 
 def render(payload):
