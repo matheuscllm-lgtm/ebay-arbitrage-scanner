@@ -25,7 +25,11 @@ Regra canônica da frota (operador, 2026-09-09): o gate econômico usa **só mar
 sem taxa nenhuma**. O modo atual é `economics.gate_mode: gross_margin`, com
 `min_gross_margin_percent: 43`, limite estrito (exatamente 43% não satisfaz).
 
-- Margem bruta = (referência PSA ajustada − preço de compra) / **preço de compra** ×100.
+- Margem bruta = (**revenda da própria certificadora** − preço de compra) / preço ×100.
+  A base é `resale_evidence`, não a referência PSA ajustada: para CGC, TAG e BGS a
+  referência PSA é um valor que aquele slab nunca alcança, e medir contra ela daria 186%
+  de margem onde a real é 14%. Para PSA os dois números são o mesmo. Sem vendas da própria
+  certificadora o gate fica calado e nunca aprova por margem.
 - 43% preserva a fronteira do gate anterior, que aprovava a partir de 30% de desconto
   sobre a referência: 30/(100−30) = 42,857…%. A convenção do repo é percentual inteiro,
   então o limiar entra como 43, com 0,14 p.p. a mais de rigor.

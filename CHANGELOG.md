@@ -113,6 +113,43 @@ Fixtures de `test_catalog_identity` usavam preço com 300% de margem como atalho
 APROVAR; passaram a usar 60%, dentro da faixa normal. Os testes são sobre identidade de
 catálogo, não sobre economia.
 
+### A margem bruta passou a ser medida contra a REVENDA, não contra a referência PSA
+
+Achado ao responder "por que 150%?" — e mais grave que a pergunta.
+
+O gate `gross_margin` media a margem contra `comparison_reference`, que para CGC, TAG e
+BGS é a **referência PSA ajustada**: um valor que aquele slab nunca alcança. O gate
+anterior (`profit_or_discount`) usava `resale['price_exact']`, as vendas da própria
+certificadora. Trocar para margem bruta trocou a base em silêncio, só para não PSA.
+
+Concreto, com referência PSA US$1.000: uma CGC 10 vale no máximo 40% disso
+(`max_reference_percent`), ou seja US$400. Um anúncio a US$350 dava **186% de margem**
+contra a referência PSA e passava folgado num gate de 43%, quando a margem honesta contra
+a revenda CGC é **14%** — abaixo do gate. O teto da certificadora barrava o prejuízo
+declarado, mas não tornava a margem honesta.
+
+No run real de 2026-09-09, as **7 únicas linhas acima de 100% de margem eram todas CGC 10
+GEM**, comparadas contra preços de PSA 10 (item a US$80 contra "referência" US$3.552).
+Corrigida a base, seis delas somem.
+
+- A base agora é `resale_evidence.price_exact` sempre. Para PSA nada muda: `resale` É a
+  evidência PSA.
+- Sem vendas da própria certificadora não há margem honesta a calcular: o gate fica calado
+  e **nunca aprova por margem** (fail-closed). A linha já carrega
+  `revenda-sem-vendas-da-certificadora`.
+- `economic_gate` passa a publicar `margin_base` e `margin_base_source`, para o JSON dizer
+  qual número decidiu.
+- O teto publicado (`comparison_cap`) passa a ser o **menor** entre o teto da certificadora
+  e o teto do gate (revenda ÷ 1,43): as duas regras valem juntas.
+- O ramo BGS gravava `comparison_cap` sem o par `_exact`; corrigido.
+
+**O que a medição diz sobre o corte de 150%.** Com a base corrigida, sobre 129 linhas com
+revenda e preço: a mediana fica em −20% (o anúncio típico custa MAIS que a revenda), o
+p99 é 50%, e existe **uma** linha acima disso, a 1793%. Qualquer corte entre 51% e 1793%
+pega exatamente a mesma linha. Os 60% originais ficariam a 10 pontos do teto real
+observado e passariam a marcar negócio legítimo. Continua sendo calibração sobre um run,
+não backtest.
+
 ### Limitações que continuam de pé
 
 Nada aqui foi validado contra o mercado: um snapshot não é backtest. Não existe dado de

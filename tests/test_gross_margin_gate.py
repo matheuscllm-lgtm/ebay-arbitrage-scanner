@@ -111,7 +111,12 @@ def test_economic_gate_payload_shape():
     assert gate['threshold'] == float(THRESHOLD)
     assert gate['margin_pass'] is True
     assert gate['strictly_above'] is True
+    # `margin_base`/`margin_base_source` entraram em 2026-09-09: o gate passou a medir
+    # contra a REVENDA da propria certificadora, e publicar QUAL numero usou faz parte
+    # de nao mentir sobre a conta que decidiu.
+    assert gate['margin_base_source'] == 'resale'
     assert set(gate) == {'mode', 'gross_margin_percent', 'gross_margin_percent_exact',
+                         'margin_base', 'margin_base_source',
                          'threshold', 'margin_pass', 'strictly_above'}
 
 

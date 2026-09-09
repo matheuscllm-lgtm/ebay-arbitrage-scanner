@@ -354,6 +354,9 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                     if grade.value != 9.5 or rule.get('combine_9_5_premium') is True:
                         cap *= 1 + Decimal(str(premium)) / 100
                     details['comparison_cap'] = amount(cap)
+                    # O par `_exact` faltava so neste ramo: sem ele, quem le o teto em
+                    # precisao total (o gate de margem bruta) nao encontrava o teto BGS.
+                    details['comparison_cap_exact'] = str(cap)
                     if price is not None and listing.currency == 'USD' and price > cap:
                         reject.append('preco-acima-do-limite-BGS')
             elif grade.grader in ('CGC', 'TAG'):
@@ -374,21 +377,11 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                 if grade.grader == 'PSA' and legacy_discount_gate and discount < Decimal(str(cfg.get('min_discount_percent', 20))):
                     reject.append('desconto-abaixo-do-minimo')
                 if grade.grader == 'PSA':
-                    # O teto e o MAIOR preco que aquele modo ainda aprova. Em
-                    # `gross_margin` o gate exige (ref - preco)/preco > L, ou seja
-                    # preco < ref/(1+L/100) -- imprimir a referencia crua prometeria um
-                    # preco que sai REJEITAR (revisao em contexto limpo, 2026-09-09).
-                    gm_min = money(p['economics'].get('min_gross_margin_percent'))
-                    if legacy_discount_gate:
-                        cap = comparison * (1 - Decimal(str(cfg.get('min_discount_percent', 20))) / 100)
-                    elif gate_mode == 'gross_margin' and gm_min is not None:
-                        # Arredondado para BAIXO ao centavo: o teto publicado tem de ser
-                        # um preco que o gate REALMENTE aprova. Arredondar para cima
-                        # prometeria um centavo que sai REJEITAR.
-                        cap = (comparison / (1 + gm_min / 100)).quantize(
-                            Decimal('0.01'), rounding=ROUND_DOWN)
-                    else:
-                        cap = comparison
+                    # Teto da regua LEGADA. O teto do modo `gross_margin` e aplicado
+                    # depois, no bloco do gate, porque depende da REVENDA (que ainda nao
+                    # foi calculada aqui) e vale para todas as certificadoras.
+                    cap = (comparison * (1 - Decimal(str(cfg.get('min_discount_percent', 20))) / 100)
+                           if legacy_discount_gate else comparison)
                     details['comparison_cap'] = amount(cap)
                     details['comparison_cap_exact'] = str(cap)
         else:
@@ -490,18 +483,40 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     # nao usa custo nenhum: basta preco e referencia. Comparacao em Decimal exato, aprovada
     # ESTRITAMENTE acima do limiar; o arredondamento existe so na saida.
     if gate_mode == 'gross_margin':
-        comparison = money(details.get('comparison_reference_exact'))
+        # BASE DA MARGEM = a REVENDA da propria certificadora, nunca a referencia PSA
+        # ajustada. Para PSA os dois numeros sao o mesmo (`resale` E a evidencia PSA),
+        # mas para CGC/TAG/BGS a referencia PSA e um valor que aquele slab NUNCA
+        # alcanca: com referencia PSA 1000 uma CGC 10 vale no maximo 40% disso, e medir
+        # contra 1000 daria 186% de margem onde a real e 14%. O gate anterior
+        # (`profit_or_discount`) ja usava `resale['price_exact']` -- trocar para margem
+        # bruta trocou a base em silencio (achado de 2026-09-09).
+        resale_ev = details.get('resale_evidence') or {}
+        base = money(resale_ev.get('price_exact'))
         threshold = money(p['economics'].get('min_gross_margin_percent'))
-        if price is not None and price > 0 and comparison is not None and listing.currency == 'USD':
-            gross_margin = (comparison - price) / price * 100
+        if price is not None and price > 0 and base is not None and listing.currency == 'USD':
+            gross_margin = (base - price) / price * 100
             margin_pass = threshold is not None and gross_margin > threshold
             details['economic_gate'] = {'mode': 'gross_margin',
                                         'gross_margin_percent': amount(gross_margin),
                                         'gross_margin_percent_exact': str(gross_margin),
+                                        'margin_base': amount(base),
+                                        'margin_base_source': 'resale',
                                         'threshold': float(threshold) if threshold is not None else None,
                                         'margin_pass': margin_pass, 'strictly_above': True}
             if threshold is not None and not margin_pass:
                 reject.append('abaixo-da-margem-bruta-minima')
+            if threshold is not None:
+                # Teto do gate: maior preco que ainda aprova, arredondado para BAIXO ao
+                # centavo. Quando a certificadora ja tem teto proprio, publica-se o MENOR
+                # dos dois -- as duas regras valem juntas.
+                gate_cap = (base / (1 + threshold / 100)).quantize(Decimal('0.01'),
+                                                                   rounding=ROUND_DOWN)
+                atual = money(details.get('comparison_cap_exact'))
+                if atual is None:
+                    atual = money(details.get('comparison_cap'))
+                cap = gate_cap if atual is None else min(atual, gate_cap)
+                details['comparison_cap'] = amount(cap)
+                details['comparison_cap_exact'] = str(cap)
     for key in policy_economic_keys(p['economics']):
         if money(p['economics'].get(key)) is None:
             review.append(f'{key}-indefinido')
