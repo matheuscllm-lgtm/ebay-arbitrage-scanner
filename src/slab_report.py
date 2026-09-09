@@ -37,6 +37,23 @@ def _when(stamp):
     return base + ' ' + dt.strftime('%z')[:3] + ':' + dt.strftime('%z')[3:]
 
 
+def _gate_keys(cfg, economics):
+    """Chaves da regra economica que valem no `gate_mode` ativo (mesmo ramo de
+    `policy_validation.pending_config`): `profit_or_discount` -> min_profit_usd +
+    economics.min_discount_percent; `all_minima` -> min_profit_usd +
+    min_net_margin_percent + min_net_roi_percent + o `min_discount_percent` de TOPO
+    do config (o braco de desconto efetivo nesse modo). Review do PR #33."""
+    mode = economics.get('gate_mode')
+    items = [f"`gate_mode: {_nd(mode)}`", f"`min_profit_usd: {_nd(economics.get('min_profit_usd'))}`"]
+    if mode == 'all_minima':
+        items += [f"`min_net_margin_percent: {_nd(economics.get('min_net_margin_percent'))}`",
+                  f"`min_net_roi_percent: {_nd(economics.get('min_net_roi_percent'))}`",
+                  f"`min_discount_percent: {_nd(cfg.get('min_discount_percent'))}` (topo do config)"]
+    else:
+        items.append(f"`min_discount_percent: {_nd(economics.get('min_discount_percent'))}`")
+    return items
+
+
 def collection_line(meta):
     """QUANDO, O QUE e COM QUAL REGRA a coleta rodou — tudo lido de `meta` do JSON do scan
     (DELIVERY_CHAT.md: horário da coleta e regra identificados na entrega). Nada é
@@ -50,9 +67,7 @@ def collection_line(meta):
     group = f"grupo `{meta['group']}`" if meta.get('group') else 'grupo n/d'
     parts = [
         when, group, f"{_nd(meta.get('watchlist_count'))} carta(s) da watchlist",
-        f"política `{_nd(policy.get('version'))}` (`gate_mode: {_nd(economics.get('gate_mode'))}` · "
-        f"`min_profit_usd: {_nd(economics.get('min_profit_usd'))}` · "
-        f"`min_discount_percent: {_nd(economics.get('min_discount_percent'))}`)",
+        f"política `{_nd(policy.get('version'))}` ({' · '.join(_gate_keys(cfg, economics))})",
         f"`min_price_usd: {_nd(cfg.get('min_price_usd'))}`", f"`max_pages: {_nd(cfg.get('max_pages'))}`",
         f"chamadas à Browse API: {_nd(funnel.get('ebay_calls'))} (`max_ebay_calls: {_nd(cfg.get('max_ebay_calls'))}`)",
     ]

@@ -127,3 +127,19 @@ def test_collection_when_handles_naive_micro_and_garbage_timestamps():
     assert when("2026-09-09T07:25:58.123456") == "2026-09-09 07:25 (fuso não informado)"
     assert when("2026-09-09T07:25:58-03:00") == "2026-09-09 07:25 -03:00"
     assert when("ontem") == "n/d"
+
+
+# --- review 6: chaves do gate na Coleta seguem o gate_mode (all_minima tem outras chaves) --
+
+def test_collection_line_lists_the_keys_of_the_active_gate_mode():
+    payload = _policy_payload()
+    meta = payload["meta"]
+    eco = meta["config"]["slab_strategy"]["economics"]
+    eco.update({"gate_mode": "all_minima", "min_net_margin_percent": 12, "min_net_roi_percent": 25,
+                "min_discount_percent": None})
+    meta["config"]["min_discount_percent"] = 33
+    line = slab_report.collection_line(meta)
+    assert "gate_mode: all_minima" in line
+    assert "min_net_margin_percent: 12" in line and "min_net_roi_percent: 25" in line
+    assert "min_discount_percent: 33" in line  # o de TOPO do config, que e o efetivo nesse modo
+    assert "min_discount_percent: n/d" not in line
