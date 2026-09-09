@@ -121,9 +121,15 @@ $env:PYTHONIOENCODING="utf-8"
   causa: parada antecipada (autenticação, cota ou API — cartas restantes NÃO
   varridas) ou erros contados no funil com todas as cartas visitadas. Entregar
   assim mesmo, dizendo que é parcial; nunca tratar como scan completo.
-- Erro por carta (PriceCharting fora do ar, carta sem vendas comparáveis) NÃO
-  derruba o run: conta no funil (`pc_error`, `pc_breaker`, `card_error`) e as
-  linhas da carta saem em REVISAR com o motivo.
+- Erro por carta não interrompe a varredura das outras cartas, mas cada caso
+  tem um destino diferente: PriceCharting fora do ar ou sem tabelas
+  (`pc_error`, `pc_breaker`) → a carta ainda é buscada no eBay e as linhas dela
+  saem em REVISAR com o motivo `sem-vendas-PSA-comparaveis` (o mesmo motivo de
+  "página sem vendas"; a causa aparece no funil); erro interno ou da Browse API
+  na carta (`card_error`, `ebay_error`) → carta pulada, SEM linhas, só contada
+  no funil. Em todos esses casos o run termina como parcial (`aborted: true`,
+  exit 1, artefato `.aborted.json`). "Carta sem vendas comparáveis" não é erro:
+  é motivo REVISAR normal.
 
 ## Passo 3 — entregar (ritual FIXO, contrato do repo, não negociável)
 
@@ -133,10 +139,13 @@ $env:PYTHONIOENCODING="utf-8"
 
 (Passar `results\last_scan_g<N>.aborted.json` quando o run foi parcial.) O gerador
 vigente é `src/slab_report.py` (`render`), chamado pelo `ebay_summary.py` sempre
-que o JSON é da política: tabela única com todos os candidatos (Carta / Compra /
-Investimento / PSA original / Comparação / Revenda / Desconto / Decisão / Links)
+que o JSON é da política: linha "Coleta:" (quando, o quê e com qual regra
+coletou, lida só do meta do JSON) + tabela única com todos os candidatos, nas
+12 colunas do `render` (Carta / Compra / Investimento / PSA original /
+Comparação / Revenda / as três métricas econômicas líquidas da política
+2026-09-05.4, definidas em docs/EBAY_PSA.md / Desconto / Decisão / Links)
 + uma seção por carta com motivos, variante, idioma, custos e as vendas usadas
-na referência.
+na referência + funil no rodapé.
 
 1. Colar o conteúdo do `.md` **VERBATIM** no chat — **proibido** remontar
    tabela à mão, renomear/reordenar colunas ou dropar link.

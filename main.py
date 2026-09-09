@@ -71,7 +71,8 @@ def main(argv=None):
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument('--check-config', action='store_true', help='verifica regras e lista pendências sem consultar fontes')
     ap.add_argument("--pricing-only", action="store_true",
-                    help="so referencias da watchlist (PriceCharting); nao consulta eBay")
+                    help="so colunas informativas do PriceCharting por carta (nao sao referencia "
+                         "nem evidencia de venda); nao consulta eBay")
     ap.add_argument("--confiavel", action="store_true",
                     help="compatibilidade: o histórico do vendedor é sempre verificado; todos os candidatos permanecem visíveis")
     ap.add_argument("--include-raw", action="store_true",
@@ -172,7 +173,7 @@ def main(argv=None):
 
     print()
     if args.pricing_only or not opportunities:
-        print("## Referencias por carta (PriceCharting -- colunas informativas)\n")
+        print("## Colunas informativas do PriceCharting por carta (nao sao referencia)\n")
         for card, fair in fair_values.values():
             print(report.fair_value_markdown(card, fair))
             print()

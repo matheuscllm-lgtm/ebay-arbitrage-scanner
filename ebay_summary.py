@@ -290,8 +290,9 @@ def main(argv=None):
     ap.add_argument("-o", "--output", required=True,
                     help="arquivo .md de saida (obrigatorio)")
     ap.add_argument("--sensitivity", type=parse_sensitivity, default=None, metavar="10,15,20",
-                    help="modo diagnostico: limiares de desconto crescentes; o maior e o "
-                         "operacional, os demais viram faixas 'NAO e oportunidade'")
+                    help="SO JSON do motor legado (anterior a politica 2026-09-05.4): limiares "
+                         "de desconto crescentes; o maior e o operacional, os demais viram faixas "
+                         "'NAO e oportunidade'. Num JSON da politica e ignorado, com aviso no topo")
     args = ap.parse_args(argv)
 
     with open(args.scan_json, encoding="utf-8-sig") as f:

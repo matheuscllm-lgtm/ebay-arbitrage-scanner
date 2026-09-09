@@ -143,3 +143,37 @@ def test_collection_line_lists_the_keys_of_the_active_gate_mode():
     assert "min_net_margin_percent: 12" in line and "min_net_roi_percent: 25" in line
     assert "min_discount_percent: 33" in line  # o de TOPO do config, que e o efetivo nesse modo
     assert "min_discount_percent: n/d" not in line
+
+
+# --- review 7: --help do ebay_summary e --pricing-only nao chamam coluna de "referencia" --
+
+def test_summary_help_says_sensitivity_is_legacy_only(capsys):
+    try:
+        ebay_summary.main(["--help"])
+    except SystemExit:
+        pass
+    out = capsys.readouterr().out
+    assert "legado" in out
+
+
+def test_pricing_only_help_and_header_do_not_call_columns_references(capsys):
+    try:
+        main.main(["--help"])
+    except SystemExit:
+        pass
+    out = capsys.readouterr().out
+    help_line = out.split("--pricing-only")[1].split("--")[0]
+    assert "referencia" not in help_line.lower() or "nao sao referencia" in help_line.lower()
+    src = (ROOT / "main.py").read_text(encoding="utf-8")
+    assert "## Referencias por carta" not in src
+    assert "## Colunas informativas do PriceCharting por carta" in src
+
+
+# --- review 8: skill descreve o que acontece com cada erro por carta e as 12 colunas --
+
+def test_skill_separates_card_error_from_pricecharting_error_and_counts_columns():
+    text = SKILL.read_text(encoding="utf-8")
+    assert "carta pulada" in text and "card_error" in text
+    assert "sem-vendas-PSA-comparaveis" in text
+    assert "12 colunas" in text
+    assert "aborted: true" in text
