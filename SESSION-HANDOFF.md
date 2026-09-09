@@ -44,6 +44,16 @@ Auditoria do run real de 2026-09-09 (grupo 3, 6.104 anúncios, `results/lt-smoke
    `legacy_reference.require_number_in_sale_title`. Ligar unifica a régua com o caminho vigente,
    mas encolhe a cesta — e a cobertura já é o gargalo. A chave existe para ser reversível.
 
+## Correções da revisão em contexto limpo
+
+`/code-review high` achou 8 defeitos, todos corrigidos. Três mudam comportamento: a ordem
+da tabela passou a usar margem bruta (ranqueava por métrica indisponível em quase toda
+linha); o "teto de comparação" virou o maior preço que o gate realmente aprova; e margem
+absurda voltou a pedir conferência de identidade, com corte próprio do modo
+(`suspicious_gross_margin_percent: 150`). Os outros cinco: teto da família de flags que
+compartilham insumo, meses de estoque restrito à PSA 10, piso da LP1 de volta a 8, guarda
+de drift ancorada, e `--min-gross-margin` deixando de ser aplicada em silêncio.
+
 ## Invariantes que a rodada respeita (não quebrar)
 
 1. A coluna **Longo prazo** é informativa: nunca entra em gate, veredito, ranking nem
