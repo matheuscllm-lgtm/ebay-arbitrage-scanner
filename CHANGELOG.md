@@ -39,6 +39,14 @@ do código) e foi conferida por mutation-check (desfazer a correção faz o test
   `report.POLICY_FUNNEL_LABELS` / `policy_funnel_lines` (APROVAR / REVISAR / REJEITAR), usados
   pelo `render` e pelo console quando a política está ativa; contador sem rótulo continua saindo
   em "outros: …" e o JSON legado mantém os rótulos antigos.
+- Ponto cego na entrega (classe iii; DELIVERY_CHAT.md pede horário da coleta e regra
+  identificados): a tabela da política não dizia QUANDO, O QUE nem COM QUAL REGRA foi coletado.
+  `src/slab_report.render` ganha a linha "Coleta:", lida só de `meta` do JSON (data/hora UTC,
+  grupo, cartas da watchlist, versão da política e chaves `gate_mode` / `min_profit_usd` /
+  `min_discount_percent`, `min_price_usd`, `max_pages`, chamadas à Browse API usadas e
+  `max_ebay_calls`; ausente = n/d, nunca inventado), e o aviso de execução abortada passa a
+  dizer a causa (parada antecipada = cartas restantes não varridas × todas as cartas visitadas
+  com erros contados no funil).
 
 ## 2026-09-09 — porte do diff local pré-#29 sobre #31 (PR-A `fix/port-local-diff`)
 

@@ -105,3 +105,40 @@ def test_legacy_funnel_labels_unchanged_for_legacy_json():
     assert any(line.startswith("Linhas REJEITADO (com motivo): 1") for line in lines)
 
 
+
+
+# --- fix 5: cabecalho da entrega da politica diz QUANDO, O QUE e COM QUAL REGRA coletou --
+
+def test_policy_report_header_states_collection_time_scope_and_policy_keys():
+    from collections import Counter
+    from src import slab_report
+    payload = _policy_payload(group="3", watchlist_count=3,
+                              funnel=Counter(seen=7, ebay_calls=5, cards=3))
+    text = slab_report.render(payload)
+    head = text.split("| Carta")[0]
+    stamp = payload["meta"]["timestamp"][:16].replace("T", " ")
+    assert stamp in head and "UTC" in head
+    assert "grupo `3`" in head and "3 carta(s)" in head
+    assert "2026-09-05.4" in head
+    for key in ("gate_mode: profit_or_discount", "min_profit_usd: 40",
+                "min_discount_percent: 30", "min_price_usd: 10"):
+        assert key in head, key
+    assert "chamadas à Browse API: 5" in head and "max_ebay_calls: 500" in head
+    assert "max_pages: 3" in head
+
+
+def test_policy_report_without_meta_says_nd_instead_of_inventing():
+    from src import slab_report
+    text = slab_report.render({"rows": []})
+    head = text.split("|---")[0]
+    assert "Coleta: n/d" in head
+    assert "None" not in head
+
+
+def test_policy_report_banner_says_why_the_run_is_partial():
+    from collections import Counter
+    from src import slab_report
+    early = slab_report.render(_policy_payload(aborted=True, funnel=Counter(seen=1, stopped_early=1)))
+    visited = slab_report.render(_policy_payload(aborted=True, funnel=Counter(seen=1, pc_error=1)))
+    assert "cartas restantes NÃO foram varridas" in early.split("| Carta")[0]
+    assert "todas as cartas foram visitadas" in visited.split("| Carta")[0]

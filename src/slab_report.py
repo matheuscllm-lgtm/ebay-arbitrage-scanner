@@ -7,18 +7,60 @@ from collections import Counter
 from .report import escape_md, md_url
 
 
+def _nd(value):
+    """Valor de `meta` para exibição: ausente = 'n/d' (nunca inventado); número sem zeros à toa."""
+    if value is None or value == '':
+        return 'n/d'
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, (int, float)):
+        return f'{value:g}'
+    return str(value)
+
+
+def collection_line(meta):
+    """QUANDO, O QUE e COM QUAL REGRA a coleta rodou — tudo lido de `meta` do JSON do scan
+    (DELIVERY_CHAT.md: horário da coleta e regra identificados na entrega). Nada é
+    recalculado aqui; campo ausente sai como n/d (auditoria de honestidade 2026-09-09)."""
+    meta = meta or {}
+    cfg = meta.get('config') or {}
+    policy = cfg.get('slab_strategy') or {}
+    economics = policy.get('economics') or {}
+    funnel = meta.get('funnel') or {}
+    stamp = str(meta.get('timestamp') or '')
+    if stamp:
+        when = stamp[:16].replace('T', ' ') + (' UTC' if stamp.endswith(('+00:00', 'Z')) else ' ' + stamp[19:])
+    else:
+        when = 'n/d'
+    group = f"grupo `{meta['group']}`" if meta.get('group') else 'grupo n/d'
+    return ' · '.join([
+        when, group, f"{_nd(meta.get('watchlist_count'))} carta(s) da watchlist",
+        f"política `{_nd(policy.get('version'))}` (`gate_mode: {_nd(economics.get('gate_mode'))}` · "
+        f"`min_profit_usd: {_nd(economics.get('min_profit_usd'))}` · "
+        f"`min_discount_percent: {_nd(economics.get('min_discount_percent'))}`)",
+        f"`min_price_usd: {_nd(cfg.get('min_price_usd'))}`", f"`max_pages: {_nd(cfg.get('max_pages'))}`",
+        f"chamadas à Browse API: {_nd(funnel.get('ebay_calls'))} (`max_ebay_calls: {_nd(cfg.get('max_ebay_calls'))}`)",
+    ])
+
+
 def render(payload):
     def num(value):
         return 'pendente' if value is None else f'{value:.2f}'
     rows = payload.get('rows', [])
     counts = Counter(r['verdict'] for r in rows)
+    meta = payload.get('meta') or {}
     lines = ['# EBAY PSA — avaliação de cartas certificadas', '',
              f'{len(rows)} candidatos: {counts["APROVAR"]} APROVAR, {counts["REVISAR"]} REVISAR, {counts["REJEITAR"]} REJEITAR.', '',
+             'Coleta: ' + escape_md(collection_line(meta)), '',
              'APROVAR é aprovação na análise; nenhuma compra é executada.', '',
              '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem líquida % | ROI líquido % | Decisão | Links |',
              '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|']
-    if payload.get('meta', {}).get('aborted'):
-        lines[2:2] = ['**EXECUÇÃO ABORTADA: resultado parcial; não representa busca completa.**', '']
+    if meta.get('aborted'):
+        # Causa da parcialidade (review #32): parada antecipada x erros contados no funil.
+        cause = ('parada antecipada (autenticação, cota ou API): cartas restantes NÃO foram varridas'
+                 if (meta.get('funnel') or {}).get('stopped_early')
+                 else 'todas as cartas foram visitadas, mas houve erros contados no funil')
+        lines[2:2] = [f'**EXECUÇÃO ABORTADA: resultado parcial; não representa busca completa — {cause}.**', '']
     for r in rows:
         s=r['strategy']
         label=escape_md(f'{r["card"]} #{r["number"]} / {r["set"]} / {s.get("listing_language") or "idioma não confirmado"} / {r["grade"]}')

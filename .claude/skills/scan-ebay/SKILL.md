@@ -147,8 +147,10 @@ na referência.
 3. Toda linha tem os **DOIS links**: `[oferta]` (anúncio eBay) e `[referência]`
    (página da carta no PriceCharting); o preço de referência também é clicável.
    URLs vêm do JSON — nunca inventar.
-4. Reportar o rodapé da ferramenta: contagem por veredito e **Funil da busca**
-   (inclusive chamadas à API, erros e run parcial).
+4. Reportar o cabeçalho e o rodapé da ferramenta: a linha **Coleta** (data/hora
+   UTC, grupo, cartas da watchlist, versão da política e chaves do gate, chamadas
+   à Browse API usadas × teto), a contagem por veredito e o **Funil da busca**
+   (erros e, se o run foi parcial, a causa).
 5. **Sem recomendação de compra** — vereditos são classificação técnica; capital
    é decisão do operador.
 
