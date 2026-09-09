@@ -14,7 +14,7 @@ Dois geradores, escolhidos pelo proprio JSON:
   SUSPEITO / REJEITADO). `--sensitivity 10,15,20` (faixas de diagnostico por
   Desconto%: o MAIOR limiar e o operacional; as faixas abaixo NAO sao
   oportunidade e saem com todas as linhas + tabela de contagens) so se aplica a
-  este caso.
+  este caso; num JSON da politica a ferramenta avisa no topo e ignora as faixas.
 
 Contrato da frota (nao negociavel):
 - TODAS as linhas de TODOS os vereditos -- nunca amostra.
@@ -258,7 +258,17 @@ def build_markdown(payload, sensitivity=None):
     rows = payload.get("rows") or []
     if meta.get("config", {}).get("slab_strategy") or any(r.get("strategy") for r in rows):
         from src.slab_report import render
-        return render(payload)
+        text = render(payload)
+        if sensitivity:
+            # Flag aceita mas sem efeito neste JSON: dizer ALTO em vez de ignorar em
+            # silencio (auditoria de honestidade 2026-09-09) -- o operador saberia que
+            # pediu faixas e nao as recebeu. A tabela segue identica.
+            note = (f"> `--sensitivity {', '.join(str(t) for t in sensitivity)}` ignorado: "
+                    "as faixas de diagnóstico por Desconto% só existem para JSON do motor "
+                    "legado (anterior à política 2026-09-05.4); este JSON é da política e a "
+                    "entrega abaixo é a canônica, sem faixas.")
+            return note + "\n\n" + text
+        return text
     by_verdict = split_verdicts(rows)
     lines = _header(meta, rows, by_verdict, sensitivity)
     if sensitivity:

@@ -142,7 +142,8 @@ na referência.
    tabela à mão, renomear/reordenar colunas ou dropar link.
 2. **Todas as linhas, todos os vereditos** (APROVAR / REVISAR / REJEITAR, cada
    um com motivos). Nunca amostra. `--sensitivity` (faixas de diagnóstico) só
-   vale para JSON do motor legado, anterior à política.
+   vale para JSON do motor legado, anterior à política; num JSON da política a
+   ferramenta avisa no topo e ignora as faixas.
 3. Toda linha tem os **DOIS links**: `[oferta]` (anúncio eBay) e `[referência]`
    (página da carta no PriceCharting); o preço de referência também é clicável.
    URLs vêm do JSON — nunca inventar.

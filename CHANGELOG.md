@@ -26,6 +26,11 @@ do código) e foi conferida por mutation-check (desfazer a correção faz o test
   `--sensitivity` declarado como só-legado. `main.py` deixa de passar `include_raw` (flag
   rejeitada) ao artefato. `tests/test_docs_drift.py` fixa que a skill só usa flags que a
   CLI aceita e não reoferece o modo removido.
+- Sinal descartado (classe iv): `ebay_summary.py --sensitivity` num JSON da política era aceito
+  e ignorado em silêncio — a tabela saía sem as faixas e sem aviso, e o operador podia achar que
+  as faixas tinham sido aplicadas. Agora a entrega ganha um aviso explícito no topo ("ignorado:
+  as faixas só existem para JSON do motor legado") e a tabela segue idêntica; nada muda na
+  política nem nos vereditos.
 
 ## 2026-09-09 — porte do diff local pré-#29 sobre #31 (PR-A `fix/port-local-diff`)
 

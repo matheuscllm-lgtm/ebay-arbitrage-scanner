@@ -35,3 +35,31 @@ def test_raw_spread_reads_generic_grade9_bucket_under_its_own_name():
                         tcg_ref=TCG(100.0), refs=make_refs())
     assert o is not None
     assert o.spread_grade9_pct == 800 and o.spread_psa10_pct == 2900
+
+
+# --- fix 3: `--sensitivity` num JSON da politica e declarado, nunca ignorado em silencio --
+
+def _policy_payload(**meta_extra):
+    from collections import Counter
+    from src.slab_strategy import evaluate, policy_config
+    from tests.test_slab_strategy import CARD as PCARD, listing, sales, refs
+    c = policy_config()
+    opp = evaluate(PCARD, listing(price=50), config=c, refs=refs(sales()))
+    funnel = meta_extra.pop("funnel", Counter(seen=1, ebay_calls=2, cards=1))
+    return report.scan_payload([opp], meta_extra.pop("watchlist_count", 1), c,
+                               funnel=funnel, **meta_extra)
+
+
+def test_sensitivity_on_policy_json_is_declared_not_silently_ignored():
+    import ebay_summary
+    payload = _policy_payload()
+    plain = ebay_summary.build_markdown(payload)
+    noted = ebay_summary.build_markdown(payload, sensitivity=[10, 15, 20])
+    assert "--sensitivity" not in plain
+    # A tabela e a mesma; so entra um aviso explicito no topo, com os limiares pedidos.
+    assert noted.endswith(plain)
+    note = noted[: -len(plain)]
+    assert "--sensitivity" in note and "ignorad" in note and "10, 15, 20" in note
+    assert "legado" in note
+
+
