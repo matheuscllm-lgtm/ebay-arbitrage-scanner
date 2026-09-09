@@ -373,7 +373,9 @@ def trend_from_history(series, today, months=12, tolerance_days=31):
     pontos -> None."""
     if not series:
         return None
-    points = sorted((int(ts), value) for ts, value in series)
+    # Ordena SO pelo timestamp: a serie tem `None` onde o mes nao tem dado, e dois
+    # pontos com o mesmo timestamp fariam o Python comparar None com int (TypeError).
+    points = sorted(((int(ts), value) for ts, value in series), key=lambda p: p[0])
     now_value = _point_at(points, today, tolerance_days)
     then_value = _point_at(points, today - timedelta(days=months * 365 // 12), tolerance_days)
     if not now_value or not then_value or now_value <= 0 or then_value <= 0:

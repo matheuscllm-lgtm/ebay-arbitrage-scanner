@@ -982,3 +982,18 @@ def test_r7_nd_class_cell_is_read_as_nd_not_as_three_glued_nd():
     assert report.longterm_cell({"longterm_tier": "LP2", "longterm_profile": 64.0,
                                  "longterm_fragility": 35.0,
                                  "longterm_coverage": "4/5·8/10"}) == "LP2 64/35 (4/5·8/10)"
+
+
+def test_r8_duplicate_timestamps_in_the_monthly_series_do_not_raise():
+    """`trend_from_history` ordenava a serie pela TUPLA inteira. Como
+    `parse_chart_data` deixa `None` onde o mes nao tem dado, dois pontos com o MESMO
+    timestamp faziam o Python comparar `None` com um inteiro no segundo elemento e
+    levantar TypeError. O `try/except` de `scanner._annotate_longterm` segurava a linha
+    (a coluna virava n/d e o erro contava em `longterm_error`), mas a coluna se perdia
+    a toa. Nunca reproduzi timestamp repetido numa pagina real -- a correcao e
+    defensiva, e ordenar so pelo timestamp e o comportamento certo de qualquer jeito."""
+    lt = _lt()
+    assert lt.trend_from_history([(1000, None), (1000, 500)], TODAY) is None
+    # com timestamp repetido e dado util, o ultimo ponto do mes vale (ordem preservada)
+    series = [(_ms(2025, 8, 15), 100), (_ms(2025, 8, 15), 120), (_ms(2026, 9, 1), 150)]
+    assert lt.trend_from_history(series, date(2026, 9, 3)) == 25.0
