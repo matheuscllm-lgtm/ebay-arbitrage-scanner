@@ -835,3 +835,46 @@ def test_r1_concentration_counts_only_listings_of_the_same_card(monkeypatch):
     assert len(opps) == 1 and stats["skip_no_match"] == 3
     assert opps[0].longterm_signals["listings_same_grade"] == 1
     assert not any(r.startswith("LP:concentracao") for r in opps[0].longterm_reasons)
+
+
+def _pc_body(rows):
+    """Corpo minimo de pagina do PriceCharting que `pc_sales.parse_sales` le
+    (`<div class="completed-auctions-*">` + `<tr id="<fonte>-<id>">`)."""
+    trs = "".join(
+        f'<tr id="{src}-{sid}"><td class="date">{day}</td>'
+        f'<td class="title">{title}</td>'
+        f'<td class="js-price">${price:,.2f}</td></tr>'
+        for src, sid, day, title, price in rows)
+    return f'<div class="completed-auctions-manual-only"><table>{trs}</table></div>'
+
+
+def test_r2_policy_path_labels_b5_basket_as_its_own_not_the_reference_basket():
+    """No caminho da POLITICA a cesta que alimenta B5 (tendencia) NAO e a cesta da
+    referencia: `refs.sales_history` usa a nota DO ANUNCIO e filtros mais frouxos,
+    enquanto a referencia vem de `slab_strategy.reference_sales` (nota PSA-equivalente,
+    exige `source == 'ebay'`, id numerico unico, idioma, sem lote/oferta). O rotulo
+    `trend_source` tem de dizer isso -- senao a doc promete "a mesma cesta da
+    referencia" e o numero entregue vem de vendas que o motor vigente rejeitou."""
+    lt = _lt()
+    now = datetime.now(timezone.utc).date()
+
+    def day(n):
+        return (now - timedelta(days=n)).isoformat()
+
+    title = "Charizard 4/102 Base Set English PSA 10"
+    rows = ([("ebay", 1000 + i, day(30 + i), title, 300.0) for i in range(3)]
+            + [("tcgplayer", 2000 + i, day(200 + i), title, 100.0) for i in range(3)])
+    refs = scanner.CardRefs(PCARD, _pc_body(rows), PCARD.pc_url)
+    popp = slab_evaluate(PCARD, plisting(), config=pcfg(), refs=refs)
+    ev = popp.strategy["psa_evidence"]
+    # a POLITICA descartou as 3 vendas TCGplayer da cesta da REFERENCIA
+    assert ev["excluded_counts"]["origem-id-ou-duplicata"] == 3
+    assert [s["sale_id"] for s in ev["sales"]] == ["1000", "1001", "1002"]
+    res = lt.assess(PCARD, popp.listing, popp, fair(), refs, 1, pcfg(), today=now)
+    # ... mas B5 leu as 6 (300 recentes vs 100 antigas = +200%): cesta PROPRIA
+    assert res.signals["trend_12m_pct"] == 200.0
+    assert res.signals["trend_source"] == "sales_history:cesta-propria"
+    assert {s["sale_id"] for s in ev["sales"]}.isdisjoint({"2000", "2001", "2002"})
+    # caminho LEGADO: ali a cesta E a mesma da referencia -> rotulo segue "sales_history"
+    opp, lrefs, fv = lp1_setup()
+    assert assess(opp, lrefs, fv).signals["trend_source"] == "sales_history"

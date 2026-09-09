@@ -28,8 +28,16 @@ alimenta a referência também não muda: a coluna só LÊ a referência e a ces
   de preço da COLUNA PSA 10 do PriceCharting (só informação: nunca é a referência nem o preço do
   anúncio). B5 tendência real de 12 meses.
 - **B5 (tendência) tem duas fontes, nesta ordem.** Primeiro a mediana (valor do meio) das vendas
-  da NOTA EXATA em 0-180 dias contra 180-365 dias, só com ao menos três vendas em cada janela,
-  lida da mesma cesta da referência (`refs.sales_history`, só leitura). Se não houver, a série
+  da nota DO ANÚNCIO em 0-180 dias contra 180-365 dias, só com ao menos três vendas em cada
+  janela (`refs.sales_history`, só leitura). Essa cesta é a MESMA da referência apenas no caminho
+  LEGADO; no caminho da POLÍTICA (vigente) ela é uma cesta PRÓPRIA e mais frouxa — a referência da
+  política (`slab_strategy.reference_sales`) usa a nota PSA-equivalente e ainda exige venda de
+  fonte eBay, id de venda numérico e único, idioma da carta e nada de lote/"best offer"/
+  certificação incerta, filtros que a cesta da tendência não aplica. Por isso o sinal
+  `trend_source` vale `sales_history` no legado e `sales_history:cesta-propria` na política: B5
+  pode se apoiar em vendas que a política descartou da referência, e o rótulo diz isso em vez de
+  prometer "a mesma cesta". Nada disso muda a referência, o veredito nem o ranking — B5 só entra
+  no PERFIL, que é informativo. Se não houver, a série
   mensal do PriceCharting (`VGPC.chart_data`, leitura nova em `src/pricecharting.py`), bucket
   PSA 10 — anúncio de outra nota recebe o rótulo `chart_data:psa10-proxy` no sinal `trend_source`,
   porque a série PSA 10 não é a série daquela nota. Na série, zero significa "sem dado", nunca

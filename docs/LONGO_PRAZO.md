@@ -52,7 +52,7 @@ cobertura da fragilidade).
 | B2 | Raridade | `rarity` (texto do tcgcsv), por substring do tier mais alto para o mais baixo; `ex`/`gx`/`v` só como palavra inteira | special illustration / alternate → 20 · illustration / trainer gallery / character → 16 · hyper / secret / rainbow / shiny / amazing / radiant → 14 · ultra / vmax / vstar / ex / gx / lv.x / prime / legend / prism / classic collection → 12 · holo em era vintage (grupos 3-4) → 12, em outra era → 6 · resto → 4 · vazio → `n/d` |
 | B3 | Supply (tempo fora de impressão) | idade = ano corrente − `year` da watchlist; era pelo grupo canônico (`src/groups.py`) | ≥10 anos → 20 · 5-9 → 16 · 3-4 → 13 · 2 → 10 · 1 → 6 · 0 → 3 · **reprint forte** (reimpressão que aumenta a oferta) → teto 8 · sem ano → `n/d` |
 | B4 | Faixa de preço PSA 10 | **coluna PSA 10** da página do PriceCharting (`fair.prices`), só informação — nunca a referência, nunca o preço do anúncio | <15 → 4 · 15-44 → 10 · 45-119 → 16 · 120-359 → 20 · 360-899 → 14 · ≥900 → 8 · sem coluna → `n/d` |
-| B5 | Tendência real (12 m) | (ii) primeiro: mediana das vendas da **nota exata** 0-180 d vs 180-365 d, só com ≥3 vendas em cada janela (`refs.sales_history`, a mesma cesta da referência, só leitura); senão (i) série mensal `VGPC.chart_data` do PriceCharting, bucket `manualonly` (PSA 10) — anúncio que não é PSA 10 recebe `trend_source = chart_data:psa10-proxy`. Na série, **0 = sem dado** → `n/d`. Ponto "de 12 m atrás" = último ponto ≤ hoje − 365 d, tolerância ±31 d. 36 m só informativo. O delta único da coluna nunca é tendência | ≥ +25% → 20 · +8..+25 → 16 · −8..+8 → 10 · −25..−8 → 5 · ≤ −25% → 2 |
+| B5 | Tendência real (12 m) | (ii) primeiro: mediana das vendas da **nota do anúncio** 0-180 d vs 180-365 d, só com ≥3 vendas em cada janela (`refs.sales_history`, só leitura). **Qual cesta é essa:** no caminho LEGADO é a MESMA cesta que gera a referência (`trend_source = sales_history`); no caminho da POLÍTICA (vigente) é uma cesta PRÓPRIA, mais frouxa — a referência da política (`slab_strategy.reference_sales`) usa a nota PSA-equivalente e ainda exige fonte eBay, id de venda numérico e único, idioma da carta e nada de lote/"best offer"/certificação incerta, filtros que esta cesta não aplica. Por isso o rótulo lá é `trend_source = sales_history:cesta-propria`, e B5 pode se apoiar em vendas que a política descartou da referência (não muda referência nem veredito: B5 só entra no PERFIL, informativo); senão (i) série mensal `VGPC.chart_data` do PriceCharting, bucket `manualonly` (PSA 10) — anúncio que não é PSA 10 recebe `trend_source = chart_data:psa10-proxy`. Na série, **0 = sem dado** → `n/d`. Ponto "de 12 m atrás" = último ponto ≤ hoje − 365 d, tolerância ±31 d. 36 m só informativo. O delta único da coluna nunca é tendência | ≥ +25% → 20 · +8..+25 → 16 · −8..+8 → 10 · −25..−8 → 5 · ≤ −25% → 2 |
 
 Reprint forte (ideia do outlook, sobre o nome do set verbatim do tcgcsv): nome começa
 com `SV:`, `SWSH:` ou `ME:` (set especial sem número de era) OU contém Paldean Fates,
@@ -98,7 +98,9 @@ decidir sobre o cálculo dos asks só para a flag informativa.
 
 Não é previsão de preço, não é conselho, não é gate, não é ranking, não é
 "oportunidade" nem recomendação de compra. Não cria uma segunda referência: lê a
-que já existe (`ref_*` / `psa_evidence`) e a cesta de vendas já montada.
+que já existe (`ref_*` / `psa_evidence`) e a cesta de vendas já montada — mas a cesta
+lida por B5 no caminho da política é mais frouxa que a da referência e vai rotulada
+como `sales_history:cesta-propria` (ver B5 acima).
 "Valorização" (subida de preço ao longo do tempo) **não é medida** aqui — a coluna
 descreve características e fragilidade de dado, e a calibração transversal (comparar
 cartas de hoje entre si) não é prova de valorização futura.

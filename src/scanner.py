@@ -182,11 +182,19 @@ class CardRefs:
         return self._memo[key]
 
     def sales_history(self, grade, variants=frozenset()):
-        """Cesta de vendas comparaveis da nota (MESMA certificadora+nota+qualificador+
-        variante e a mesma guarda de identidade da referencia) -- SO LEITURA, para a
-        coluna informativa "Longo prazo" (tendencia B5 e `dispersao` no caminho
-        legado). Nunca vira referencia, nunca recalcula a mediana, nenhum fetch novo;
-        `slab()` e identico antes e depois. Copias rasas: o chamador nao altera `_sales`."""
+        """Cesta de vendas comparaveis da nota PEDIDA (MESMA certificadora+nota+
+        qualificador+variante e a mesma guarda de identidade de `comparable_sales`) --
+        SO LEITURA, para a coluna informativa "Longo prazo" (tendencia B5 e `dispersao`
+        no caminho legado). Nunca vira referencia, nunca recalcula a mediana, nenhum
+        fetch novo; `slab()` e identico antes e depois. Copias rasas: o chamador nao
+        altera `_sales`.
+
+        ATENCAO (review do PR-C 2026-09-09): esta cesta e IGUAL a que gera a referencia
+        SO no caminho LEGADO (`slab()` sai da mesma `comparable_sales`). No caminho da
+        POLITICA a referencia vem de `slab_strategy.reference_sales`, que e mais
+        estrita (nota PSA-equivalente, so vendas de fonte eBay com id numerico unico,
+        idioma da carta, sem lote/"best offer"/certificacao incerta) -- por isso o
+        sinal la e rotulado `trend_source = "sales_history:cesta-propria"`."""
         comps = pc_sales.comparable_sales(self._sales, grade.grader, grade.value,
                                           grade.qualifier, frozenset(variants), card=self.card)
         return [dict(sale) for sale in comps]

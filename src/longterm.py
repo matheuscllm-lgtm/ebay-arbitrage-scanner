@@ -29,6 +29,16 @@ Regras fixas:
 - Nunca recomputa uma segunda referencia: le a que ja existe (`opp.ref_*`; no caminho
   da politica `opp.strategy['psa_evidence']`) e a cesta de vendas ja montada
   (`refs.sales_history`, so leitura) -- UMA leitura por avaliacao.
+- A cesta de B5 (tendencia) NAO e sempre a cesta da referencia. No caminho LEGADO e a
+  mesma (`refs.slab` sai da mesma `pc_sales.comparable_sales`) e o rotulo e
+  `trend_source = "sales_history"`. No caminho da POLITICA (vigente) e uma cesta
+  PROPRIA, mais frouxa: `refs.sales_history` usa a nota DO ANUNCIO e nao aplica os
+  filtros extras de `slab_strategy.reference_sales` (nota PSA-equivalente, so
+  `source == "ebay"`, id de venda numerico e unico, idioma da carta, sem lote/"best
+  offer"/certificacao incerta). Por isso o rotulo la e
+  `trend_source = "sales_history:cesta-propria"` -- e por isso B5 pode se apoiar em
+  vendas que a politica descartou da referencia. Nada disso muda a referencia nem o
+  veredito: B5 so entra no PERFIL, que e informativo.
 - Limiares, pontos e bandas sao calibracao inicial, nao validada (`CALIBRATION_NOTE`):
   a regua foi trazida como ideia do repo pokemon-longterm-outlook, sem codigo copiado,
   e ainda nao foi medida contra o mercado real. Triagem descritiva, nao previsao.
@@ -470,12 +480,16 @@ def _dispersion_from_sales(sales, window_days, today):
     return round((max(prices) - min(prices)) / median * 100.0, 2)
 
 
-def _trend(history, fair, grade_key, today):
+def _trend(history, fair, grade_key, today, sales_label="sales_history"):
     """(12 m, 36 m, fonte): (ii) vendas da nota exata primeiro; senao (i) serie PSA 10
-    do PriceCharting, rotulada proxy quando o anuncio nao e PSA 10; nada -> None."""
+    do PriceCharting, rotulada proxy quando o anuncio nao e PSA 10; nada -> None.
+
+    `sales_label` = rotulo honesto da cesta de (ii): "sales_history" so no caminho
+    LEGADO, onde ela e a MESMA cesta que gera a referencia; no caminho da POLITICA e
+    "sales_history:cesta-propria" (ver docstring do modulo)."""
     pct = trend_from_sales(history, today) if history else None
     if pct is not None:
-        return pct, None, "sales_history"
+        return pct, None, sales_label
     series = ((getattr(fair, "history", None) or {}).get("manualonly")) if fair is not None else None
     if series:
         pct = trend_from_history(series, today)
@@ -530,7 +544,11 @@ def assess(card, listing, opp, fair, refs, listings_same_grade, cfg=None, *,
     if (grade_obj is not None and refs is not None and getattr(refs, "available", False)
             and hasattr(refs, "sales_history")):
         history = refs.sales_history(grade_obj, variants)
-    trend_12, trend_36, trend_source = _trend(history, fair, getattr(opp, "grade", ""), today)
+    # Rotulo honesto da cesta de B5: no caminho da POLITICA ela NAO e a cesta da
+    # referencia (nota do anuncio, filtros mais frouxos) -- review do PR-C 2026-09-09.
+    sales_label = "sales_history:cesta-propria" if strategy else "sales_history"
+    trend_12, trend_36, trend_source = _trend(history, fair, getattr(opp, "grade", ""),
+                                              today, sales_label)
 
     signals.update(
         pokemon_rank=rank, iconic_score=(iconic_scores.get(pokemon) if pokemon else None),
