@@ -15,6 +15,17 @@ do código) e foi conferida por mutation-check (desfazer a correção faz o test
   já usava para a mesma coluna; o campo `Opportunity.spread_psa9_pct` (legado, só raw)
   virou `spread_grade9_pct`. Nenhuma referência de preço muda: essa coluna nunca foi
   referência (só informação).
+- Ponto cego de documentação (classe iii): a skill `.claude/skills/scan-ebay/SKILL.md`, a
+  docstring e o `--help` do `main.py` e a docstring do `ebay_summary.py` ainda ofereciam o
+  "modo diagnóstico" com carta solta e piso US$5 (`--include-raw`, rejeitado desde a política
+  2026-09-05.4), o gate `min_discount_percent: 20` (histórico pré-#29; o config diz 30) e a
+  entrega em 4 baldes do motor legado (OPORTUNIDADE/SUSPEITO). Reescritos para a política
+  vigente, descrita por chave de config (`slab_strategy.economics`: `gate_mode:
+  profit_or_discount`, `min_profit_usd`, `min_discount_percent: 30`; `graded_only: true`;
+  link para docs/EBAY_PSA.md), com o gerador vigente (`src/slab_report.render`) e
+  `--sensitivity` declarado como só-legado. `main.py` deixa de passar `include_raw` (flag
+  rejeitada) ao artefato. `tests/test_docs_drift.py` fixa que a skill só usa flags que a
+  CLI aceita e não reoferece o modo removido.
 
 ## 2026-09-09 — porte do diff local pré-#29 sobre #31 (PR-A `fix/port-local-diff`)
 

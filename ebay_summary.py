@@ -4,23 +4,28 @@ Le o artefato JSON gravado pelo `main.py --out` e gera a tabela markdown de
 entrega -- grava em `-o` (obrigatorio) e imprime no stdout. O agente cola o
 `.md` VERBATIM no chat: nunca remontar tabela a mao, nunca dropar link.
 
+Dois geradores, escolhidos pelo proprio JSON:
+- JSON da POLITICA (`meta.config.slab_strategy` presente ou linhas com
+  `strategy`; todo scan desde a politica 2026-09-05.4) -> `src/slab_report.render`:
+  tabela unica com todos os candidatos (APROVAR / REVISAR / REJEITAR) + secao por
+  carta com motivos, custos e as vendas usadas na referencia; funil no rodape.
+- JSON LEGADO (motor `src/scorer.py`, anterior a politica): cabecalho com
+  parametros / cobertura / funil e 4 baldes por veredito (OPORTUNIDADE / REVISAR /
+  SUSPEITO / REJEITADO). `--sensitivity 10,15,20` (faixas de diagnostico por
+  Desconto%: o MAIOR limiar e o operacional; as faixas abaixo NAO sao
+  oportunidade e saem com todas as linhas + tabela de contagens) so se aplica a
+  este caso.
+
 Contrato da frota (nao negociavel):
-- TODAS as linhas de TODOS os buckets (OPORTUNIDADE / REVISAR / SUSPEITO /
-  REJEITADO com motivo) -- nunca amostra.
+- TODAS as linhas de TODOS os vereditos -- nunca amostra.
 - Toda linha tem os DOIS links: `[oferta]` (anuncio eBay, onde comprar) e
   `[referência]` (pagina da carta no PriceCharting, onde validar; `[TCG]` so
   quando nao ha pagina PC). URLs lidas do JSON, NUNCA inventadas.
 - Vereditos sao classificacao tecnica; nenhuma recomendacao de compra.
 
-`--sensitivity 10,15,20` (modo diagnostico, padrao COMC): o MAIOR limiar e o
-operacional (faixa >=20% = candidato comercial: OPORTUNIDADE / REVISAR+SUSPEITO);
-as faixas abaixo (15-19,99%, 10-14,99%) sao so diagnostico -- NAO sao
-oportunidade -- e saem com TODAS as linhas da faixa, status na coluna, mais uma
-tabela de contagens por limiar. Faixa = coluna Desconto% (`discount_pct`).
-
 Uso:
-    python ebay_summary.py results/last_scan.json -o results/ebay-2026-09-03.md \
-        [--sensitivity 10,15,20]
+    python ebay_summary.py results/last_scan.json -o results/ebay-2026-09-03.md
+    python ebay_summary.py results/legado.json -o results/x.md --sensitivity 10,15,20   # so JSON legado
 """
 import argparse
 import io
@@ -170,7 +175,8 @@ def _header(meta, rows, by_verdict, sensitivity):
     if allowed:
         modes.append(f"funil restrito a {' + '.join(allowed)} (--grades)")
     if meta.get("include_raw"):
-        modes.append("raw incluído (--include-raw: NM = TCG market; LP = vendas LP)")
+        modes.append("raw incluído (run legado, anterior à política 2026-09-05.4: "
+                     "NM = TCG market; LP = vendas LP)")
     if meta.get("trusted_mode"):
         modes.append("modo confiável (--confiavel)")
     min_discount = cfg.get("min_discount_percent")
