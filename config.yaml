@@ -63,7 +63,14 @@ slab_strategy:
     cashout_fee_percent: 10        # taxa informada pelo operador nesta revisão
     fee_basis: sale_then_cashout    # venda primeiro, saque sobre o saldo restante
   economics:
-    gate_mode: profit_or_discount
+    # REGRA CANÔNICA DA FROTA (operador, 2026-09-09): o gate usa SÓ MARGEM BRUTA,
+    # sem taxa nenhuma. Custos de intermediação continuam sendo CALCULADOS e vão
+    # para o JSON/relatório como informação, mas NÃO entram no veredito.
+    gate_mode: gross_margin
+    min_gross_margin_percent: 42.9  # (referência - preço) / preço x 100, estritamente acima.
+                                    # 42,9% preserva a fronteira do antigo desconto de 30%
+                                    # sobre a referência: 30/(100-30) = 42,857...
+    # --- chaves dos modos legados; sem efeito com gate_mode: gross_margin ---
     min_profit_usd: 40             # estritamente acima, após todos os custos
     min_discount_percent: 30       # estritamente acima, contra PSA ajustado
     require_positive_profit: true # desconto não aprova prejuízo
@@ -87,3 +94,18 @@ longterm:
   min_profile_sources: 3           # menos que isto de 5 componentes -> PERFIL n/d
   min_fragility_sources: 3         # menos que isto de 10 fontes -> FRAGILIDADE n/d
   concentration_min_listings: 4    # mesma carta+nota com >= N anúncios no run -> LP:concentracao
+  lp1_min_profile_coverage: 4      # de 5 componentes; era fixo no código (PR-C), virou chave
+  lp1_min_fragility_coverage: 9    # de 11 flags (~80%); era 8 de 10, fixo no código
+  # Meses de estoque = anúncios ativos da mesma nota no run / vendas PSA 10 por mês.
+  # 11ª flag de FRAGILIDADE (`estoque-alto`): oferta parada em cima de demanda fina.
+  supply_months_high: 24           # >= N meses de estoque -> 20 pontos de fragilidade
+  supply_months_mid: 12            # >= N meses -> 10 pontos; abaixo disso -> 0
+  supply_min_sales_pm: 0.05        # vendas/mês abaixo disto: divisão instável -> n/d
+
+# Cesta de vendas do caminho LEGADO (`pc_sales.comparable_sales`). O caminho VIGENTE
+# (`slab_strategy.reference_sales`) já exige o número da carta no título da venda.
+# Ligar aqui unifica as duas réguas, ao custo de uma cesta MENOR — e a cobertura de
+# referência já é o gargalo do scanner (2,7% das linhas do run de 2026-09-09).
+# Por isso o padrão fica FALSE: a chave existe e é reversível, mas não foi virada.
+legacy_reference:
+  require_number_in_sale_title: false
