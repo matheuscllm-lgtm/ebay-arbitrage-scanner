@@ -4,6 +4,7 @@ from .chat_format import reference_price
 from .report import links_cell, policy_funnel_lines
 import json
 from collections import Counter
+from datetime import datetime, timedelta
 from .report import escape_md, md_url
 
 
@@ -18,6 +19,24 @@ def _nd(value):
     return str(value)
 
 
+def _when(stamp):
+    """Data/hora da coleta a partir do `timestamp` ISO do meta: UTC explicito ->
+    'AAAA-MM-DD HH:MM UTC'; outro fuso -> '... +HH:MM'; sem fuso -> dito; nao
+    parseia -> 'n/d' (review do PR #33: nunca colar pedacos da string as cegas)."""
+    if not stamp:
+        return 'n/d'
+    try:
+        dt = datetime.fromisoformat(str(stamp).replace('Z', '+00:00'))
+    except (ValueError, TypeError):
+        return 'n/d'
+    base = dt.strftime('%Y-%m-%d %H:%M')
+    if dt.tzinfo is None:
+        return base + ' (fuso não informado)'
+    if dt.utcoffset() == timedelta(0):
+        return base + ' UTC'
+    return base + ' ' + dt.strftime('%z')[:3] + ':' + dt.strftime('%z')[3:]
+
+
 def collection_line(meta):
     """QUANDO, O QUE e COM QUAL REGRA a coleta rodou — tudo lido de `meta` do JSON do scan
     (DELIVERY_CHAT.md: horário da coleta e regra identificados na entrega). Nada é
@@ -27,11 +46,7 @@ def collection_line(meta):
     policy = cfg.get('slab_strategy') or {}
     economics = policy.get('economics') or {}
     funnel = meta.get('funnel') or {}
-    stamp = str(meta.get('timestamp') or '')
-    if stamp:
-        when = stamp[:16].replace('T', ' ') + (' UTC' if stamp.endswith(('+00:00', 'Z')) else ' ' + stamp[19:])
-    else:
-        when = 'n/d'
+    when = _when(meta.get('timestamp'))
     group = f"grupo `{meta['group']}`" if meta.get('group') else 'grupo n/d'
     parts = [
         when, group, f"{_nd(meta.get('watchlist_count'))} carta(s) da watchlist",

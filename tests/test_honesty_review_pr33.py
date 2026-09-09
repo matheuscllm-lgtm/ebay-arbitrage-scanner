@@ -114,3 +114,16 @@ def test_confiavel_with_policy_prints_an_explicit_no_effect_warning(monkeypatch,
     # O AVISO proprio do main.py (a linha "Coleta:" tambem declara a flag, mas so no
     # relatorio; o aviso tem que existir mesmo sem linha nenhuma).
     assert "AVISO: --confiavel sem efeito na política vigente" in out
+
+
+# --- review 5: timestamp da Coleta robusto (sem fuso / microssegundos / lixo) --
+
+def test_collection_when_handles_naive_micro_and_garbage_timestamps():
+    def when(stamp):
+        return slab_report.collection_line({"timestamp": stamp}).split(" · ")[0]
+    assert when("2026-09-09T07:25:58+00:00") == "2026-09-09 07:25 UTC"
+    assert when("2026-09-09T07:25:58Z") == "2026-09-09 07:25 UTC"
+    assert when("2026-09-09T07:25:58") == "2026-09-09 07:25 (fuso não informado)"
+    assert when("2026-09-09T07:25:58.123456") == "2026-09-09 07:25 (fuso não informado)"
+    assert when("2026-09-09T07:25:58-03:00") == "2026-09-09 07:25 -03:00"
+    assert when("ontem") == "n/d"
