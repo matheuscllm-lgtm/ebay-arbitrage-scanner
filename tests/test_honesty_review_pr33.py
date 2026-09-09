@@ -61,3 +61,32 @@ def test_to_markdown_accepts_meta_and_threads_it_to_the_policy_report():
     card, opp = _policy_opp()
     text = report.to_markdown([opp], meta=payload["meta"])
     assert "grupo `7`" in text and "política `2026-09-05.4`" in text
+
+
+# --- review 2: todo contador que o scanner incrementa tem rotulo (nunca "outros:") --
+
+def _stats_keys_incremented_in_source():
+    keys = set()
+    for path in (ROOT / "src" / "scanner.py", ROOT / "src" / "scorer.py"):
+        text = path.read_text(encoding="utf-8")
+        keys |= set(re.findall(r"""stats\[['"]([a-z_]+)['"]\]""", text))
+        keys |= set(re.findall(r"""_skip\(stats,\s*['"]([a-z_]+)['"]\)""", text))
+    keys |= set(re.findall(r"""['"](rows_[a-z_]+)['"]""",
+                           (ROOT / "src" / "scorer.py").read_text(encoding="utf-8")))
+    assert {"seen", "item_details_fetched", "item_details_error", "ebay_budget_exhausted"} <= keys
+    return keys
+
+
+def test_every_scanner_counter_has_a_funnel_label():
+    keys = _stats_keys_incremented_in_source()
+    missing = keys - report._KNOWN_FUNNEL_KEYS
+    assert not missing, f"contadores sem rotulo (cairiam em 'outros:'): {sorted(missing)}"
+
+
+def test_policy_only_counters_are_labelled_in_both_vocabularies():
+    counts = {"seen": 4, "item_details_fetched": 4, "item_details_error": 1, "ebay_budget_exhausted": 1}
+    for lines in (report.funnel_lines(counts), report.policy_funnel_lines(counts)):
+        joined = " · ".join(lines)
+        assert "outros:" not in joined
+        assert "get_item" in joined or "detalhe" in joined
+        assert "run parcial" in joined

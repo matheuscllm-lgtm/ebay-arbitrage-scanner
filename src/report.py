@@ -156,6 +156,11 @@ FUNNEL_LABELS = [
     ("skip_invalid_payload", "Descartados: dados invalidos no anuncio recebido"),
     ("skip_evaluation_error", "Descartados: erro interno ao avaliar anuncio"),
     ("skip_details_abort", "Descartados: interrupcao (cota/autenticacao eBay) antes de avaliar o anuncio"),
+    # Contadores que so o caminho da politica produz (scanner.scan_card / run_scan):
+    # sem rotulo cairiam em "outros:" como chave crua (review do PR #33).
+    ("item_details_fetched", "Consultas de detalhe do anuncio (get_item) feitas"),
+    ("item_details_error", "Anuncios com detalhe indisponivel/ilegivel (linha segue em REVISAR)"),
+    ("ebay_budget_exhausted", "Orcamento de chamadas eBay esgotado -- run parcial"),
     ("invalid_reference", "Descartados: referencia invalida ou nao positiva"),
     ("skip_grade_filtered", "Ignorados: nota fora do funil pedido (--grades)"),
     ("skip_grade_out_of_scope", "Ignorados: certificadora/nota fora do escopo"),
