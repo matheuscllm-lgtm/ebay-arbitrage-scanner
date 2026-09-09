@@ -54,10 +54,19 @@ alimenta a referência também não muda: a coluna só LÊ a referência e a ces
   primeiras linhas daquela carta+nota).
 - **Classe LP1-LP4** = faixa de qualidade/completude do perfil (forte / médio / fraco / frágil),
   pelos limites do bloco `longterm:` do `config.yaml`. Não ordena a tabela e não é nota de compra.
-  O asterisco (`LP2*`) marca "seria LP1, mas faltou insumo-chave": um dos três insumos-chave da
-  fragilidade (`ref-fragil`, `psa10-iliquido`, `ref-desalinhada`) estava em `n/d`.
-- **`n/d` nunca vira zero.** Componente sem dado sai da média e reduz a cobertura; sinal de
-  fragilidade sem dado sai da soma. Abaixo de `longterm.min_profile_sources` /
+  O asterisco (`LP2*`) marca "seria LP1, mas faltou dado": um dos três insumos-chave da
+  fragilidade (`ref-fragil`, `psa10-iliquido`, `ref-desalinhada`) estava em `n/d`, ou a
+  cobertura da fragilidade ficou abaixo de 8 das 10 flags (`LP1_MIN_FRAGILITY_COVERAGE`, a
+  mesma proporção de 80% do piso que o PERFIL já tinha). Esse piso existe porque a FRAGILIDADE é
+  uma SOMA: sem ele, uma linha em que 7 dos 10 testes nem puderam rodar sairia com nota 0 e
+  classe "forte" — a mesma de uma linha com os 10 testes rodados e limpos.
+- **`n/d` nunca vira zero — e como ler a FRAGILIDADE.** No PERFIL, que é uma MÉDIA, o componente
+  sem dado sai mesmo da conta e reduz a cobertura. Na FRAGILIDADE, que é uma SOMA, sair da soma é
+  aritmeticamente o mesmo que valer zero; por isso a leitura honesta da nota é "problemas
+  DETECTADOS entre os testes que puderam rodar", e não "fragilidade estimada" — `0 (3/10)`
+  significa "só 3 dos 10 testes rodaram e nenhum acusou problema". A cobertura ao lado da nota é
+  parte da leitura, e o piso de cobertura da classe LP1 impede que dado ausente vire dado limpo.
+  Abaixo de `longterm.min_profile_sources` /
   `longterm.min_fragility_sources` a nota inteira fica `n/d`, e a classe também. Cada ausência sai
   escrita como `LP:<nome>: n/d` nos motivos — nada some em silêncio.
 - **O que fica `n/d` em cada caminho, e por quê.** No caminho da POLÍTICA (vigente):

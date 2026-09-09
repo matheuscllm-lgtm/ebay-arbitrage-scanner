@@ -878,3 +878,38 @@ def test_r2_policy_path_labels_b5_basket_as_its_own_not_the_reference_basket():
     # caminho LEGADO: ali a cesta E a mesma da referencia -> rotulo segue "sales_history"
     opp, lrefs, fv = lp1_setup()
     assert assess(opp, lrefs, fv).signals["trend_source"] == "sales_history"
+
+
+def test_r3_thin_fragility_coverage_can_never_be_read_as_a_clean_lp1():
+    """A FRAGILIDADE DO DADO e uma SOMA: insumo em n/d sai da soma, o que
+    aritmeticamente e o mesmo que valer 0. Sem um piso, uma linha em que 7 dos 10
+    testes NEM PUDERAM RODAR recebe a mesma nota 0 ("dado impecavel") e a mesma classe
+    LP1 ("forte") de uma linha em que os 10 rodaram e passaram limpos -- e como LP4
+    exige FRAGILIDADE > 70, dado ausente so podia MELHORAR a classe, nunca piorar."""
+    lt = _lt()
+    thin = {"ref-fragil": 0, "psa10-iliquido": 0, "ref-desalinhada": 0}
+    full = {flag: 0 for flag in lt.FRAGILITY_FLAGS}
+    # a soma nao distingue os dois casos (e por isso a COBERTURA vira o piso da classe)
+    assert lt.fragility_score(thin) == (0.0, (3, 10))
+    assert lt.fragility_score(full) == (0.0, (10, 10))
+    assert lt.LP1_MIN_FRAGILITY_COVERAGE == 8   # mesma proporcao do piso do PERFIL (4/5)
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(10, 10)) == "LP1"
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(8, 10)) == "LP1"
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(7, 10)) == "LP2*"
+    assert lt.classify(92.0, 0.0, (5, 5), True, fragility_coverage=(3, 10)) == "LP2*"
+    # cobertura desconhecida (chamada sem o argumento) segue a regra antiga
+    assert lt.classify(92.0, 0.0, (5, 5), True) == "LP1"
+    # via assess: insumos-chave presentes, mas 6 das 10 flags sem dado -> LP2*, nao LP1
+    c = card(set_name="")                      # reprint-forte -> n/d
+    listing = L("Charizard 4/102 Base Set PSA 10", None, url=EBAY_URL,
+                seller_feedback_score=None, seller_feedback_pct=None)
+    opp = Opportunity(card=c, listing=listing, grade="PSA 10", fair_value=320.0,
+                      gross_margin_pct=0.0, liquidity_per_month=0.0, liquidity_tier="D",
+                      trend_delta=0.0, spread_grade9_pct=0, spread_psa10_pct=0)
+    opp.ref_liquidity, opp.ref_n_sales, opp.ref_window_days = "ok", 5, 180
+    opp.median_ask = 240.0
+    res = lt.assess(c, listing, opp, fair(), None, None, {}, today=TODAY)
+    assert all(res.fragility_points[k] == 0 for k in lt.KEY_FRAGILITY_INPUTS)
+    assert res.fragility == 0.0 and res.fragility_coverage == (4, 10)
+    assert res.profile == 90.0 and res.profile_coverage == (4, 5)
+    assert res.tier == "LP2*"   # "classe limitada por dado ausente", nao "forte"

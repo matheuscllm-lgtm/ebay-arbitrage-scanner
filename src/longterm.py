@@ -93,6 +93,7 @@ SIGNAL_KEYS = (
 MAX_POINTS_PER_COMPONENT = 20
 FRAGILITY_CAP = 100
 LP1_MIN_PROFILE_COVERAGE = 4          # de 5 componentes
+LP1_MIN_FRAGILITY_COVERAGE = 8        # de 10 flags -- mesma proporcao (80%) do piso acima
 _RARITY_POINTS = {"special-illustration": 20, "illustration": 16, "hyper-secret": 14,
                   "ultra": 12, "holo-vintage": 12, "holo": 6, "outra": 4}
 _REPRINT_SUPPLY_CAP = 8               # reprint forte: teto do B3
@@ -394,7 +395,13 @@ def profile_score(points, min_sources=3):
 
 def fragility_score(points, min_sources=3):
     """(FRAGILIDADE | None, (disponiveis, 10)): soma das flags com dado, teto 100; menos
-    de `min_sources` fontes -> None (soma vazia nunca vira 0)."""
+    de `min_sources` fontes -> None (soma vazia nunca vira 0).
+
+    LEIA JUNTO COM A COBERTURA: por ser uma SOMA, a nota mede os problemas DETECTADOS
+    entre os testes que puderam rodar -- flag em n/d sai da soma, o que aritmeticamente
+    e o mesmo que valer 0. Uma FRAGILIDADE 0 com cobertura 3/10 nao e "dado impecavel",
+    e "so 3 dos 10 testes rodaram e nenhum acusou problema". Por isso a classe LP1 exige
+    `LP1_MIN_FRAGILITY_COVERAGE` (ver `classify`)."""
     available = [points.get(name) for name in FRAGILITY_FLAGS if points.get(name) is not None]
     coverage = (len(available), len(FRAGILITY_FLAGS))
     if len(available) < min_sources:
@@ -402,20 +409,31 @@ def fragility_score(points, min_sources=3):
     return float(min(FRAGILITY_CAP, sum(available))), coverage
 
 
-def classify(profile, fragility, profile_coverage, key_inputs_available, cfg=None):
+def classify(profile, fragility, profile_coverage, key_inputs_available, cfg=None, *,
+             fragility_coverage=None):
     """Classe, nesta ordem: n/d (nota ausente) -> LP4 (FRAGILIDADE > 70 ou PERFIL < 30)
-    -> LP1 (PERFIL >= 70, FRAGILIDADE <= 30, cobertura do perfil >= 4/5 e os 3 insumos-
-    chave com dado; sem os insumos-chave -> LP2*) -> LP2 (PERFIL >= 50 e FRAGILIDADE
-    <= 50) -> LP3. `cfg` = bloco `longterm` (limites inclusivos)."""
+    -> LP1 (PERFIL >= 70, FRAGILIDADE <= 30, cobertura do perfil >= 4/5, cobertura da
+    fragilidade >= 8/10 e os 3 insumos-chave com dado; faltando insumo-chave OU
+    cobertura de fragilidade -> LP2*) -> LP2 (PERFIL >= 50 e FRAGILIDADE <= 50) -> LP3.
+    `cfg` = bloco `longterm` (limites inclusivos).
+
+    O piso `LP1_MIN_FRAGILITY_COVERAGE` existe porque a FRAGILIDADE e uma SOMA: sem ele,
+    uma linha em que 7 dos 10 testes nem puderam rodar sairia com nota 0 e classe LP1
+    ("forte") igual a uma linha com os 10 testes limpos -- dado ausente parecendo dado
+    impecavel (review do PR-C 2026-09-09). `fragility_coverage=None` (cobertura
+    desconhecida, chamada antiga) nao aplica piso nenhum."""
     c = dict(DEFAULT_CONFIG, **(cfg or {}))
     if profile is None or fragility is None:
         return "n/d"
     if fragility > c["lp4_min_fragility"] or profile < c["lp4_max_profile"]:
         return "LP4"
     covered = int(profile_coverage[0]) if profile_coverage else 0
+    frag_covered = int(fragility_coverage[0]) if fragility_coverage else None
+    thin_fragility = (frag_covered is not None
+                      and frag_covered < LP1_MIN_FRAGILITY_COVERAGE)
     if (profile >= c["lp1_min_profile"] and fragility <= c["lp1_max_fragility"]
             and covered >= LP1_MIN_PROFILE_COVERAGE):
-        return "LP1" if key_inputs_available else "LP2*"
+        return "LP1" if (key_inputs_available and not thin_fragility) else "LP2*"
     if profile >= c["lp2_min_profile"] and fragility <= c["lp2_max_fragility"]:
         return "LP2"
     return "LP3"
@@ -695,7 +713,8 @@ def assess(card, listing, opp, fair, refs, listings_same_grade, cfg=None, *,
     profile, profile_cov = profile_score(profile_points, int(lt_cfg["min_profile_sources"]))
     fragility, fragility_cov = fragility_score(fragility_points, int(lt_cfg["min_fragility_sources"]))
     key_inputs = all(fragility_points.get(k) is not None for k in KEY_FRAGILITY_INPUTS)
-    tier = classify(profile, fragility, profile_cov, key_inputs, lt_cfg)
+    tier = classify(profile, fragility, profile_cov, key_inputs, lt_cfg,
+                    fragility_coverage=fragility_cov)
 
     reasons = [f"LP:{name}: n/d" for name in PROFILE_COMPONENTS if profile_points.get(name) is None]
     for name in FRAGILITY_FLAGS:

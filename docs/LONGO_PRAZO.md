@@ -23,11 +23,19 @@ cobertura da fragilidade).
 - **Classe LP1-LP4** = faixa de qualidade/completude do perfil: LP1 forte · LP2 médio ·
   LP3 fraco · LP4 frágil. Não é nota de compra e não ordena a tabela.
 - **Cobertura** `4/5` = 4 dos 5 componentes do perfil tinham dado; `8/10` = 8 das 10
-  fontes de fragilidade existiam. Dado ausente **não conta zero**: sai da soma e
-  reduz a cobertura. Sem dado = `n/d`.
+  fontes de fragilidade existiam. Sem dado = `n/d`, nunca um zero inventado, e cada
+  ausência sai escrita como `LP:<nome>: n/d` nos motivos.
+  - No **PERFIL**, que é uma MÉDIA, o componente ausente realmente sai da conta: 90 com
+    4/5 quer dizer "média dos 4 que existiam".
+  - Na **FRAGILIDADE**, que é uma SOMA, sair da soma é aritmeticamente o mesmo que valer
+    zero. Por isso a leitura honesta da nota é **"problemas DETECTADOS entre os testes
+    que puderam rodar"**, e não "fragilidade estimada": `0 (3/10)` significa "só 3 dos 10
+    testes rodaram e nenhum acusou problema" — não "dado impecável". A cobertura ao lado
+    da nota é parte da leitura, não enfeite, e a classe LP1 tem piso de cobertura
+    (abaixo dele vira `LP2*`, ver "Classe").
 - **Asterisco** (`LP2*`) = classe limitada por dado ausente: seria LP1, mas um dos três
   insumos-chave da fragilidade (`ref-fragil`, `psa10-iliquido`, `ref-desalinhada`)
-  estava em `n/d`.
+  estava em `n/d`, **ou** a cobertura da fragilidade ficou abaixo do piso de LP1.
 - **Cabeçalho e rodapé da entrega**: o cabeçalho traz a contagem por classe
   (`report.longterm_counts_line`, no formato `n LP1 · n LP2 · n LP3 · n LP4 · n n/d`, onde
   `LP2*` conta como LP2 e linha sem a coluna — JSON anterior a ela — conta como `n/d`); o
@@ -65,7 +73,8 @@ fica em 4 por decisão da calibração inicial.
 ## FRAGILIDADE DO DADO = soma das flags, teto 100
 
 `n/d` com menos de 3 das 10 fontes; ausência vira `LP:<flag>: n/d` nos motivos, nunca 0
-em silêncio.
+em silêncio. Como é soma e não média, a nota mede **problemas detectados entre os testes
+que rodaram** — leia sempre junto com a cobertura `k/10` (ver "Como ler a célula").
 
 | Flag `LP:` | Fonte (caminho legado / caminho da política) | Pontos |
 |---|---|---|
@@ -84,10 +93,14 @@ em silêncio.
 
 1. `n/d` se PERFIL ou FRAGILIDADE é `n/d`.
 2. **LP4** se FRAGILIDADE > 70 ou PERFIL < 30.
-3. **LP1** se PERFIL ≥ 70, FRAGILIDADE ≤ 30, cobertura do perfil ≥ 4/5 **e** os três
-   insumos-chave (`ref-fragil`, `psa10-iliquido`, `ref-desalinhada`) disponíveis.
+3. **LP1** se PERFIL ≥ 70, FRAGILIDADE ≤ 30, cobertura do perfil ≥ 4/5, cobertura da
+   fragilidade ≥ 8/10 (`LP1_MIN_FRAGILITY_COVERAGE`, mesma proporção de 80% do piso do
+   perfil) **e** os três insumos-chave (`ref-fragil`, `psa10-iliquido`,
+   `ref-desalinhada`) disponíveis. O piso de cobertura da fragilidade existe porque a
+   nota é uma soma: sem ele, uma linha em que 7 dos 10 testes nem puderam rodar sairia
+   com nota 0 e classe "forte" igual a uma linha com os 10 testes limpos.
 4. **LP2** se PERFIL ≥ 50 e FRAGILIDADE ≤ 50 — inclui o caso que seria LP1 mas tem
-   insumo-chave em `n/d` → **`LP2*`**.
+   insumo-chave em `n/d` ou cobertura de fragilidade abaixo do piso → **`LP2*`**.
 5. **LP3** caso contrário.
 
 Consequência declarada: no caminho da política (`slab_strategy`, vigente), o teto
