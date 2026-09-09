@@ -176,13 +176,19 @@ as vendas usadas na referência + funil no rodapé.
      anúncios iguais no mesmo run.
    - **Classe** LP1 forte · LP2 médio · LP3 fraco · LP4 frágil — é
      qualidade/completude do perfil, **não** é "oportunidade" nem nota de compra.
-   - **`LP2*`** (asterisco) = seria LP1, **mas faltou insumo-chave**: um dos três
+   - **`LP2*`** (asterisco) = seria LP1, **mas faltou dado**: um dos três
      insumos-chave da fragilidade (`ref-fragil`, `psa10-iliquido`,
-     `ref-desalinhada`) estava em `n/d`. No caminho da política o teto desta
-     rodada é `LP2*`, porque `ref-desalinhada` é `n/d` por decisão do operador.
-   - **Cobertura** `4/5` = 4 dos 5 componentes tinham dado. Dado ausente **não
-     conta zero**: sai da conta, reduz a cobertura e aparece como `LP:<nome>: n/d`
-     nos motivos. Célula inteira `n/d` = coluna indisponível, nunca 0.
+     `ref-desalinhada`) estava em `n/d`, ou a cobertura da fragilidade ficou
+     abaixo de 8 das 10 flags. No caminho da política o teto desta rodada é
+     `LP2*`, porque `ref-desalinhada` é `n/d` por decisão do operador.
+   - **Cobertura** `4/5` = 4 dos 5 componentes tinham dado; `8/10` = 8 das 10
+     flags de fragilidade existiam. Toda ausência sai escrita como
+     `LP:<nome>: n/d` nos motivos — nada some em silêncio. Célula inteira `n/d` =
+     coluna indisponível, nunca 0. **Leia a FRAGILIDADE junto com a cobertura:**
+     o PERFIL é uma média (o componente ausente sai mesmo da conta), mas a
+     FRAGILIDADE é uma soma, então ela mede "problemas **detectados** entre os
+     testes que puderam rodar" — `0 (3/10)` quer dizer "só 3 dos 10 testes
+     rodaram e nenhum acusou problema", e **não** "dado impecável".
    - Os pontos e limiares são **calibração inicial, não validada** (sem backtest).
      Nunca apresentar a classe como previsão de preço ou razão para comprar.
 

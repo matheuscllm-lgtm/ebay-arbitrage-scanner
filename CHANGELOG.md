@@ -105,6 +105,41 @@ alimenta a referência também não muda: a coluna só LÊ a referência e a ces
   snapshot em CSV é local, sob `results/` (fora do GitHub por `DELIVERY_CHAT.md`).
 - Régua completa, tabela por tabela, em [`docs/LONGO_PRAZO.md`](docs/LONGO_PRAZO.md).
 
+### Correções da revisão do PR-C (mesma data, dois revisores independentes)
+
+Nenhuma delas muda veredito, gate, ranking ou preço de referência — todas ficam dentro da coluna
+informativa e da sua documentação. `src/slab_strategy.py` continua com diff vazio contra a `main`
+e o bloco `slab_strategy` do `config.yaml` também. Cada correção nasceu de um teste que falhava
+antes dela (arquivo `tests/test_longterm.py`, seção "revisão do PR-C").
+
+1. **`LP:concentracao` contava anúncios de OUTRAS cartas.** A contagem feita antes do laço somava
+   tudo que a busca do eBay devolveu; uma busca com 1 Charizard e 3 anúncios de outras cartas
+   imprimia "4 anúncios da mesma carta+nota" onde havia 1, e somava +10 na fragilidade. Agora usa
+   a mesma guarda de identidade que a função irmã `_clean_ask_prices` já tinha.
+2. **Rótulo honesto da cesta que alimenta a tendência (B5).** Quatro textos afirmavam que B5 lê "a
+   mesma cesta da referência"; no caminho da política ela lê uma cesta própria e mais frouxa, e
+   pode se apoiar em vendas que a política descartou. O sinal passa a sair como
+   `sales_history:cesta-propria` nesse caminho, e os quatro textos foram corrigidos.
+3. **Dado ausente não pode virar "dado impecável".** Novo piso `LP1_MIN_FRAGILITY_COVERAGE` (8 de
+   10, a mesma proporção do piso que o PERFIL já tinha): abaixo dele a classe não chega a LP1 e
+   vira `LP2*`. A leitura da FRAGILIDADE foi corrigida na documentação (é soma, mede problemas
+   detectados entre os testes que rodaram).
+4. **Zero venda comparável não é `thin`.** Ganhou rótulo próprio `sem-vendas`, com os mesmos
+   pontos: "poucas vendas" onde não há venda nenhuma era falso.
+5. **`LP:dispersao` agora compara o valor EXATO** (`dispersion_exact`), o mesmo que a política
+   compara — antes discordavam na fronteira (dispersão real de 30,004% rebaixava a linha e a
+   coluna dizia que estava sob controle).
+6. **Célula da classe `n/d`** saía grudada (`n/d n/d/40 (2/5·8/10)`); agora sai `n/d (2/5·8/10)`.
+7. **Série mensal com timestamp repetido** derrubava a coluna para `n/d` por erro interno
+   (`TypeError`); agora a série é ordenada só pelo timestamp. Correção defensiva: o crash está
+   provado, a ocorrência numa página real não.
+8. **Coerência entre os três geradores.** A coluna passou a aparecer também no balde REJEITADO da
+   entrega legada (cujo cabeçalho já contava aquelas linhas) e a legenda passou a sair também no
+   console legado (`report.to_markdown`), que já tinha a coluna.
+9. **Coluna `Flags` da tabela legada** só concatena os motivos `LP:` que dispararam; as ausências
+   (até 15 por linha) seguem no JSON e resumidas na cobertura, em vez de empurrar para longe o
+   sinal de risco real numa tabela colada verbatim no chat.
+
 ## 2026-09-09 — auditoria do sistema de honestidade de preço (PR-B `fix/honestidade-fase1`, depende do PR-A #32)
 
 Revisão de TODO caminho que leva um número até a tabela do operador, nos dois motores

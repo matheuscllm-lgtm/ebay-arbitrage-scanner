@@ -26,8 +26,11 @@ A tabela traz ainda a coluna **Longo prazo**, puramente **informativa**: `LP2 64
 impressão, faixa da coluna PSA 10, tendência real das vendas) / FRAGILIDADE DO DADO (poucas
 vendas na referência, PSA 10 pouco vendida, referência desalinhada, reimpressão, tiragem,
 dispersão, vendedor, concentração de anúncios) · coberturas (`4/5` = 4 dos 5 componentes tinham
-dado; ausente é `n/d`, nunca zero). As classes vão de LP1 (forte) a LP4 (frágil), e `LP2*` marca
-"seria LP1, mas faltou insumo-chave". Ela **não** entra no gate, no veredito, no ranking nem em
+dado; ausente é `n/d`, nunca zero). O PERFIL é uma média, então o componente ausente sai da conta;
+a FRAGILIDADE é uma soma, então ela mede os problemas **detectados entre os testes que puderam
+rodar** — leia-a sempre junto com a cobertura (`0 (3/10)` não é "dado impecável"). As classes vão
+de LP1 (forte) a LP4 (frágil), e `LP2*` marca "seria LP1, mas faltou dado" (insumo-chave em `n/d`
+ou cobertura da fragilidade abaixo do piso). Ela **não** entra no gate, no veredito, no ranking nem em
 qualquer recomendação de compra — só descreve a carta e a qualidade do dado da linha —, e seus
 pontos são calibração inicial, ainda não validada contra o mercado. Régua completa em
 [docs/LONGO_PRAZO.md](docs/LONGO_PRAZO.md).
