@@ -513,3 +513,60 @@ def test_legacy_ask_median_ignores_listings_without_readable_price(no_tcg):
     assert [row.listing.item_id for row in rows] == ["a", "c", "d"]
     assert stats["skip_no_price"] == 1 and stats["skip_price_floor"] == 2
     assert stats["seen"] == 6 == _per_listing_buckets(stats)
+
+
+# ── mensagem do run parcial por CAUSA (parada antecipada x erros contados) ────
+
+@pytest.mark.parametrize("failure", [ebay_api.EbayAuthError, ebay_api.EbayBudgetExceeded])
+def test_run_scan_marks_early_stop_separately_from_counted_errors(tmp_path, monkeypatch, failure):
+    """Parada antecipada (autenticacao/cota) = `stopped_early` (cartas restantes NAO
+    varridas). Erro contado por carta/anuncio com todas as cartas visitadas =
+    `aborted` sem `stopped_early`."""
+    from tests.test_scan_funnel import _patch_scan_card, _watchlist
+
+    def stops(card, stats):
+        if card.name == "Blastoise":
+            raise failure("parou")
+        return FairValue(), []
+
+    _patch_scan_card(monkeypatch, stops)
+    _, _, _, stats, aborted = scanner.run_scan(watchlist_path=_watchlist(tmp_path),
+                                               log=lambda *a, **k: None)
+    assert aborted and stats["stopped_early"] == 1
+
+    def counts(card, stats):
+        stats["skip_evaluation_error"] += 1
+        return FairValue(), []
+
+    _patch_scan_card(monkeypatch, counts)
+    _, _, _, stats, aborted = scanner.run_scan(watchlist_path=_watchlist(tmp_path),
+                                               log=lambda *a, **k: None)
+    assert aborted and stats["aborted"] == 1 and stats["stopped_early"] == 0
+
+
+@pytest.mark.parametrize("stopped_early,expected,unexpected", [
+    (1, "cartas restantes NAO foram varridas", "todas as cartas foram visitadas"),
+    (0, "todas as cartas foram visitadas", "cartas restantes NAO foram varridas"),
+])
+def test_main_and_summary_explain_partial_run_by_cause(tmp_path, monkeypatch, capsys,
+                                                       stopped_early, expected, unexpected):
+    import json
+    import sys
+    import ebay_summary
+    import main as main_mod
+    from tests.test_scan_funnel import _watchlist
+    from tests.test_summary import payload
+
+    stats = Counter({"cards": 4, "seen": 10, "aborted": 1, "skip_evaluation_error": 1,
+                     "stopped_early": stopped_early})
+    monkeypatch.setattr(scanner, "run_scan", lambda **kw: ({}, [], False, stats, True))
+    out = tmp_path / "scan.json"
+    monkeypatch.setattr(sys, "argv", ["main.py", "--watchlist", _watchlist(tmp_path),
+                                      "--out", str(out)])
+    assert main_mod.main() == main_mod.EXIT_ABORTED
+    console = capsys.readouterr().out
+    assert "RUN ABORTADO" in console and expected in console and unexpected not in console
+    funnel = json.loads((tmp_path / "scan.aborted.json").read_text(encoding="utf-8"))["meta"]["funnel"]
+    md = ebay_summary.build_markdown(payload(aborted=True, funnel=funnel))
+    assert "RUN ABORTADO" in md and expected.replace("NAO", "NÃO") in md
+    assert unexpected.replace("NAO", "NÃO") not in md

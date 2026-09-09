@@ -193,9 +193,16 @@ def main(argv=None):
         print(f"Artefato JSON: {out_path} ({len(payload['rows'])} rows) -- "
               f"entrega: python ebay_summary.py {out_path} -o results/ebay-<data>.md")
     if aborted and not effective_pricing_only:
-        print("RUN ABORTADO antes do fim -- as cartas restantes NAO foram varridas "
-              f"(artefato parcial gravado a parte, marcado aborted=true; {args.out} "
-              "preservado).")
+        # Mensagem por CAUSA (review #32): parada antecipada x erros contados.
+        if stats.get("stopped_early"):
+            print("RUN ABORTADO antes do fim -- as cartas restantes NAO foram varridas "
+                  f"(artefato parcial gravado a parte, marcado aborted=true; {args.out} "
+                  "preservado).")
+        else:
+            print("RUN ABORTADO (cobertura parcial) -- todas as cartas foram visitadas, "
+                  "mas houve erros contados no funil (carta, anuncio ou fonte); "
+                  f"artefato parcial gravado a parte, marcado aborted=true; {args.out} "
+                  "preservado.")
     if aborted:
         return EXIT_ABORTED
     return 0

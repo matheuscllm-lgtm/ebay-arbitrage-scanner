@@ -179,7 +179,8 @@ FUNNEL_LABELS = [
     ("trusted_filtered", "Descartados pelo modo confiável (--confiavel)"),
     ("card_error", "Cartas com erro interno (puladas — ver log)"),
     ("ebay_error", "Cartas com erro na Browse API (puladas)"),
-    ("aborted", "RUN ABORTADO (autenticação eBay / API indisponível) — cartas restantes não varridas"),
+    ("stopped_early", "Parada antecipada (autenticação eBay / cota / API indisponível) — cartas restantes não varridas"),
+    ("aborted", "RUN ABORTADO — resultado parcial, não representa busca completa"),
 ]
 _KNOWN_FUNNEL_KEYS = {k for k, _ in FUNNEL_LABELS}
 

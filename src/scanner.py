@@ -509,11 +509,15 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
         except EbayBudgetExceeded as e:
             log(f'{e} -- execução parcial; cartas restantes não consultadas')
             stats['ebay_budget_exhausted'] = 1
+            # `stopped_early` = parada ANTECIPADA (cartas restantes nao varridas),
+            # distinta de "todas visitadas com erros contados" (so `aborted`).
+            stats['stopped_early'] = 1
             stats['aborted'] = 1
             aborted = True
             break
         except EbayAuthError as e:
             log(f"ERRO de autenticacao eBay: {e} -- RUN ABORTADO")
+            stats["stopped_early"] = 1
             stats["aborted"] = 1
             aborted = True
             break
@@ -524,6 +528,7 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
             if ebay_errors_in_a_row >= EBAY_MAX_CONSECUTIVE_ERRORS:
                 log(f"ERRO: {ebay_errors_in_a_row} falhas seguidas da Browse API -- "
                     "RUN ABORTADO (cartas restantes nao varridas)")
+                stats["stopped_early"] = 1
                 stats["aborted"] = 1
                 aborted = True
                 break
