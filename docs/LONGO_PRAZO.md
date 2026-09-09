@@ -39,7 +39,10 @@ cobertura da fragilidade).
 - **Cabeçalho e rodapé da entrega**: o cabeçalho traz a contagem por classe
   (`report.longterm_counts_line`, no formato `n LP1 · n LP2 · n LP3 · n LP4 · n n/d`, onde
   `LP2*` conta como LP2 e linha sem a coluna — JSON anterior a ela — conta como `n/d`); o
-  rodapé traz a legenda única dos dois geradores (`report.LONGTERM_LEGEND`).
+  rodapé traz a legenda única (`report.LONGTERM_LEGEND`). Os **três** geradores são
+  coerentes: a coluna aparece em TODOS os baldes (inclusive o REJEITADO da entrega legada,
+  que a contagem do cabeçalho já somava) e a legenda vai no rodapé de todos, inclusive do
+  console legado (`report.to_markdown`), cuja tabela também é colada verbatim no chat.
 - **Coluna indisponível = `n/d`, nunca 0.** A célula sai `n/d` (sem as duas notas) tanto quando
   a linha não tem a coluna — JSON anterior a ela, coluna desligada, erro interno — quanto quando
   a CLASSE foi calculada como `n/d`; nesse segundo caso a cobertura fica junto

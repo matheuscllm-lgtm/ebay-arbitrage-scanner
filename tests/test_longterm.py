@@ -531,7 +531,9 @@ def test_14_column_before_links_in_both_generators_two_links_per_row():
     assert "| Links | Flags |" in md
     assert "| LP2 64/35 (4/5·8/10) |" in md
     assert "LP:ref-fragil(low)" in md  # motivos LP: concatenados em Flags
-    assert "| # | Carta | Tipo | eBay$ | Motivo | Links |" in md  # tabela dos rejeitados intacta
+    # tabela dos rejeitados: mesma coluna informativa, na mesma posicao (antes de Links)
+    assert "| # | Carta | Tipo | eBay$ | Motivo | Longo prazo | Links |" in md
+    assert "| n/d (2/5·8/10) |" in md   # linha REJEITADO com a classe em n/d
     rows = _table_rows(md)
     assert len(rows) == 2
     for line in rows:
@@ -997,3 +999,43 @@ def test_r8_duplicate_timestamps_in_the_monthly_series_do_not_raise():
     # com timestamp repetido e dado util, o ultimo ponto do mes vale (ordem preservada)
     series = [(_ms(2025, 8, 15), 100), (_ms(2025, 8, 15), 120), (_ms(2026, 9, 1), 150)]
     assert lt.trend_from_history(series, date(2026, 9, 3)) == 25.0
+
+
+def test_r9_legacy_generators_are_coherent_column_in_every_bucket_and_legend():
+    """Duas incoerencias ENTRE geradores (o vigente, `slab_report.render`, ja estava
+    certo): (a) na entrega legada o cabecalho contava a classe LP de TODAS as linhas,
+    mas o balde REJEITADO nao tinha a coluna -- quem conferisse nao achava as classes
+    contadas em tabela nenhuma; (b) o console legado (`report.to_markdown`, impresso
+    pelo `main.py`) ganhou a coluna mas nao a legenda, e a instrucao da skill manda
+    colar a tabela VERBATIM -- o operador recebia uma sigla e dois numeros sem
+    explicacao."""
+    import re as _re
+    from tests.test_summary import payload, row
+    lt = _lt()
+    p = payload()
+    p["rows"] = [
+        row(longterm_tier="LP1", longterm_profile=90.0, longterm_fragility=10.0,
+            longterm_coverage="5/5·10/10", longterm_reasons=[]),
+        row(card="Blastoise", number="2", verdict="REJEITADO", url="https://www.ebay.com/itm/444",
+            item_id="444", flags=["FRAUDE PROVAVEL: titulo anuncia PSA 10 mas condicao diz UNGRADED"],
+            longterm_tier="LP1", longterm_profile=88.0, longterm_fragility=12.0,
+            longterm_coverage="5/5·10/10", longterm_reasons=[]),
+        row(card="Gengar", number="94", verdict="REJEITADO", url="https://www.ebay.com/itm/555",
+            item_id="555", flags=["LOTE"], longterm_tier="LP4", longterm_profile=20.0,
+            longterm_fragility=80.0, longterm_coverage="5/5·10/10", longterm_reasons=[]),
+    ]
+    md = ebay_summary.build_markdown(p)
+    assert "- Longo prazo: 2 LP1 · 0 LP2 · 0 LP3 · 1 LP4 · 0 n/d" in md.split("## ")[0]
+    assert "| # | Carta | Tipo | eBay$ | Motivo | Longo prazo | Links |" in md
+    # (a) a contagem do cabecalho bate com o numero de celulas LP nas tabelas
+    lp_cells = [ln for ln in _table_rows(md) if _re.search(r"\| LP[1-4]\*? \d", ln)]
+    assert len(lp_cells) == 3
+    for line in _table_rows(md):          # os dois links seguem em toda linha
+        assert "[oferta](" in line and "[referência](" in line
+    # (b) console legado: a coluna vem com a legenda, como nos outros dois geradores
+    opp, refs, fv = lp1_setup()
+    lt.annotate(opp, assess(opp, refs, fv))
+    text = report.to_markdown([opp])
+    assert "| Longo prazo |" in text and "| LP1 92/0 (5/5·10/10) |" in text
+    assert "Longo prazo (coluna informativa)" in text
+    assert report.LONGTERM_LEGEND in text

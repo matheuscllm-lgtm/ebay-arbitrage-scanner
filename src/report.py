@@ -392,6 +392,11 @@ REJECTED_COLS = [
     ("listing_type", "Tipo"),
     ("price", "eBay$"),
     ("motivo", "Motivo"),
+    # A coluna informativa entra tambem no balde REJEITADO, na MESMA posicao de
+    # TABLE_COLS (antes de Links): o cabecalho da entrega conta a classe LP de TODAS as
+    # linhas, rejeitadas incluidas, entao sem ela a contagem apontava para celulas que
+    # nao existiam em tabela nenhuma (review do PR-C 2026-09-09).
+    ("longterm", "Longo prazo"),
     ("links", "Links"),
 ]
 _MAXW = {"carta": 40, "set": 30, "listing_type": 22, "pokemon": 16}
@@ -474,7 +479,10 @@ def to_markdown(opportunities, meta=None):
     if not opportunities:
         return "_Nenhum anuncio passou do desconto minimo neste scan._"
     rows = sort_rows([opportunity_row(o) for o in opportunities])
-    return render_rows_table(rows)
+    # Legenda no rodape, igual aos outros dois geradores: a tabela do console tambem e
+    # colada VERBATIM no chat, e sem ela a coluna `Longo prazo` chega ao operador como
+    # uma sigla e dois numeros sem explicacao (review do PR-C 2026-09-09).
+    return render_rows_table(rows) + "\n\n" + LONGTERM_LEGEND
 
 
 # --- registro local -------------------------------------------------------------
