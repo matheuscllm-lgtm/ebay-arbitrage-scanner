@@ -71,10 +71,11 @@ def validate_config(config):
             fail('costs.storage_free_days')
         for key in ('storage_monthly_usd', 'buyer_shipping_markup_usd', 'security_daily_fraction', 'security_threshold_usd'):
             number(c.get(key), f'costs.{key}')
-    for key in ('min_profit_usd', 'min_net_margin_percent', 'min_net_roi_percent', 'min_discount_percent'):
+    for key in ('min_profit_usd', 'min_net_margin_percent', 'min_net_roi_percent',
+                'min_discount_percent', 'min_gross_margin_percent'):
         number(p['economics'].get(key), f'economics.{key}', nullable=True)
     mode = p['economics'].get('gate_mode', 'all_minima')
-    if mode not in ('all_minima', 'profit_or_discount'):
+    if mode not in ('all_minima', 'profit_or_discount', 'gross_margin'):
         fail('economics.gate_mode')
     if mode == 'profit_or_discount' and p['economics'].get('require_positive_profit') is not True:
         fail('economics.require_positive_profit')
@@ -91,6 +92,18 @@ def validate_config(config):
     return config
 
 
+def economic_keys(economics):
+    """Chaves que o `gate_mode` ativo realmente usa. `gross_margin` decide SO pela
+    margem bruta (sem taxa nenhuma), entao as chaves de lucro/taxa dos modos legados
+    nao sao exigidas nem viram pendencia."""
+    mode = economics.get('gate_mode')
+    if mode == 'gross_margin':
+        return ('min_gross_margin_percent',)
+    if mode == 'profit_or_discount':
+        return ('min_profit_usd', 'min_discount_percent')
+    return ('min_profit_usd', 'min_net_margin_percent', 'min_net_roi_percent')
+
+
 def pending_config(config):
     """Human-readable list, not a substitute for per-candidate evaluation."""
     validate_config(config)
@@ -98,7 +111,7 @@ def pending_config(config):
     pending = []
     for section, keys in {
         'costs': ('per_slab_usd', 'comc_processing_usd', 'comc_storage_usd', 'selling_fee_percent', 'cashout_fee_percent', 'fee_basis'),
-        'economics': (('min_profit_usd', 'min_discount_percent') if p['economics'].get('gate_mode') == 'profit_or_discount' else ('min_profit_usd', 'min_net_margin_percent', 'min_net_roi_percent')),
+        'economics': economic_keys(p['economics']),
         'evidence': ('max_dispersion_percent',),
     }.items():
         pending.extend(f'{section}.{key}' for key in keys if p[section].get(key) is None)
