@@ -104,3 +104,11 @@ def test_collection_line_states_grades_filter_and_trusted_flag():
     line = slab_report.collection_line(meta)
     assert "notas do run: PSA 10 + CGC 10 Pristine (--grades)" in line
     assert "--confiavel" in line and "sem efeito na política" in line
+
+
+# --- review 4: --confiavel com a politica ativa avisa que nao muda nada --
+
+def test_confiavel_with_policy_prints_an_explicit_no_effect_warning(monkeypatch, tmp_path, capsys):
+    assert _run_main(monkeypatch, tmp_path, Counter(seen=1, rows_opportunity=1), ["--confiavel"]) == 0
+    out = capsys.readouterr().out
+    assert "--confiavel" in out and "sem efeito" in out

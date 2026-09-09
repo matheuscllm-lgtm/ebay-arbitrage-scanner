@@ -117,6 +117,11 @@ def main(argv=None):
         return 2 if pending else 0
     if args.confiavel:
         config["trusted_mode"] = True
+        if "slab_strategy" in config:
+            # A politica nunca le `trusted_mode` (review do PR #33): dizer alto, em vez
+            # de aceitar a flag em silencio. O historico do vendedor e verificado sempre.
+            print("AVISO: --confiavel sem efeito na política vigente (o histórico do vendedor "
+                  "já é verificado em toda linha); a flag fica registrada no meta do JSON.")
     if args.include_raw:
         ap.error("EBAY PSA aceita apenas cartas certificadas; --include-raw foi removido da estrategia")
     if args.min_discount is not None:
