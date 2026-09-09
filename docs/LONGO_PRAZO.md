@@ -52,9 +52,13 @@ cobertura da fragilidade).
   ("Linhas mantidas com a coluna Longo prazo em n/d por erro interno"). `longterm.assess` é
   função pura (não altera `Opportunity` nem a referência) e `longterm.annotate` grava só os
   campos `longterm_*` / `trend_*`.
-- Os motivos `LP:` (cada flag que disparou e cada insumo em `n/d`) aparecem na coluna
-  `Flags` (tabela legada) ou na linha "Motivos:" da seção por carta (política). Nunca
-  entram em `risk_flags` nem em `reasons`, que alimentam veredito e score.
+- Os motivos `LP:` aparecem na coluna `Flags` (tabela legada) ou na linha "Motivos:" da
+  seção por carta (política). Nunca entram em `risk_flags` nem em `reasons`, que
+  alimentam veredito e score. Na coluna `Flags` entram **só os que dispararam**: os
+  `LP:<nome>: n/d` podem ser 15 numa linha e empurrariam para longe o sinal de risco real
+  (FRAUDE PROVÁVEL, REF DESALINHADA…) numa tabela que é colada verbatim no chat. Nada se
+  perde — as ausências seguem inteiras no JSON (`longterm_reasons`), resumidas na
+  cobertura `k/5·k/10` da célula, e a linha "Motivos:" da política continua listando-as.
 
 ## PERFIL = pontos disponíveis ÷ (20 × componentes disponíveis) × 100
 

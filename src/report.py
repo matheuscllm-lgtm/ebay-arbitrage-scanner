@@ -417,8 +417,13 @@ def _cells_for(row, rank):
     flags = [str(f) for f in (row.get("flags") or [])]
     motivo_txt = escape_md("; ".join(flags)) if flags else "-"
     # Motivos `LP:` da coluna Longo prazo vao SO para `Flags` (exibicao); a coluna
-    # `Motivo` dos REJEITADO fica com o motivo da rejeicao.
-    lp_reasons = [str(r) for r in (row.get("longterm_reasons") or []) if r]
+    # `Motivo` dos REJEITADO fica com o motivo da rejeicao. So os que DISPARARAM: os
+    # `LP:<nome>: n/d` podem ser 15 numa linha so e empurravam para longe o sinal de
+    # risco real (FRAUDE PROVAVEL, REF DESALINHADA...) numa tabela que e colada verbatim
+    # no chat. Nada se perde: as ausencias seguem inteiras no JSON (`longterm_reasons`)
+    # e resumidas na cobertura `k/5·k/10` da propria coluna (review do PR-C 2026-09-09).
+    lp_reasons = [str(r) for r in (row.get("longterm_reasons") or [])
+                  if r and not str(r).endswith(": n/d")]
     flags_txt = escape_md("; ".join(flags + lp_reasons)) if (flags or lp_reasons) else "-"
     return {
         "rank": str(rank),

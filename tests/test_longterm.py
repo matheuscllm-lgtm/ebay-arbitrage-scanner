@@ -1039,3 +1039,27 @@ def test_r9_legacy_generators_are_coherent_column_in_every_bucket_and_legend():
     assert "| Longo prazo |" in text and "| LP1 92/0 (5/5·10/10) |" in text
     assert "Longo prazo (coluna informativa)" in text
     assert report.LONGTERM_LEGEND in text
+
+
+def test_r10_flags_cell_keeps_only_the_lp_reasons_that_fired():
+    """A coluna `Flags` da tabela legada concatenava TODOS os motivos `LP:` -- inclusive
+    os `LP:<nome>: n/d`, que podem ser 15 numa linha so -- na MESMA celula das flags de
+    risco reais (FRAUDE PROVAVEL, REF DESALINHADA...). A entrega e colada verbatim no
+    chat, entao a largura importa, e o ruido informativo empurrava para longe o sinal de
+    risco que o operador precisa ler primeiro. As ausencias nao se perdem: continuam
+    inteiras no JSON (`longterm_reasons`) e resumidas na cobertura `k/5·k/10` da propria
+    celula da coluna."""
+    lt = _lt()
+    from tests.test_summary import row
+    nd = [f"LP:{name}: n/d" for name in lt.PROFILE_COMPONENTS + lt.FRAGILITY_FLAGS]
+    r = row(flags=["FRAUDE PROVAVEL: titulo anuncia PSA 10 mas condicao diz UNGRADED"],
+            longterm_tier="LP3", longterm_profile=40.0, longterm_fragility=30.0,
+            longterm_coverage="2/5·3/10",
+            longterm_reasons=nd + ["LP:ref-fragil(thin)", "LP:concentracao(4)"])
+    cell = report._cells_for(r, 1)["flags"]
+    assert cell == ("FRAUDE PROVAVEL: titulo anuncia PSA 10 mas condicao diz UNGRADED; "
+                    "LP:ref-fragil(thin); LP:concentracao(4)")
+    assert ": n/d" not in cell
+    assert len(cell) < 130          # antes passava de 380 caracteres numa linha so
+    # o JSON continua com a lista inteira -- nada se perde
+    assert len([x for x in r["longterm_reasons"] if x.endswith(": n/d")]) == 15
