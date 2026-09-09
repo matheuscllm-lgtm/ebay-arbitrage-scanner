@@ -17,7 +17,7 @@ do código) e foi conferida por mutation-check (desfazer a correção faz o test
   referência (só informação).
 - Ponto cego de documentação (classe iii): a skill `.claude/skills/scan-ebay/SKILL.md`, a
   docstring e o `--help` do `main.py` e a docstring do `ebay_summary.py` ainda ofereciam o
-  "modo diagnóstico" com carta solta e piso US$5 (`--include-raw`, rejeitado desde a política
+  "modo diagnóstico" com carta solta e piso 5 (`--min-price 5 --include-raw`, rejeitado desde a política
   2026-09-05.4), o gate `min_discount_percent: 20` (histórico pré-#29; o config diz 30) e a
   entrega em 4 baldes do motor legado (OPORTUNIDADE/SUSPEITO). Reescritos para a política
   vigente, descrita por chave de config (`slab_strategy.economics`: `gate_mode:
