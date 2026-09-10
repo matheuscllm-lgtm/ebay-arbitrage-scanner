@@ -24,3 +24,4 @@ METODO.md
 # Public generator inputs required in a fresh clone (not scan results).
 !src/catalog/set_catalog.json
 !src/catalog/iconic_pokemon.csv
+!src/catalog/celebrations_classic_identity.json

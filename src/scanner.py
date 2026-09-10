@@ -18,11 +18,13 @@ falha de autenticacao no eBay ou erros seguidos da API ABORTAM o run
 (`aborted=True`, exit != 0 no main) -- um scan parcial nunca passa por completo.
 """
 import dataclasses
+import json
 import logging
 import math
 import re
 import statistics
 from collections import Counter
+from pathlib import Path
 
 from .models import FairValue, WatchCard
 from . import (grading, groups, longterm, pc_sales, pricecharting, scorer, tcg_reference,
@@ -101,22 +103,26 @@ def load_watchlist(path="watchlist.yaml"):
 def _annotate_colliding_editions(cards):
     """Marca em cada carta as OUTRAS edicoes que repetem seu nome e numero.
 
-    Reimpressao repete nome e numero (Celebrations: Classic Collection reimprime o
-    Base Set inteiro mantendo #4/102), e o vendedor escreve no titulo o set
-    ESTAMPADO na carta. Sem saber que a colisao existe, nome + numero + "Base Set"
-    parecem identidade suficiente -- e nao sao. Derivar da watchlist em vez de manter
-    lista a mao: assim carta nova entra ja protegida.
+    Combina a selecao de busca com o catalogo de identidade. Uma reimpressao fora
+    da watchlist ainda pode aparecer nos anuncios da original; nao precisa virar
+    alvo de scan para que a original fique protegida. O catalogo e so metadado.
     """
     from .slab_strategy import normalized   # local: evita mexer na ordem de import
 
     def chave(card):
         # Mesma normalizacao do resto do modulo: sem ela um catalogo que passe a emitir
         # '004' de um lado e '4' do outro faria a colisao sumir EM SILENCIO.
-        return (normalized(card.name), pc_sales.norm_number(card.number))
+        return (normalized(card.name), pc_sales.norm_number(card.number), card.language)
 
     index = {}
     for card in cards:
         index.setdefault(chave(card), set()).add(card.set_name)
+    catalog_path = Path(__file__).resolve().parent / 'catalog' / 'celebrations_classic_identity.json'
+    with catalog_path.open(encoding='utf-8') as handle:
+        catalog = json.load(handle)
+    for entry in catalog['cards']:
+        key = (normalized(entry['name']), pc_sales.norm_number(entry['number']), catalog['language'])
+        index.setdefault(key, set()).add(catalog['set'])
     for card in cards:
         card.colliding_editions = tuple(sorted(index[chave(card)] - {card.set_name}))
 
