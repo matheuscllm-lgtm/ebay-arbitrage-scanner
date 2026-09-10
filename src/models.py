@@ -42,8 +42,9 @@ class WatchCard:
     year: int | None = None
     # Outras edicoes da watchlist que repetem NOME e NUMERO desta carta -- o
     # Charizard 4 existe em Base Set, Base Set 2, Celebrations: Classic Collection
-    # e EX Crystal Guardians. Preenchido por `scanner.load_watchlist`: e dado
-    # DERIVADO da watchlist, nunca lista mantida a mao. Vazio = nao colide.
+    # e EX Crystal Guardians. Preenchido por `scanner.load_watchlist` a partir
+    # da watchlist e do catalogo de identidade, separado dos alvos de busca.
+    # Vazio = nenhuma colisao conhecida nas fontes disponiveis.
     colliding_editions: tuple = ()
 
     def default_query(self) -> str:

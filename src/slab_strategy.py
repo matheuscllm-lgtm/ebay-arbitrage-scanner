@@ -190,6 +190,13 @@ def identity_matches(card, title):
             r'\b' + re.escape(name_key) + r'\s+' + suffixes + r'\b', normalized(title)):
         return False
     set_key, title_key = normalized(set_label(card.set_name)), normalized(title)
+    # Canonical catalog labels are valid titles too. Reduce the full own label
+    # before looking for OTHER sets, so 'SM Base Set' does not conflict with the
+    # generic 'Base Set' substring it contains. Other expansion tokens stay intact.
+    canonical_key = normalized(card.set_name)
+    if canonical_key != set_key:
+        title_key = re.sub(r'(?<![a-z0-9])' + re.escape(canonical_key) + r'(?![a-z0-9])',
+                           lambda _: set_key, title_key)
     if not re.search(r"(?<![a-z0-9])" + re.escape(set_key) + r"(?![a-z0-9])", title_key):
         return False
     # Longer catalog names identify another set (Base Set 2 vs Base Set).

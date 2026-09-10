@@ -698,3 +698,16 @@ Histórico reconstruído a partir da documentação; a fonte de verdade era o
 - Busca real de 3deee2b isolou títulos sem idioma como gargalo. getItem agora
   fornece Language explícito com limite de 10 detalhes por carta. Conflitos
   entre título e atributos continuam em REVISAR, com proveniência no relatório.
+## 2026-09-10 — catálogo de identidade independente da seleção de busca
+
+- A proteção contra colisões combina watchlist e metadados das 25 cartas da
+  Celebrations: Classic Collection, com fonte TCGCSV/TCGplayer e IDs de produto.
+  Nenhum alvo foi adicionado à watchlist e não há nova chamada de mercado no scan.
+- Chaves de colisão respeitam o idioma. O catálogo inglês não identifica a
+  população japonesa nem implica cobertura de todas as reimpressões.
+- Títulos canônicos de SM/XY/SWSH Base Set deixam de se contradizer com o trecho
+  genérico “Base Set”. Menções a outra expansão continuam sendo rejeitadas.
+- Regressões verificam todas as identidades canônicas da watchlist e a proteção
+  com uma seleção reduzida a uma carta, inclusive fora dos Pokémon selecionados.
+- Reshiram & Charizard GX não consta entre os 25 produtos desta Classic Collection;
+  não foi acrescentada uma colisão sem suporte no catálogo.
