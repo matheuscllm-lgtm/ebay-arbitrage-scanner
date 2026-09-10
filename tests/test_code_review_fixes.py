@@ -124,7 +124,7 @@ def test_6_absurd_gross_margin_still_asks_for_an_identity_check():
     A checagem existe no config (`suspicious_margin_percent: 60`) e estava inerte.
     Ela REVISA, nunca rejeita."""
     o = evaluate(CARD, plisting(price=1), config=gm_cfg(), refs=refs(sales()))
-    assert 'desconto-elevado-conferir-identidade' in (o.strategy['review_reasons'] or [])
+    assert 'retorno-elevado-conferir-identidade' in (o.strategy['review_reasons'] or [])
     assert o.verdict != 'APROVAR'
 
 
@@ -133,7 +133,7 @@ def test_6b_normal_margin_is_not_flagged():
     # corte de suspeita de 60. E a faixa em que o gate aprova sem ressalva.
     o = evaluate(CARD, plisting(price=69), config=gm_cfg(), refs=refs(sales()))
     assert o.verdict == 'APROVAR'
-    assert 'desconto-elevado-conferir-identidade' not in (o.strategy['review_reasons'] or [])
+    assert 'retorno-elevado-conferir-identidade' not in (o.strategy['review_reasons'] or [])
 
 
 def test_7_drift_guard_ignores_fractions_that_are_not_fragility_coverage(tmp_path):

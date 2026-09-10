@@ -830,3 +830,16 @@ Histórico reconstruído a partir da documentação; a fonte de verdade era o
 - Busca real de 3deee2b isolou títulos sem idioma como gargalo. getItem agora
   fornece Language explícito com limite de 10 detalhes por carta. Conflitos
   entre título e atributos continuam em REVISAR, com proveniência no relatório.
+## 2026-09-10 — retorno coerente com a evidência de revenda
+
+- No modo `gross_margin`, alerta de retorno elevado usa o Decimal exato do gate
+  para todas as certificadoras, com motivo `retorno-elevado-conferir-identidade`.
+  Regras legadas conservam seu comportamento. Os limiares configurados não mudam.
+- JSON publica o retorno contra revenda, ou null quando indisponível. A coluna da
+  política não usa fallback contra referência PSA, inclusive em artefatos antigos.
+- A legenda esclarece que o denominador é compra (retorno bruto), não receita
+  (margem sobre venda). O cabeçalho e chaves históricos são mantidos por compatibilidade.
+- O teto de compra publicado fica um centavo abaixo quando a fronteira estrita
+  cai exatamente num centavo; não promete um preço rejeitado pelo próprio gate.
+- Testes cobrem certificadoras, origem do dado, ausência, renderização, reprovação
+  com retorno disponível e limites antes de arredondamento. Sem coleta de mercado.

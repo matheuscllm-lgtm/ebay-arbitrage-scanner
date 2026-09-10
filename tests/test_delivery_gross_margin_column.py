@@ -58,4 +58,4 @@ def test_gross_margin_value_is_the_one_the_gate_compared():
 
 def test_legend_defines_gross_margin():
     text, _ = _render(50)
-    assert "Margem bruta = (comparação − compra)/compra" in text
+    assert "retorno bruto sobre a compra = (revenda da certificadora − compra)/compra" in text

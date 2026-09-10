@@ -124,9 +124,8 @@ def render(payload):
                 reference_price(num(s['comparison_reference']), r.get('pc_url')),reference_price(num(s['resale_estimate']), next((x.get('url') for x in s.get('resale_sales', []) if x.get('url')), None)),num(s['profit_estimate']),
                 num(r['discount_pct']) if s['comparison_reference'] is not None else 'pendente',
                 # Margem bruta = o numero que o gate `gross_margin` de fato comparou.
-                # Le do proprio `economic_gate` para nao existir uma SEGUNDA conta que
-                # possa divergir da que decidiu; fora daquele modo cai no campo do
-                # payload (`margin_pct` = `Opportunity.gross_margin_pct`, mesma formula).
+                # Le do proprio `economic_gate`; sem ele a celula fica pendente.
+                # O payload legado nunca e usado em uma linha da politica.
                 num(gross_margin_value(r)),
                 num(s['net_margin_percent']),num(s['net_roi_percent']),r['verdict'],
                 longterm_cell(r),links_cell(r.get('url'), r.get('pc_url'))]
@@ -178,6 +177,6 @@ def render(payload):
     funnel = meta.get('funnel')
     lines += ['', 'Funil da busca: ' + (escape_md(' · '.join(policy_funnel_lines(funnel))) if funnel is not None
                                        else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)') + '.']
-    lines += ['', 'Desconto = (comparação − compra)/comparação. Margem bruta = (comparação − compra)/compra, sem taxa nenhuma — é ela que decide no modo `gross_margin`. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.',
+    lines += ['', 'Desconto = (comparação − compra)/comparação. A coluna Margem bruta mostra o retorno bruto sobre a compra = (revenda da certificadora − compra)/compra, sem taxas; é o valor usado no modo `gross_margin`, não margem sobre a venda. Sem esse cálculo no gate, fica pendente. Retorno elevado exige conferir identidade, referência e natureza do preço do anúncio. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.',
               '', LONGTERM_LEGEND, '']
     return '\n'.join(lines)
