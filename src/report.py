@@ -125,18 +125,14 @@ def _f(row, key):
 
 
 def gross_margin_value(row):
-    """Margem bruta da linha, preferindo o valor que o GATE comparou.
+    """Retorno da politica vem exclusivamente do gate, inclusive quando reprovado.
 
-    No modo `gross_margin` o veredito sai de `economic_gate.gross_margin_percent`;
-    usar qualquer outra conta abriria espaco para a tabela, a ordem e a decisao
-    divergirem na fronteira. Fora daquele modo o gate nao publica margem bruta, e a
-    linha cai no campo do payload (`margin_pct` = `Opportunity.gross_margin_pct`,
-    mesma formula). Sem nenhum dos dois devolve None -- quem exibe transforma em
-    "pendente", nunca em zero.
+    Sem gate nao se pode distinguir uma margem antiga contra PSA de uma margem
+    contra revenda. Fallback so existe em artefato legado SEM bloco de politica.
     """
     gate = (row.get("strategy") or {}).get("economic_gate") or {}
-    if gate.get("mode") == "gross_margin" and gate.get("gross_margin_percent") is not None:
-        return gate["gross_margin_percent"]
+    if row.get('strategy'):
+        return gate.get('gross_margin_percent') if gate.get('mode') == 'gross_margin' else None
     return row.get("margin_pct")
 
 

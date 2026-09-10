@@ -483,11 +483,14 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     # nao usa custo nenhum: basta preco e referencia. Comparacao em Decimal exato, aprovada
     # ESTRITAMENTE acima do limiar; o arredondamento existe so na saida.
     if gate_mode == 'gross_margin':
+        # Clear the legacy PSA-comparison return even when own resale is absent.
+        # JSON and the report must not publish that different base as gross return.
+        opp.gross_margin_pct = None
         # BASE DA MARGEM = a REVENDA da propria certificadora, nunca a referencia PSA
         # ajustada. Para PSA os dois numeros sao o mesmo (`resale` E a evidencia PSA),
-        # mas para CGC/TAG/BGS a referencia PSA e um valor que aquele slab NUNCA
-        # alcanca: com referencia PSA 1000 uma CGC 10 vale no maximo 40% disso, e medir
-        # contra 1000 daria 186% de margem onde a real e 14%. O gate anterior
+        # mas CGC/TAG/BGS exigem vendas proprias para estimar revenda. O teto de compra
+        # CGC de 40% da referencia PSA e uma regra de entrada, nao um teto de valor
+        # de mercado. O gate anterior
         # (`profit_or_discount`) ja usava `resale['price_exact']` -- trocar para margem
         # bruta trocou a base em silencio (achado de 2026-09-09).
         resale_ev = details.get('resale_evidence') or {}
@@ -495,6 +498,7 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         threshold = money(p['economics'].get('min_gross_margin_percent'))
         if price is not None and price > 0 and base is not None and listing.currency == 'USD':
             gross_margin = (base - price) / price * 100
+            opp.gross_margin_pct = float(gross_margin)
             margin_pass = threshold is not None and gross_margin > threshold
             details['economic_gate'] = {'mode': 'gross_margin',
                                         'gross_margin_percent': amount(gross_margin),
@@ -511,6 +515,10 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                 # dos dois -- as duas regras valem juntas.
                 gate_cap = (base / (1 + threshold / 100)).quantize(Decimal('0.01'),
                                                                    rounding=ROUND_DOWN)
+                # The gate is strictly above its floor: an exact-cent boundary
+                # is rejected too. Publish the previous cent in that case.
+                if (base - gate_cap) == gate_cap * threshold / 100:
+                    gate_cap -= Decimal('0.01')
                 atual = money(details.get('comparison_cap_exact'))
                 if atual is None:
                     atual = money(details.get('comparison_cap'))
@@ -534,7 +542,12 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     suspicious = (money(p['economics'].get('suspicious_gross_margin_percent'))
                   if gate_mode == 'gross_margin' else None)
     suspicious = float(suspicious) if suspicious is not None else cfg.get('suspicious_margin_percent', 60)
-    if (gate_mode != 'profit_or_discount' and grade and grade.grader == 'PSA'
+    if gate_mode == 'gross_margin':
+        gate = details.get('economic_gate') or {}
+        actual = money(gate.get('gross_margin_percent_exact'))
+        if actual is not None and actual > Decimal(str(suspicious)):
+            review.append('retorno-elevado-conferir-identidade')
+    elif (gate_mode != 'profit_or_discount' and grade and grade.grader == 'PSA'
             and (opp.gross_margin_pct or 0) > suspicious):
         review.append('desconto-elevado-conferir-identidade')
     opp.reasons = list(dict.fromkeys(reject + review))

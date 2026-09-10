@@ -230,12 +230,12 @@ def test_trap6_suspicious_margin_uses_the_cut_of_its_own_mode():
     # 200% de margem: acima do corte proprio -> pede conferencia de identidade.
     o = evaluate(CARD, listing(price=100), config=c, refs=refs(sales(price=300)))
     assert o.gross_margin_pct == 200 and 200 > corte
-    assert 'desconto-elevado-conferir-identidade' in o.reasons
+    assert 'retorno-elevado-conferir-identidade' in o.reasons
     assert o.verdict == 'REVISAR', o.reasons
     # 66,7% de margem: acima do corte LEGADO de 60, mas dentro do normal neste modo.
     ok = evaluate(CARD, listing(price=60), config=c, refs=refs(sales(price=100)))  # 66,7%
     assert ok.gross_margin_pct > c.get('suspicious_margin_percent', 60)
-    assert 'desconto-elevado-conferir-identidade' not in ok.reasons
+    assert 'retorno-elevado-conferir-identidade' not in ok.reasons
     assert ok.verdict == 'APROVAR', ok.reasons
 
 

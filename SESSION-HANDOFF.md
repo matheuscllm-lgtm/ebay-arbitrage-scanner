@@ -96,3 +96,13 @@ verificar acesso e limite de requisição da PSA antes de prometer prazo.
   VERBATIM no chat, preço de referência clicável, todas as linhas, nada publicado no GitHub.
 - `results/` e `data/` são locais e estão no `.gitignore`.
 - Branch + PR sempre; quem mergeia é o operador.
+## Continuação 2026-09-10 — retorno e evidência
+
+Branch `fix/gross-return-evidence`, baseada no PR #35. Corrige alerta restrito a
+PSA, fallback da coluna/JSON e teto de preço na fronteira estrita. Mantém os
+limiares econômicos e as equivalências. “Margem bruta” é nome histórico da coluna;
+a legenda agora identifica retorno sobre compra e a base de revenda própria.
+
+Complemento de identidade em PR separado, baseado no #36: catálogo completo de
+identidades Classic Collection sem aumentar a watchlist. Nenhum merge nem scan
+de ofertas/preços foi executado nesta continuação.
