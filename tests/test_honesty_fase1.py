@@ -120,7 +120,7 @@ def test_policy_report_header_states_collection_time_scope_and_policy_keys():
     assert stamp in head and "UTC" in head
     assert "grupo `3`" in head and "3 carta(s)" in head
     assert "2026-09-05.4" in head
-    for key in ("gate_mode: profit_or_discount", "min_profit_usd: 40",
+    for key in ("gate_mode: gross_margin", "min_profit_usd: 40",
                 "min_discount_percent: 30", "min_price_usd: 10"):
         assert key in head, key
     assert "chamadas à Browse API: 5" in head and "max_ebay_calls: 500" in head

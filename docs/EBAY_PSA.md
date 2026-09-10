@@ -19,19 +19,48 @@ operador nesta revisão substituem os filtros antigos. Base revisada: `86b8324`.
 - Compra no vault é preferencial quando confirmada. Saída operacional: COMC.
   O scanner não depende de listar no vault e não executa compras ou transferências.
 
-## Aprovação econômica: lucro OU desconto
+## Aprovação econômica: margem bruta
 
-O operador definiu: lucro estimado **acima de US$40 OU desconto superior a 30%**.
-Os limites são estritos: exatamente US$40 ou 30% não satisfazem aquele braço da regra.
-Margem e ROI são informativos, sem mínimos adicionais. O modo atual é
-`economics.gate_mode: profit_or_discount`.
+Regra canônica da frota (operador, 2026-09-09): o gate econômico usa **só margem bruta,
+sem taxa nenhuma**. O modo atual é `economics.gate_mode: gross_margin`, com
+`min_gross_margin_percent: 43`, limite estrito (exatamente 43% não satisfaz).
 
-- Desconto = (referência PSA ajustada − preço de compra) / referência ×100.
+- Margem bruta = (**revenda da própria certificadora** − preço de compra) / preço ×100.
+  A base é `resale_evidence`, não a referência PSA ajustada: para CGC, TAG e BGS a
+  referência PSA é um valor que aquele slab nunca alcança, e medir contra ela daria 186%
+  de margem onde a real é 14%. Para PSA os dois números são o mesmo. Sem vendas da própria
+  certificadora o gate fica calado e nunca aprova por margem.
+- 43% preserva a fronteira do gate anterior, que aprovava a partir de 30% de desconto
+  sobre a referência: 30/(100−30) = 42,857…%. A convenção do repo é percentual inteiro,
+  então o limiar entra como 43, com 0,14 p.p. a mais de rigor.
+- O gate **não depende do modelo de custos**: avalia sempre que existirem preço e
+  referência. No run de 2026-09-09, 5.975 de 6.104 linhas não tinham base de custo, e um
+  gate preso ao custo simplesmente não teria opinião sobre elas.
+
+Os custos de intermediação continuam **calculados e reportados como informação**, e
+nunca decidem veredito:
+
 - Investimento = compra + US$10 + processamento COMC + armazenamento/segurança.
 - Líquido da venda = revenda ×(1 − taxa de venda/100) ×(1 − taxa de saque/100).
 - Lucro = líquido da venda − investimento.
 - Margem líquida sobre a venda = lucro / revenda bruta ×100.
 - ROI líquido = lucro / investimento ×100.
+
+**Teto de comparação.** O bloco por carta imprime o MAIOR preço que o modo ainda aprova:
+em `gross_margin` isso é `referência / (1 + limiar/100)`, arredondado para BAIXO ao centavo.
+Com referência US$100 e limiar 43%, o teto é US$69,93 — imprimir a referência crua
+prometeria um preço que o próprio gate rejeita.
+
+**Margem absurda pede conferência de identidade.** O gate só tem piso, então uma margem de
+centenas de por cento — assinatura clássica de referência errada ou carta trocada — chegaria
+a APROVAR sem ressalva. `economics.suspicious_gross_margin_percent: 150` marca essas linhas
+como REVISAR (nunca REJEITAR). É um corte próprio do modo: o `suspicious_margin_percent: 60`
+do topo foi calibrado para o gate antigo e, sob um gate que aprova a partir de 43%, ficaria
+logo acima do limiar e engoliria negócio normal. Ausente, o código cai no corte de 60, que
+revisa mais e nunca menos.
+
+Modos legados preservados no código e sem efeito hoje: `profit_or_discount`
+(`min_profit_usd` OU `min_discount_percent`) e o modo por `min_net_*`.
 
 Os limites entre certificadoras são independentes da regra econômica: um CGC
 acima de 40% da PSA é REJEITAR mesmo se o lucro projetado for alto. Cumprir um

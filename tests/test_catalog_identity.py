@@ -48,9 +48,12 @@ def test_production_evidence_accepts_label_without_catalog_code():
     pool = sales(price=200)
     for sale in pool:
         sale['title'] = title
-    o = evaluate(card, listing(price=50, title=title, item_aspects={'Set':['Temporal Forces']}),
+    # Preco 125 contra referencia 200 = 60% de margem bruta, dentro da faixa normal do
+    # gate. O preco antigo (50) dava 300% e desde 2026-09-09 pede conferencia de
+    # identidade -- este teste e sobre evidencia de producao, nao sobre economia.
+    o = evaluate(card, listing(price=125, title=title, item_aspects={'Set':['Temporal Forces']}),
                  config=policy_config(), refs=refs(pool))
-    assert o.verdict == 'APROVAR'
+    assert o.verdict == 'APROVAR', o.reasons
     assert o.strategy['psa_evidence']['n_used'] == 3
     assert discovery_query(card) == 'pokemon Gengar ex 193 Temporal Forces'
 
@@ -63,8 +66,12 @@ def test_collection_in_catalog_name_is_not_a_lot_but_real_lots_stay_rejected(set
     for sale in pool:
         sale['title'] = title
     c = policy_config()
-    o = evaluate(card, listing(price=50, title=title), config=c, refs=refs(pool))
-    assert o.verdict == 'APROVAR'
+    # Preco 125 contra referencia 200 = 60% de margem bruta: acima do piso do gate (43)
+    # e abaixo do corte de suspeita do modo (150). O preco antigo (50) dava 300% de
+    # margem, que desde 2026-09-09 pede conferencia de identidade e sai REVISAR -- este
+    # teste e sobre LOTE x COLECAO no nome do set, nao sobre economia.
+    o = evaluate(card, listing(price=125, title=title), config=c, refs=refs(pool))
+    assert o.verdict == 'APROVAR', o.reasons
     o = evaluate(card, listing(price=50, title='Lot of 3 '+title), config=c, refs=refs(pool))
     assert o.verdict == 'REJEITAR'
     for sale in pool:

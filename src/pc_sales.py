@@ -383,9 +383,28 @@ def _grade_mentions(title: str) -> set[tuple[str, float]]:
             for g, v in _ANY_GRADE_RE.findall(title)}
 
 
+def _title_names_card_number(card: WatchCard, title: str) -> bool:
+    """True quando o título NOMEIA o número da carta, com a MESMA noção de número do
+    caminho vigente: `slab_strategy.identity_matches` chama
+    `title_parser.card_matches_title` com o nome zerado e só o NUMERADOR do número
+    ("4" de "4/102"). Reutilizar essa chamada mantém de graça tudo o que ela já sabe —
+    fração ("4/102", com o denominador conferido quando a watchlist traz um), marcador
+    explícito ("#4", "no. 4"), zero à esquerda entre prefixo e dígitos ("SV049" ==
+    "SV49", "TG04" == "TG4"), nota do slab e "pop"/"cert"/"qty" que NUNCA são número de
+    carta, e código de série ("SM12") que é o SET, não a carta.
+    Carta da watchlist SEM número: não há número para exigir, então fail-closed —
+    mesma resposta do caminho vigente, que também devolve False nesse caso."""
+    numerator = str(card.number).split("/")[0].strip()
+    if not numerator:
+        return False
+    return title_parser.card_matches_title(
+        dataclasses.replace(card, name="", number=numerator), title)
+
+
 def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: str = "",
                      variants: frozenset[str] = frozenset(), *,
-                     card: WatchCard | None = None) -> list[dict]:
+                     card: WatchCard | None = None,
+                     require_number: bool = False) -> list[dict]:
     """Só vendas cujo título nomeia a MESMA certificadora e nota — e SÓ ela —, em inglês,
     com preço > 0, na MESMA subcategoria e com o MESMO conjunto de tokens de variante.
     'PSA 9' não casa 'PSA 9.5' nem 'BGS 9'; CGC 10 exige 'Pristine' logo após a nota
@@ -395,7 +414,28 @@ def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: st
     `card` = guarda de identidade (venda de OUTRA carta nunca entra) e e obrigatorio
     nos caminhos de referencia. O matcher de nota da cesta (`_grade_mentions` +
     `_CGC_PRISTINE_RE`) e o de antes do PR #32: nesta rodada a cesta so muda por
-    identidade; unificar com `grading.grade_from_title` e assunto do PR-B."""
+    identidade; unificar com `grading.grade_from_title` e assunto do PR-B.
+
+    DUAS RÉGUAS PARA A MESMA CESTA (`require_number`, keyword-only):
+
+    - `False` (padrão) = régua LEGADA. A venda está na página da PRÓPRIA carta, então
+      só sai por CONTRADIÇÃO (`title_parser.sale_contradicts_card`: outro nome,
+      prefixo/sufixo que muda a carta, palavra de exclusão, ou número explícito
+      diferente). A AUSÊNCIA de número no título não elimina: "1999 Pokemon Charizard
+      Base Set Holo PSA 9" na página da Charizard 4/102 continua na cesta.
+    - `True` = régua do caminho VIGENTE (`slab_strategy.reference_sales`), fail-closed:
+      além da contradição, o título tem que NOMEAR o número da carta
+      (`_title_names_card_number`, que reusa `title_parser.card_matches_title` — a
+      mesma noção de número de `slab_strategy.identity_matches`, nada de matcher novo).
+
+    O padrão é `False` porque unificar as réguas deixa a cesta MENOR e a cobertura de
+    referência já é o gargalo do scanner (só 2,7% das linhas do run de 2026-09-09
+    tiveram referência). A chave existe para ser reversível — quem liga é o chamador,
+    a partir de `legacy_reference.require_number_in_sale_title` no `config.yaml`.
+
+    Com `card=None` não há número esperado, então `require_number=True` NÃO filtra por
+    número (a chave não pode inventar um número nem zerar a cesta); nesse caso a
+    guarda de identidade inteira já está desligada, como sempre esteve."""
     grader = grader.upper()
     wanted = {(grader, float(value))}
     variants = frozenset(variants)
@@ -409,6 +449,9 @@ def comparable_sales(sales: list[dict], grader: str, value: float, qualifier: st
         # sai por CONTRADICAO (outro nome/prefixo/sufixo/numero), nunca por falta
         # de numero no titulo (review do PR #32).
         if card is not None and title_parser.sale_contradicts_card(card, t):
+            continue
+        # Régua VIGENTE, ligada por `require_number`: falta de número TAMBEM elimina.
+        if require_number and card is not None and not _title_names_card_number(card, t):
             continue
         if _grade_mentions(t) != wanted:
             continue  # nenhuma menção, outra nota, ou mais de uma nota citada

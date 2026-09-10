@@ -154,7 +154,7 @@ class Opportunity:
     longterm_profile: float | None = None    # PERFIL 0-100 (caracteristicas da carta)
     longterm_fragility: float | None = None  # FRAGILIDADE DO DADO 0-100
     longterm_tier: str = ""                  # "LP1".."LP4", "LP2*" (limitada por dado ausente), "n/d"
-    longterm_coverage: str = ""              # "4/5·8/10" = insumos disponiveis por nota
+    longterm_coverage: str = ""              # "4/5·9/11" = insumos disponiveis por nota
     longterm_reasons: list = field(default_factory=list)   # motivos `LP:` (so exibicao)
     longterm_signals: dict = field(default_factory=dict)   # insumos crus rotulados (auditoria)
     trend_12m_pct: float | None = None       # tendencia real em 12 m (B5), % ou None

@@ -210,7 +210,8 @@ def _rho_cell(pairs):
 
 
 def _parse_coverage(text):
-    """'4/5·8/10' -> (4, 8) ou None."""
+    """'4/5·9/11' -> (4, 9) ou None (só os numeradores; os denominadores vêm de
+    `longterm.PROFILE_COMPONENTS` / `longterm.FRAGILITY_FLAGS` na hora de imprimir)."""
     try:
         profile, fragility = str(text).split("·")
         return int(profile.split("/")[0]), int(fragility.split("/")[0])
@@ -283,8 +284,11 @@ def calibration_report(rows, min_keys=MIN_KEYS_DEFAULT):
                 profiles.append(parsed[0])
                 fragilities.append(parsed[1])
     if profiles:
-        lines.append(f"Cobertura média (anúncios com a coluna): perfil {statistics.mean(profiles):.1f}/5 · "
-                     f"fragilidade {statistics.mean(fragilities):.1f}/10")
+        # Denominadores vindos das listas do módulo: um "5"/"10" escrito aqui passaria
+        # a mentir no relatório assim que um componente ou uma flag entra ou sai.
+        lines.append("Cobertura média (anúncios com a coluna): "
+                     f"perfil {statistics.mean(profiles):.1f}/{len(longterm.PROFILE_COMPONENTS)} · "
+                     f"fragilidade {statistics.mean(fragilities):.1f}/{len(longterm.FRAGILITY_FLAGS)}")
     else:
         lines.append("Cobertura média: n/d (nenhum anúncio com a coluna preenchida)")
 

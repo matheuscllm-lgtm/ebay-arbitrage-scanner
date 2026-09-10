@@ -15,12 +15,23 @@ from tests.test_slab_strategy import CARD, listing, sales, refs, cfg
 
 
 def current_config():
+    """Casos legados desta suite exercitam o gate `profit_or_discount` (lucro/desconto
+    com taxas). O config de producao passou a `gross_margin` -- entao o modo legado e
+    fixado aqui de proposito, para a cobertura dele continuar existindo."""
     c = policy_config()
     p = c['slab_strategy']
     p['costs'].update(comc_processing_usd=0, comc_storage_usd=0,
                       selling_fee_percent=0, cashout_fee_percent=0)
+    p['economics'].update(gate_mode='profit_or_discount', min_profit_usd=40,
+                          min_discount_percent=30, require_positive_profit=True)
     p['evidence']['max_dispersion_percent'] = 30
     return c
+
+
+def test_production_config_gate_is_gross_margin_not_the_legacy_mode():
+    eco = policy_config()['slab_strategy']['economics']
+    assert eco['gate_mode'] == 'gross_margin'
+    assert eco.get('min_gross_margin_percent') is not None
 
 
 def test_delegated_defaults_are_complete_and_do_not_stack_bgs_premiums():

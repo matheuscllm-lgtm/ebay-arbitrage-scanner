@@ -6,7 +6,7 @@ Uso:
   python main.py --list-groups                # lista os grupos da watchlist e sai
   python main.py --pricing-only               # so colunas informativas do PriceCharting (sem chaves)
   python main.py --grades "PSA 10, CGC 10 Pristine"   # funil restrito a notas
-  python main.py --min-discount 35            # altera so o braço de desconto da regra deste run
+  python main.py --min-gross-margin 50        # altera a margem bruta minima deste run
   python main.py --watchlist w.yaml           # watchlist alternativa
 
 Depois do scan, a ENTREGA canonica sai de:
@@ -15,9 +15,11 @@ Depois do scan, a ENTREGA canonica sai de:
 
 Convencao de threshold deste repo: percentuais INTEIROS (30 = 30%).
 Política vigente = bloco `slab_strategy` do config.yaml (docs/EBAY_PSA.md):
-`economics.gate_mode: profit_or_discount` com `min_profit_usd` e
-`min_discount_percent`; `--min-discount` altera so o braço `min_discount_percent`
-daquele run. Carta solta (raw) nao entra (`graded_only: true`): a flag antiga de
+`economics.gate_mode: gross_margin` com `min_gross_margin_percent` -- o gate usa SO
+margem bruta, sem taxa nenhuma (regra canonica da frota). Custos de intermediacao
+seguem calculados e reportados como INFORMACAO, fora do veredito. `--min-gross-margin`
+altera o limiar daquele run; `--min-discount` so tem efeito nos modos legados
+(`profit_or_discount` e o modo por `min_net_*`). Carta solta (raw) nao entra (`graded_only: true`): a flag antiga de
 raw e rejeitada com erro.
 """
 import argparse
@@ -62,6 +64,28 @@ def _load_config(path):
     return policy_config(config)
 
 
+def apply_cli_overrides(config, *, min_gross_margin=None, log=print):
+    """Sobrescritas de CLI que dependem do MODO do gate.
+
+    `--min-gross-margin` so significa alguma coisa com `gate_mode: gross_margin`. Nos
+    modos legados ela era aplicada assim mesmo e nao mudava nada, em silencio -- o
+    mesmo tipo de mentira que o repo ja trata alto para `--confiavel` (revisao em
+    contexto limpo, 2026-09-09). Aqui o config fica INTACTO e o aviso e impresso.
+    """
+    if min_gross_margin is None:
+        return config
+    economics = (config.get('slab_strategy') or {}).get('economics')
+    if economics is None:
+        return config
+    if economics.get('gate_mode') != 'gross_margin':
+        log(f"AVISO: --min-gross-margin sem efeito com gate_mode "
+            f"{economics.get('gate_mode')!r}: o limiar de margem bruta so decide no modo "
+            f"gross_margin. Config inalterado.")
+        return config
+    economics['min_gross_margin_percent'] = int(min_gross_margin)
+    return config
+
+
 def main(argv=None):
     if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -82,9 +106,12 @@ def main(argv=None):
                          'por virgula (ex.: --grades "PSA 10, CGC 10 Pristine, BGS 10 '
                          'Black"). RAW e rejeitado (so cartas certificadas). Nota fora da '
                          'allowlist erra ALTO')
+    ap.add_argument("--min-gross-margin", type=int, default=None, metavar="N",
+                    help="Margem bruta%% minima (INTEIRO) deste run; sobrescreve "
+                         "min_gross_margin_percent do config (gate vigente, sem taxas)")
     ap.add_argument("--min-discount", type=int, default=None, metavar="N",
                     help="Desconto%% minimo (INTEIRO) deste run; sobrescreve "
-                         "min_discount_percent do config (so o braço de desconto da regra)")
+                         "min_discount_percent do config (so tem efeito nos modos legados)")
     ap.add_argument("--min-price", type=float, default=None, metavar="USD",
                     help="piso de preco (US$) deste run; sobrescreve min_price_usd")
     ap.add_argument("--max-pages", type=int, default=None, metavar="N",
@@ -125,6 +152,7 @@ def main(argv=None):
                   "já é verificado em toda linha); a flag fica registrada no meta do JSON.")
     if args.include_raw:
         ap.error("EBAY PSA aceita apenas cartas certificadas; --include-raw foi removido da estrategia")
+    apply_cli_overrides(config, min_gross_margin=args.min_gross_margin)
     if args.min_discount is not None:
         config["min_discount_percent"] = int(args.min_discount)
         if config['slab_strategy']['economics'].get('gate_mode') == 'profit_or_discount':

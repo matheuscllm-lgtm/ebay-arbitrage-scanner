@@ -1,7 +1,8 @@
 """Report every decision and the exact sales behind each calculation."""
 
 from .chat_format import reference_price
-from .report import (LONGTERM_LEGEND, links_cell, longterm_cell, longterm_counts_line,
+from .report import (LONGTERM_LEGEND, gross_margin_value, links_cell, longterm_cell,
+                     longterm_counts_line,
                      policy_funnel_lines)
 import json
 from collections import Counter
@@ -40,11 +41,23 @@ def _when(stamp):
 
 def _gate_keys(cfg, economics):
     """Chaves da regra economica que valem no `gate_mode` ativo (mesmo ramo de
-    `policy_validation.pending_config`): `profit_or_discount` -> min_profit_usd +
+    `policy_validation.pending_config`): `gross_margin` (regra vigente da frota) ->
+    min_gross_margin_percent; `profit_or_discount` -> min_profit_usd +
     economics.min_discount_percent; `all_minima` -> min_profit_usd +
     min_net_margin_percent + min_net_roi_percent + o `min_discount_percent` de TOPO
-    do config (o braco de desconto efetivo nesse modo). Review do PR #33."""
+    do config (o braco de desconto efetivo nesse modo). Review do PR #33.
+
+    `gross_margin` nao tinha ramo: caia no `else` e o cabecalho da entrega anunciava
+    `min_profit_usd` e `min_discount_percent` -- chaves dos modos LEGADOS, que nesse
+    modo nao decidem nada -- como se fossem a regra em vigor. Elas continuam impressas
+    (estao no config, e o operador as encontra la), mas ROTULADAS como sem efeito, e
+    depois do unico limiar que de fato decide."""
     mode = economics.get('gate_mode')
+    if mode == 'gross_margin':
+        return [f"`gate_mode: {_nd(mode)}`",
+                f"`min_gross_margin_percent: {_nd(economics.get('min_gross_margin_percent'))}`",
+                f"sem efeito neste modo: `min_profit_usd: {_nd(economics.get('min_profit_usd'))}`, "
+                f"`min_discount_percent: {_nd(economics.get('min_discount_percent'))}`"]
     items = [f"`gate_mode: {_nd(mode)}`", f"`min_profit_usd: {_nd(economics.get('min_profit_usd'))}`"]
     if mode == 'all_minima':
         items += [f"`min_net_margin_percent: {_nd(economics.get('min_net_margin_percent'))}`",
@@ -96,8 +109,8 @@ def render(payload):
              'Coleta: ' + (escape_md(collection_line(meta)) if meta
                            else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)'), '',
              'APROVAR é aprovação na análise; nenhuma compra é executada.', '',
-             '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem líquida % | ROI líquido % | Decisão | Longo prazo | Links |',
-             '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|']
+             '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem bruta % | Margem líquida % | ROI líquido % | Decisão | Longo prazo | Links |',
+             '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|']
     if meta.get('aborted'):
         # Causa da parcialidade (review #32): parada antecipada x erros contados no funil.
         cause = ('parada antecipada (autenticação, cota ou API): cartas restantes NÃO foram varridas'
@@ -110,6 +123,10 @@ def render(payload):
         values=[num(r['price']) if s['purchase_currency']=='USD' else 'pendente',num(s['investment_total']),reference_price(num(s['psa_reference_original']), r.get('pc_url')),
                 reference_price(num(s['comparison_reference']), r.get('pc_url')),reference_price(num(s['resale_estimate']), next((x.get('url') for x in s.get('resale_sales', []) if x.get('url')), None)),num(s['profit_estimate']),
                 num(r['discount_pct']) if s['comparison_reference'] is not None else 'pendente',
+                # Margem bruta = o numero que o gate `gross_margin` de fato comparou.
+                # Le do proprio `economic_gate`; sem ele a celula fica pendente.
+                # O payload legado nunca e usado em uma linha da politica.
+                num(gross_margin_value(r)),
                 num(s['net_margin_percent']),num(s['net_roi_percent']),r['verdict'],
                 longterm_cell(r),links_cell(r.get('url'), r.get('pc_url'))]
         lines.append('| '+f'[{label}]({md_url(r["url"])})'+' | '+' | '.join(values)+' |')
@@ -160,6 +177,6 @@ def render(payload):
     funnel = meta.get('funnel')
     lines += ['', 'Funil da busca: ' + (escape_md(' · '.join(policy_funnel_lines(funnel))) if funnel is not None
                                        else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)') + '.']
-    lines += ['', 'Desconto = (comparação − compra)/comparação. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.',
+    lines += ['', 'Desconto = (comparação − compra)/comparação. A coluna Margem bruta mostra o retorno bruto sobre a compra = (revenda da certificadora − compra)/compra, sem taxas; é o valor usado no modo `gross_margin`, não margem sobre a venda. Sem esse cálculo no gate, fica pendente. Retorno elevado exige conferir identidade, referência e natureza do preço do anúncio. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.',
               '', LONGTERM_LEGEND, '']
     return '\n'.join(lines)

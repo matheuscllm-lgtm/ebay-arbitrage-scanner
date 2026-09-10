@@ -1,3 +1,4 @@
+
 ## 2026-09-09 (3) — identidade por edição e ano (`fix/identidade-edicao-e-ano`)
 
 Achado no PRIMEIRO run real do grupo 3: anúncios da Celebrations: Classic Collection
@@ -24,6 +25,166 @@ que passara por baixo do filtro de idioma. 828 testes verdes (798 na base + 30 n
 Limitação conhecida e medida: a faixa 3 só existe quando AS DUAS edições estão na
 watchlist. A Classic Collection tem 25 cartas e a watchlist tem 15, então as originais
 das 10 ausentes seguem sem essa rede — a faixa 1 (alias no título) continua valendo.
+
+## 2026-09-09 (2) — gate por MARGEM BRUTA, preços pedidos na coluna e sinal de MESES DE ESTOQUE
+
+Rodada decidida pelo operador em cima da auditoria do run real de 2026-09-09 (grupo 3, 6.104
+anúncios). Três mudanças de comportamento e duas de configurabilidade.
+
+### 1. O gate econômico passa a usar SÓ margem bruta
+
+Regra canônica da frota: **margem bruta, sem taxa nenhuma**. Antes, a política aprovava por
+`profit_or_discount` — lucro líquido acima de US$40 (com taxa de venda e de saque modeladas) OU
+desconto acima de 30% sobre a referência. Lucro líquido contradizia a regra da frota; foi
+autorizado em sessão autônoma anterior, não pelo operador.
+
+- `economics.gate_mode: gross_margin`, `min_gross_margin_percent: 43`, limite estrito.
+- Margem bruta = (referência − preço) / **preço** ×100, comparada em `Decimal` exato.
+- 43 preserva a fronteira do desconto de 30% sobre a referência (30/(100−30) = 42,857…%) e
+  respeita a convenção do repo de percentual INTEIRO, com 0,14 p.p. a mais de rigor.
+- **O gate deixou de depender do modelo de custos.** Antes, toda a avaliação econômica vivia
+  dentro de um `if` que exigia o custo completo; no run de 2026-09-09, 5.975 de 6.104 linhas
+  não tinham base de custo (`armazenamento-sem-base-de-revenda`), então um gate preso ao custo
+  simplesmente não tinha opinião sobre elas.
+- Custos COMC continuam calculados e no JSON (`profit_estimate`, `net_margin_percent`,
+  `net_roi_percent`, `costs`) como INFORMAÇÃO. Não decidem mais veredito: em `gross_margin` os
+  rejeitos `lucro-nao-positivo`, `nao-atende-lucro-ou-desconto-minimo`, `desconto-abaixo-do-minimo`
+  e `abaixo-de-min_net_*` não disparam, e a marcação `suspicious_margin_percent` (60) também
+  não — ela contradiz um gate que aprova a partir de 43%.
+- Modos legados (`profit_or_discount`, `all_minima`) seguem no código e nos testes.
+- CLI: `--min-gross-margin N` (inteiro). `--min-discount` passa a valer só nos modos legados.
+
+### 2. Preços pedidos passam a alimentar a coluna, sem tocar veredito
+
+`_annotate_ref_alignment` fazia duas coisas ao mesmo tempo: calculava a mediana dos preços
+pedidos E rebaixava o veredito de OPORTUNIDADE para REVISAR. Por isso o caminho da política
+mantinha `asks = {}`, e a flag `ref-desalinhada` ficava em `n/d`, travando a classe em `LP2*`.
+
+As duas responsabilidades foram separadas: o CÁLCULO roda nos dois caminhos (custo zero de API,
+os anúncios já estão em memória); o EFEITO NO VEREDITO continua só no legado. O teto `LP2*` da
+política caiu.
+
+### 3. "Meses de estoque" — o primeiro sinal de oferta contra demanda da régua
+
+A coluna não tinha nenhum sinal de estoque real: o componente B3, apesar de se chamar "supply",
+mede idade e reimpressão. A auditoria do snapshot mostrou que o PERFIL correlaciona com o
+PREÇO de referência e não com o prêmio da PSA 10 — ou seja, ele estava redescobrindo o preço
+que já aparece na linha ao lado.
+
+Nova flag de FRAGILIDADE `estoque-alto`, a 11ª: `listings_same_grade` ÷ `psa10_sales_pm`.
+≥ `supply_months_high` (24) +20 · ≥ `supply_months_mid` (12) +10 · abaixo 0 · `n/d` quando falta
+insumo ou quando as vendas por mês ficam abaixo de `supply_min_sales_pm` (0.05), onde a divisão
+fica instável. Os dois insumos já eram coletados e nunca tinham sido combinados. A cobertura da
+fragilidade passa de `k/10` para `k/11`.
+
+### 4. Pisos de cobertura da LP1 viraram configuração
+
+`LP1_MIN_PROFILE_COVERAGE` e `LP1_MIN_FRAGILITY_COVERAGE` eram constantes no código, escolhidas
+por proporção e não por medição. Agora são `longterm.lp1_min_profile_coverage` (4 de 5) e
+`longterm.lp1_min_fragility_coverage` (9 de 11).
+
+### 5. Cesta legada: chave existe, desligada por padrão
+
+`pc_sales.comparable_sales` ganhou `require_number` (keyword-only, default `False`). Com `True`
+a cesta legada passa a exigir o número da carta no título da venda, como o caminho vigente já
+faz, reutilizando `title_parser.card_matches_title` via a mesma chamada de
+`slab_strategy.identity_matches` — uma régua, não duas. `legacy_reference.require_number_in_sale_title`
+fica em `false`: unificar encolhe a cesta, e a cobertura de referência já é o gargalo (só 2,7%
+das linhas do run tiveram referência, com mediana de 2 vendas quando havia). Carta de watchlist
+sem número é fail-closed com `True`, igual ao caminho vigente.
+
+### Guardas de drift novas
+
+`tests/test_docs_drift.py` passa a exigir que a skill e `docs/EBAY_PSA.md` nomeiem o `gate_mode`
+que está de fato no `config.yaml` (e o limiar daquele modo, que tem de ser inteiro), e que toda
+cobertura `k/N` escrita em docs use o N real de `longterm.FRAGILITY_FLAGS`.
+
+### Correções da revisão em contexto limpo (2026-09-09)
+
+Oito achados, todos corrigidos com teste vermelho antes. Três mudam comportamento e valem
+atenção do operador.
+
+1. **A ordem da tabela usava uma métrica quase sempre indisponível.** `sort_key` ranqueava
+   por `net_roi_percent`, que só existe com o modelo de custo completo — ausente em 5.975
+   das 6.104 linhas do run real. O termo colapsava para zero em todas e a tabela saía em
+   ordem de inserção: uma linha de 44% podia aparecer acima de uma de 300%. Agora a
+   **margem bruta entra na ordenação**, antes do ROI líquido, lida do mesmo
+   `economic_gate` que a tabela exibe.
+2. **O "teto de comparação" prometia um preço que o gate rejeita.** Em `gross_margin` o
+   teto virava a referência crua, mas o gate exige `preço < referência/1,43`. Com
+   referência US$100 a entrega dizia "teto US$100,00" enquanto US$70 já sai REJEITAR.
+   O teto passa a ser o maior preço que o modo aprova, arredondado para BAIXO ao centavo.
+3. **`estoque-alto` contava três vezes a mesma observação.** Ela, `psa10-iliquido` e
+   `concentracao` leem os mesmos dois números. Somadas cheias, uma leitura virava 60
+   pontos e jogava a linha para LP4 com a evidência que dava LP2. A família passa a ter
+   teto de 30, o que a leitura mais forte dela já contribuía sozinha. Não mexe na cobertura.
+4. **Meses de estoque dividia anúncios de uma nota pelas vendas de outra.** O
+   PriceCharting só dá volume por certificadora na coluna PSA 10; as demais notas caem no
+   balde genérico `GRADE 9`, que mistura certificadoras e que este repo proíbe rotular
+   como PSA. A flag passa a valer **só em linhas PSA 10**; fora disso é `n/d`.
+5. **O piso da LP1 voltou de 9 para 8.** Subir junto com a 11ª flag rebaixava para `LP2*`
+   linhas que davam LP1 sem nenhuma evidência nova, e `estoque-alto` é a menos disponível
+   das onze. A contagem absoluta foi preservada.
+6. **Margem absurda voltou a pedir conferência de identidade.** O gate `gross_margin` só
+   tem piso, então uma linha de centenas de por cento — assinatura clássica de referência
+   errada ou carta trocada — chegava a APROVAR sem ressalva. A checagem existia no config
+   e estava inerte. Ela ganhou corte próprio do modo,
+   `economics.suspicious_gross_margin_percent: 150`, porque os 60% do topo foram
+   calibrados para o gate antigo e, sob um gate que aprova a partir de 43%, engoliriam
+   negócio normal. REVISA, nunca rejeita.
+7. **A guarda de drift nova passava por vacuidade e depois quebrava demais.** Foi ancorada
+   nas três formas reais em que a contagem aparece.
+8. **`--min-gross-margin` era aplicada em modo que a ignora, em silêncio.** Agora o config
+   fica intacto e o aviso é impresso, como o repo já faz com `--confiavel`.
+
+Fixtures de `test_catalog_identity` usavam preço com 300% de margem como atalho para
+APROVAR; passaram a usar 60%, dentro da faixa normal. Os testes são sobre identidade de
+catálogo, não sobre economia.
+
+### A margem bruta passou a ser medida contra a REVENDA, não contra a referência PSA
+
+Achado ao responder "por que 150%?" — e mais grave que a pergunta.
+
+O gate `gross_margin` media a margem contra `comparison_reference`, que para CGC, TAG e
+BGS é a **referência PSA ajustada**: um valor que aquele slab nunca alcança. O gate
+anterior (`profit_or_discount`) usava `resale['price_exact']`, as vendas da própria
+certificadora. Trocar para margem bruta trocou a base em silêncio, só para não PSA.
+
+Concreto, com referência PSA US$1.000: uma CGC 10 vale no máximo 40% disso
+(`max_reference_percent`), ou seja US$400. Um anúncio a US$350 dava **186% de margem**
+contra a referência PSA e passava folgado num gate de 43%, quando a margem honesta contra
+a revenda CGC é **14%** — abaixo do gate. O teto da certificadora barrava o prejuízo
+declarado, mas não tornava a margem honesta.
+
+No run real de 2026-09-09, as **7 únicas linhas acima de 100% de margem eram todas CGC 10
+GEM**, comparadas contra preços de PSA 10 (item a US$80 contra "referência" US$3.552).
+Corrigida a base, seis delas somem.
+
+- A base agora é `resale_evidence.price_exact` sempre. Para PSA nada muda: `resale` É a
+  evidência PSA.
+- Sem vendas da própria certificadora não há margem honesta a calcular: o gate fica calado
+  e **nunca aprova por margem** (fail-closed). A linha já carrega
+  `revenda-sem-vendas-da-certificadora`.
+- `economic_gate` passa a publicar `margin_base` e `margin_base_source`, para o JSON dizer
+  qual número decidiu.
+- O teto publicado (`comparison_cap`) passa a ser o **menor** entre o teto da certificadora
+  e o teto do gate (revenda ÷ 1,43): as duas regras valem juntas.
+- O ramo BGS gravava `comparison_cap` sem o par `_exact`; corrigido.
+
+**O que a medição diz sobre o corte de 150%.** Com a base corrigida, sobre 129 linhas com
+revenda e preço: a mediana fica em −20% (o anúncio típico custa MAIS que a revenda), o
+p99 é 50%, e existe **uma** linha acima disso, a 1793%. Qualquer corte entre 51% e 1793%
+pega exatamente a mesma linha. Os 60% originais ficariam a 10 pontos do teto real
+observado e passariam a marcar negócio legítimo. Continua sendo calibração sobre um run,
+não backtest.
+
+### Limitações que continuam de pé
+
+Nada aqui foi validado contra o mercado: um snapshot não é backtest. Não existe dado de
+população PSA no scanner, então escassez real (pop por nota, taxa gem, velocidade da população)
+segue fora da régua — é o próximo passo e exige um coletor novo. Meses de estoque é o
+substituto barato e parcial, não o completo.
+
 
 ## 2026-09-09 — coluna informativa "Longo prazo" (PR-C `feat/longterm-risk-benefit`)
 
@@ -698,6 +859,7 @@ Histórico reconstruído a partir da documentação; a fonte de verdade era o
 - Busca real de 3deee2b isolou títulos sem idioma como gargalo. getItem agora
   fornece Language explícito com limite de 10 detalhes por carta. Conflitos
   entre título e atributos continuam em REVISAR, com proveniência no relatório.
+
 ## 2026-09-10 — catálogo de identidade independente da seleção de busca
 
 - A proteção contra colisões combina watchlist e metadados das 25 cartas da
@@ -711,3 +873,17 @@ Histórico reconstruído a partir da documentação; a fonte de verdade era o
   com uma seleção reduzida a uma carta, inclusive fora dos Pokémon selecionados.
 - Reshiram & Charizard GX não consta entre os 25 produtos desta Classic Collection;
   não foi acrescentada uma colisão sem suporte no catálogo.
+
+## 2026-09-10 — retorno coerente com a evidência de revenda
+
+- No modo `gross_margin`, alerta de retorno elevado usa o Decimal exato do gate
+  para todas as certificadoras, com motivo `retorno-elevado-conferir-identidade`.
+  Regras legadas conservam seu comportamento. Os limiares configurados não mudam.
+- JSON publica o retorno contra revenda, ou null quando indisponível. A coluna da
+  política não usa fallback contra referência PSA, inclusive em artefatos antigos.
+- A legenda esclarece que o denominador é compra (retorno bruto), não receita
+  (margem sobre venda). O cabeçalho e chaves históricos são mantidos por compatibilidade.
+- O teto de compra publicado fica um centavo abaixo quando a fronteira estrita
+  cai exatamente num centavo; não promete um preço rejeitado pelo próprio gate.
+- Testes cobrem certificadoras, origem do dado, ausência, renderização, reprovação
+  com retorno disponível e limites antes de arredondamento. Sem coleta de mercado.
