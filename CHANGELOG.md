@@ -1,8 +1,8 @@
 ## 2026-09-09 (3) — identidade por edição e ano (`fix/identidade-edicao-e-ano`)
 
 Achado no PRIMEIRO run real do grupo 3: anúncios da Celebrations: Classic Collection
-(2021) casaram como Base Set (1999) e produziram margem publicada de **2801%** contra a
-referência da carta errada. A reimpressão repete nome e número, e o título traz "Base
+(2021) casaram como Base Set (1999) e a linha saiu com margem absurda contra a
+referência da carta ERRADA. A reimpressão repete nome e número, e o título traz "Base
 Set" porque é o que está estampado na carta.
 
 O mecanismo de defesa (`exclude_keywords`) já existia, já tinha teste verde desde o 1º
@@ -16,9 +16,14 @@ com a colisão DERIVADA da watchlist (58 pares nome+número em mais de uma ediç
 cesta de vendas só contradição exclui: ambiguidade não amputa venda legítima, erro já
 registrado no PR #32.
 
-Medido sobre as 6.278 linhas do run: 412 `outra-edicao`, 223 `conflito-de-ano`, 183
-`edicao-ambigua`. Das 174 linhas que publicavam margem, **8 passam a ter ressalva — e
-são as 7 acima de 150%, mais uma**. 822 testes verdes (798 na base + 24 novos).
+Medido sobre um run local do grupo 3 (artefato fica em `results/`, gitignored): a
+guarda marca três faixas em ordem de milhares de linhas, e as linhas que perdem a
+comparação automática são exatamente as de retorno absurdo mais uma de carta japonesa
+que passara por baixo do filtro de idioma. 828 testes verdes (798 na base + 30 novos).
+
+Limitação conhecida e medida: a faixa 3 só existe quando AS DUAS edições estão na
+watchlist. A Classic Collection tem 25 cartas e a watchlist tem 15, então as originais
+das 10 ausentes seguem sem essa rede — a faixa 1 (alias no título) continua valendo.
 
 ## 2026-09-09 — coluna informativa "Longo prazo" (PR-C `feat/longterm-risk-benefit`)
 
