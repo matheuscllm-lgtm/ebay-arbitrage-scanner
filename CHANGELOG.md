@@ -1,3 +1,30 @@
+## 2026-09-09 (3) — identidade por edição e ano (`fix/identidade-edicao-e-ano`)
+
+Achado no PRIMEIRO run real do grupo 3: anúncios da Celebrations: Classic Collection
+(2021) casaram como Base Set (1999) e a linha saiu com margem absurda contra a
+referência da carta ERRADA. A reimpressão repete nome e número, e o título traz "Base
+Set" porque é o que está estampado na carta.
+
+O mecanismo de defesa (`exclude_keywords`) já existia, já tinha teste verde desde o 1º
+scan real — e a watchlist de produção tinha ZERO carta preenchida. Teste alimentado à
+mão não prova comportamento de produção; por isso os testes novos assertam sobre a
+WATCHLIST REAL e há guarda de drift exigindo que toda carta em colisão declare suas
+edições colidentes.
+
+Três faixas por força de evidência (`outra-edicao`, `conflito-de-ano`, `edicao-ambigua`),
+com a colisão DERIVADA da watchlist (58 pares nome+número em mais de uma edição). Na
+cesta de vendas só contradição exclui: ambiguidade não amputa venda legítima, erro já
+registrado no PR #32.
+
+Medido sobre um run local do grupo 3 (artefato fica em `results/`, gitignored): a
+guarda marca três faixas em ordem de milhares de linhas, e as linhas que perdem a
+comparação automática são exatamente as de retorno absurdo mais uma de carta japonesa
+que passara por baixo do filtro de idioma. 828 testes verdes (798 na base + 30 novos).
+
+Limitação conhecida e medida: a faixa 3 só existe quando AS DUAS edições estão na
+watchlist. A Classic Collection tem 25 cartas e a watchlist tem 15, então as originais
+das 10 ausentes seguem sem essa rede — a faixa 1 (alias no título) continua valendo.
+
 ## 2026-09-09 — coluna informativa "Longo prazo" (PR-C `feat/longterm-risk-benefit`)
 
 Nova coluna na tabela de entrega dos DOIS geradores (`src/slab_report.render`, vigente, e a
@@ -671,3 +698,16 @@ Histórico reconstruído a partir da documentação; a fonte de verdade era o
 - Busca real de 3deee2b isolou títulos sem idioma como gargalo. getItem agora
   fornece Language explícito com limite de 10 detalhes por carta. Conflitos
   entre título e atributos continuam em REVISAR, com proveniência no relatório.
+## 2026-09-10 — catálogo de identidade independente da seleção de busca
+
+- A proteção contra colisões combina watchlist e metadados das 25 cartas da
+  Celebrations: Classic Collection, com fonte TCGCSV/TCGplayer e IDs de produto.
+  Nenhum alvo foi adicionado à watchlist e não há nova chamada de mercado no scan.
+- Chaves de colisão respeitam o idioma. O catálogo inglês não identifica a
+  população japonesa nem implica cobertura de todas as reimpressões.
+- Títulos canônicos de SM/XY/SWSH Base Set deixam de se contradizer com o trecho
+  genérico “Base Set”. Menções a outra expansão continuam sendo rejeitadas.
+- Regressões verificam todas as identidades canônicas da watchlist e a proteção
+  com uma seleção reduzida a uma carta, inclusive fora dos Pokémon selecionados.
+- Reshiram & Charizard GX não consta entre os 25 produtos desta Classic Collection;
+  não foi acrescentada uma colisão sem suporte no catálogo.
