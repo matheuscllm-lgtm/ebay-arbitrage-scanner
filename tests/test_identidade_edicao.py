@@ -32,8 +32,6 @@ VENUSAUR_2021 = "2021 Pokemon Venusaur 15/102 Base Set Holo CGC 10 Gem Mint"
 
 BASE_ZARD = WatchCard(name="Charizard", set_name="Base Set", number="4",
                       language="EN", pc_url="", year=1999)
-BASE_VENU = WatchCard(name="Venusaur", set_name="Base Set", number="15",
-                      language="EN", pc_url="", year=1999)
 # Jungle #11 nao colide com nenhuma outra edicao da watchlist.
 JUNGLE_SNORLAX = WatchCard(name="Snorlax", set_name="Jungle", number="11",
                            language="EN", pc_url="", year=1999)
@@ -56,16 +54,22 @@ def test_ano_no_inicio_do_titulo():
 def test_fracao_nao_e_ano():
     assert title_parser.card_year_candidates("Charizard 4/102 Base Set Holo") == frozenset()
 
-def test_numero_de_certificado_nao_e_ano():
-    # Cert PSA de 8 digitos contem "1999" no meio; nao e ano da carta.
-    assert title_parser.card_year_candidates("Charizard Base Set PSA 9 cert 21999456") == frozenset()
+@pytest.mark.parametrize("titulo", [
+    "Charizard Base Set PSA 9 cert 21999456",        # PSA: 8 digitos
+    "Charizard Base Set CGC 9 cert 12019995123",     # CGC: 11 digitos
+])
+def test_numero_de_certificado_nao_e_ano(titulo):
+    """Ano dentro de corrida de digitos e numero de certificado, nao ano da carta."""
+    assert title_parser.card_year_candidates(titulo) == frozenset()
 
 def test_intervalo_traz_os_dois_anos():
     anos = title_parser.card_year_candidates("1999-2000 WOTC Pokemon Charizard Base Set")
     assert {1999, 2000} <= anos
 
-def test_ano_fora_da_era_pokemon_ignorado():
-    assert 1850 not in title_parser.card_year_candidates("Charizard 1850 Base Set")
+@pytest.mark.parametrize("ano", ["1850", "1995", "2099"])
+def test_ano_fora_da_era_pokemon_ignorado(ano):
+    """Fronteira da era: o TCG comeca em 1996; fora disso o numero nao e ano."""
+    assert title_parser.card_year_candidates(f"Charizard {ano} Base Set") == frozenset()
 
 
 # --- camada 1: alias inequivoco de outra edicao rejeita a associacao ---
@@ -188,3 +192,41 @@ def test_venda_com_ano_contraditorio_nao_entra_na_cesta():
     titulos = [s['title'] for s in cesta['sales']]
     assert not any('2021' in t for t in titulos), titulos
     assert len(titulos) == 2
+
+
+def test_toda_carta_casa_com_o_proprio_titulo_canonico():
+    """Varredura: nenhuma carta da watchlist pode rejeitar o proprio titulo.
+
+    O alias de uma reimpressao pode EMPATAR em comprimento com o nome do SET-PAI
+    homonimo -- "celebrations" (alias de Celebrations: Classic Collection) contra
+    "Celebrations" (set proprio, 14 cartas) -- e roubar a identidade dele no
+    desempate. Nenhum teste tocava o set-pai, entao o erro passava verde. Esta
+    varredura custa tres linhas e pega a classe inteira do problema.
+    """
+    quebradas = []
+    for card in scanner.load_watchlist("watchlist.yaml"):
+        canonico = (f"{card.year} Pokemon {card.name} {card.number} "
+                    f"{card.set_name} Holo PSA 10 English")
+        if slab_strategy.edition_conflict(card, canonico) == "outra-edicao":
+            quebradas.append(f"{card.name} {card.number} ({card.set_name})")
+    assert not quebradas, (
+        f"{len(quebradas)} carta(s) perdem a identidade do proprio set: {quebradas[:6]}")
+
+
+def test_set_pai_homonimo_nao_perde_identidade_para_o_alias_da_filha():
+    """`Celebrations` (14 cartas) e `Celebrations: Classic Collection` (15) coexistem.
+
+    O alias 'celebrations' da filha empatava em comprimento com o rotulo da mae e,
+    no desempate, rejeitava as 14 cartas do set-pai -- levando junto a cesta de vendas
+    delas, porque `reference_sales` tambem usa `identity_matches`.
+    """
+    mew = _real("Mew", "Celebrations", "25")
+    titulo = "2021 Pokemon Celebrations Mew 25/25 PSA 10"
+    assert slab_strategy.edition_conflict(mew, titulo) is None
+    assert slab_strategy.identity_matches(mew, titulo)
+
+def test_reimpressao_ainda_e_pega_depois_do_desempate():
+    """A correcao do empate nao pode desarmar a camada 1."""
+    assert slab_strategy.edition_conflict(
+        _real("Charizard", "Base Set", "4"),
+        "Charizard PSA 9 Celebrations Classic 4/102 Holo Base Set 2021") == "outra-edicao"

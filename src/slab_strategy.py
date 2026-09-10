@@ -123,22 +123,28 @@ EDITION_ALIASES = {
 FACE_REPRINTS = ('Celebrations: Classic Collection',)
 
 
-def edition_mentioned(title, editions):
+def edition_mentioned(title, editions, prefer=None):
     """Edicao mais ESPECIFICA citada no titulo, entre `editions`, ou None.
 
     O termo mais longo vence: "Celebrations Classic" e "Base Set 2" ganham do generico
-    "Base Set". Evidencia especifica prevalece sobre expressao generica.
+    "Base Set". No EMPATE de comprimento ganha `prefer` (a edicao da propria carta) --
+    sem isso o alias 'celebrations' da Classic Collection empatava com o rotulo do
+    set-pai homonimo `Celebrations` e roubava a identidade das 14 cartas dele
+    (revisao em contexto limpo, 2026-09-09; a varredura de titulo canonico virou teste).
     """
     text, best = normalized(title), None
+    alvo = normalized(set_label(prefer)) if prefer else None
     for edition in editions:
         if not edition:
             continue
+        propria = alvo is not None and normalized(set_label(edition)) == alvo
         for token in EDITION_ALIASES.get(edition, ()) + (normalized(set_label(edition)),):
             if not token:
                 continue
             if re.search(r'(?<![a-z0-9])' + re.escape(token) + r'(?![a-z0-9])', text):
-                if best is None or len(token) > best[0]:
-                    best = (len(token), edition)
+                score = (len(token), propria)
+                if best is None or score > best[0]:
+                    best = (score, edition)
     return best[1] if best else None
 
 
@@ -152,7 +158,8 @@ def edition_conflict(card, title):
     None              nada a declarar (inclusive: carta que nao colide com ninguem)
     """
     outras = tuple(getattr(card, 'colliding_editions', ()) or ())
-    citada = edition_mentioned(title, outras + tuple(EDITION_ALIASES) + (card.set_name,))
+    citada = edition_mentioned(title, outras + tuple(EDITION_ALIASES) + (card.set_name,),
+                               prefer=card.set_name)
     if citada is not None and normalized(set_label(citada)) != normalized(set_label(card.set_name)):
         return 'outra-edicao'
     anos = title_parser.card_year_candidates(title)
@@ -391,11 +398,14 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     if grade and not mapping:
         review.append('nota-sem-equivalencia-configurada')
     psa = resale = None
+    identidade = identity_matches(card, listing.title)
     conflito = edition_conflict(card, listing.title)
     details['edition_conflict'] = conflito
-    if conflito in ('conflito-de-ano', 'edicao-ambigua'):
+    # Ressalva de edicao so faz sentido em anuncio que E desta carta: sem isso a linha
+    # ganhava motivo descrevendo OUTRA carta (55 linhas no run real).
+    if identidade and conflito in ('conflito-de-ano', 'edicao-ambigua'):
         review.append(conflito)
-    if (mapping and conflito is None and identity_matches(card, listing.title)
+    if (mapping and identidade and conflito is None
             and details["listing_language"] == card.language):
         ref_grade = grading.Grade('PSA', float(mapping['psa_grade']))
         psa = reference_sales(card, refs, ref_grade, frozenset(details['variant']), p)

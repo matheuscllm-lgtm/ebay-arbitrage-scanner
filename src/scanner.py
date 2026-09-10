@@ -107,13 +107,18 @@ def _annotate_colliding_editions(cards):
     parecem identidade suficiente -- e nao sao. Derivar da watchlist em vez de manter
     lista a mao: assim carta nova entra ja protegida.
     """
+    from .slab_strategy import normalized   # local: evita mexer na ordem de import
+
+    def chave(card):
+        # Mesma normalizacao do resto do modulo: sem ela um catalogo que passe a emitir
+        # '004' de um lado e '4' do outro faria a colisao sumir EM SILENCIO.
+        return (normalized(card.name), pc_sales.norm_number(card.number))
+
     index = {}
     for card in cards:
-        index.setdefault((card.name.strip().lower(), str(card.number).strip()),
-                         set()).add(card.set_name)
+        index.setdefault(chave(card), set()).add(card.set_name)
     for card in cards:
-        outras = index[(card.name.strip().lower(), str(card.number).strip())] - {card.set_name}
-        card.colliding_editions = tuple(sorted(outras))
+        card.colliding_editions = tuple(sorted(index[chave(card)] - {card.set_name}))
 
 
 def group_counts(cards):
