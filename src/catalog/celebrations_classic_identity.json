@@ -1,0 +1,160 @@
+{
+  "set": "Celebrations: Classic Collection",
+  "language": "EN",
+  "year": 2021,
+  "source_url": "https://tcgcsv.com/tcgplayer/3/2931/products",
+  "retrieved_on": "2026-09-10",
+  "normalization": "src.pc_sales.clean_card_name, same as build_watchlist.py",
+  "cards": [
+    {
+      "name": "Dark Gyarados",
+      "source_name": "Dark Gyarados",
+      "number": "8/82",
+      "product_id": 250294
+    },
+    {
+      "name": "Blastoise",
+      "source_name": "Blastoise",
+      "number": "2/102",
+      "product_id": 250319
+    },
+    {
+      "name": "Charizard",
+      "source_name": "Charizard",
+      "number": "4/102",
+      "product_id": 250320
+    },
+    {
+      "name": "Venusaur",
+      "source_name": "Venusaur",
+      "number": "15/102",
+      "product_id": 250321
+    },
+    {
+      "name": "Imposter Professor Oak",
+      "source_name": "Imposter Professor Oak",
+      "number": "73/102",
+      "product_id": 250322
+    },
+    {
+      "name": "Here Comes Team Rocket!",
+      "source_name": "Here Comes Team Rocket!",
+      "number": "15/82",
+      "product_id": 250323
+    },
+    {
+      "name": "Rocket's Zapdos",
+      "source_name": "Rocket's Zapdos",
+      "number": "15/132",
+      "product_id": 250324
+    },
+    {
+      "name": "______'s Pikachu",
+      "source_name": "______'s Pikachu",
+      "number": "24/53",
+      "product_id": 250325
+    },
+    {
+      "name": "Cleffa",
+      "source_name": "Cleffa",
+      "number": "20/111",
+      "product_id": 250326
+    },
+    {
+      "name": "Shining Magikarp",
+      "source_name": "Shining Magikarp",
+      "number": "66/64",
+      "product_id": 250327
+    },
+    {
+      "name": "Team Magma's Groudon",
+      "source_name": "Team Magma's Groudon",
+      "number": "9/95",
+      "product_id": 250328
+    },
+    {
+      "name": "Rocket's Admin.",
+      "source_name": "Rocket's Admin.",
+      "number": "86/109",
+      "product_id": 250329
+    },
+    {
+      "name": "Mew ex",
+      "source_name": "Mew ex",
+      "number": "88/92",
+      "product_id": 250330
+    },
+    {
+      "name": "Gardevoir ex",
+      "source_name": "Gardevoir ex (Delta Species)",
+      "number": "93/101",
+      "product_id": 250331
+    },
+    {
+      "name": "Umbreon Star",
+      "source_name": "Umbreon Star",
+      "number": "17/17",
+      "product_id": 250332
+    },
+    {
+      "name": "Claydol",
+      "source_name": "Claydol",
+      "number": "15/106",
+      "product_id": 250333
+    },
+    {
+      "name": "Luxray GL LV.X",
+      "source_name": "Luxray GL LV.X",
+      "number": "109/111",
+      "product_id": 250334
+    },
+    {
+      "name": "Garchomp C LV.X",
+      "source_name": "Garchomp C LV.X",
+      "number": "145/147",
+      "product_id": 250335
+    },
+    {
+      "name": "Donphan",
+      "source_name": "Donphan (Prime)",
+      "number": "107/123",
+      "product_id": 250336
+    },
+    {
+      "name": "Reshiram",
+      "source_name": "Reshiram",
+      "number": "113/114",
+      "product_id": 250337
+    },
+    {
+      "name": "Zekrom",
+      "source_name": "Zekrom",
+      "number": "114/114",
+      "product_id": 250338
+    },
+    {
+      "name": "Mewtwo EX",
+      "source_name": "Mewtwo EX",
+      "number": "54/99",
+      "product_id": 250339
+    },
+    {
+      "name": "Xerneas EX",
+      "source_name": "Xerneas EX",
+      "number": "97/146",
+      "product_id": 250340
+    },
+    {
+      "name": "M Rayquaza EX",
+      "source_name": "M Rayquaza EX",
+      "number": "76/108",
+      "product_id": 250341
+    },
+    {
+      "name": "Tapu Lele GX",
+      "source_name": "Tapu Lele GX",
+      "number": "60/145",
+      "product_id": 250342
+    }
+  ]
+}

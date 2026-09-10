@@ -96,6 +96,18 @@ verificar acesso e limite de requisição da PSA antes de prometer prazo.
   VERBATIM no chat, preço de referência clicável, todas as linhas, nada publicado no GitHub.
 - `results/` e `data/` são locais e estão no `.gitignore`.
 - Branch + PR sempre; quem mergeia é o operador.
+
+## Continuação 2026-09-10 — cobertura de identidade
+
+Branch `fix/catalog-identity-coverage`, baseada na branch do PR #36. Corrigidos os
+títulos canônicos dos Base Sets modernos; adicionado catálogo EN com as 25
+identidades da Classic Collection para proteger seleções parciais. Watchlist
+permanece inalterada. Fonte e limitações em `src/catalog/README.md`.
+
+Validação local: 835 testes aprovados; 3 regressões novas reproduziram os defeitos
+antes da implementação. Não houve coleta de ofertas ou preços. Nenhum merge foi
+executado. Esta atualização complementa, sem substituir, os PRs #36 e #35.
+
 ## Continuação 2026-09-10 — retorno e evidência
 
 Branch `fix/gross-return-evidence`, baseada no PR #35. Corrige alerta restrito a

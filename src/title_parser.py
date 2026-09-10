@@ -294,3 +294,20 @@ def sale_contradicts_card(card, title):
         if marked:
             return _norm_num_token(marked.group(1)) != num
     return False
+
+
+# --- ano de lancamento citado no titulo (guarda de edicao) --------------------
+# Nao e "qualquer sequencia de 4 digitos": fracao ("4/102"), numero de certificado
+# (PSA tem 8 digitos, CGC 10-11) e numero solto ficam de fora. Confundir um deles
+# com ano REJEITARIA carta legitima, que e o erro caro aqui.
+_CARD_YEAR_RE = re.compile(r"(?<![\d/])(199[6-9]|20[0-3]\d)(?![\d/])")
+
+
+def card_year_candidates(title):
+    """Anos de lancamento plausiveis citados no titulo, como frozenset de int.
+
+    Intervalo ("1999-2000 WOTC") devolve os dois anos: o anuncio nao esta se
+    contradizendo, esta cobrindo a era. Ausencia de ano devolve conjunto vazio --
+    que NAO e evidencia de nada, so falta de evidencia.
+    """
+    return frozenset(int(y) for y in _CARD_YEAR_RE.findall(title or ""))
