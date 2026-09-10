@@ -40,6 +40,11 @@ class WatchCard:
     pokemon_rank: int = 9999
     rarity: str = ""
     year: int | None = None
+    # Outras edicoes da watchlist que repetem NOME e NUMERO desta carta -- o
+    # Charizard 4 existe em Base Set, Base Set 2, Celebrations: Classic Collection
+    # e EX Crystal Guardians. Preenchido por `scanner.load_watchlist`: e dado
+    # DERIVADO da watchlist, nunca lista mantida a mao. Vazio = nao colide.
+    colliding_editions: tuple = ()
 
     def default_query(self) -> str:
         return self.ebay_query or f"pokemon {self.name} {self.number} {self.set_name}"

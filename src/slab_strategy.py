@@ -112,6 +112,58 @@ def risk_title(card, title):
     return title
 
 
+# Reimpressoes COMPROVADAS em anuncio real (run do grupo 3, 2026-09-09) e os apelidos
+# que o vendedor de fato escreve. NAO ampliar por hipotese: alias errado rejeita carta
+# legitima, e esse e o dano caro. Entrada nova pede exemplo concreto e teste.
+EDITION_ALIASES = {
+    'Celebrations: Classic Collection': ('celebrations', 'classic collection', 'classic coll'),
+}
+# Reimpressao que ESTAMPA o nome do set original na propria carta: num anuncio dessas,
+# citar "Base Set" nao identifica edicao nenhuma -- e o que esta impresso na reimpressao.
+FACE_REPRINTS = ('Celebrations: Classic Collection',)
+
+
+def edition_mentioned(title, editions):
+    """Edicao mais ESPECIFICA citada no titulo, entre `editions`, ou None.
+
+    O termo mais longo vence: "Celebrations Classic" e "Base Set 2" ganham do generico
+    "Base Set". Evidencia especifica prevalece sobre expressao generica.
+    """
+    text, best = normalized(title), None
+    for edition in editions:
+        if not edition:
+            continue
+        for token in EDITION_ALIASES.get(edition, ()) + (normalized(set_label(edition)),):
+            if not token:
+                continue
+            if re.search(r'(?<![a-z0-9])' + re.escape(token) + r'(?![a-z0-9])', text):
+                if best is None or len(token) > best[0]:
+                    best = (len(token), edition)
+    return best[1] if best else None
+
+
+def edition_conflict(card, title):
+    """Conflito entre a EDICAO evidenciada no anuncio e a carta candidata.
+
+    'outra-edicao'    evidencia inequivoca de outra tiragem -> a associacao esta errada
+    'conflito-de-ano' ano citado incompativel -> nao aprova sozinho; o operador olha
+    'edicao-ambigua'  colide com reimpressao que estampa o mesmo set, e o titulo nao
+                      traz nem ano nem alias -> nome + numero nao bastam
+    None              nada a declarar (inclusive: carta que nao colide com ninguem)
+    """
+    outras = tuple(getattr(card, 'colliding_editions', ()) or ())
+    citada = edition_mentioned(title, outras + tuple(EDITION_ALIASES) + (card.set_name,))
+    if citada is not None and normalized(set_label(citada)) != normalized(set_label(card.set_name)):
+        return 'outra-edicao'
+    anos = title_parser.card_year_candidates(title)
+    if card.year and anos:
+        # Ano compativel e evidencia POSITIVA: encerra a duvida.
+        return None if int(card.year) in anos else 'conflito-de-ano'
+    if any(outra in FACE_REPRINTS for outra in outras):
+        return 'edicao-ambigua'
+    return None
+
+
 def identity_matches(card, title):
     """Name + numerator + explicit set; missing identity cannot approve."""
     from dataclasses import replace
@@ -152,6 +204,11 @@ def identity_matches(card, title):
         fractions = title_parser._FRACTION_RE.findall(title)
         if fractions and any([pc_sales.norm_number(n) for n in pair] != expected for pair in fractions):
             return False
+    # So a evidencia INEQUIVOCA de outra tiragem derruba a identidade. Ano conflitante
+    # e ambiguidade nao rejeitam: viram ressalva no anuncio, e nunca amputam a cesta de
+    # vendas (o PR #32 ja registrou que exigir dado extra da venda move a mediana).
+    if edition_conflict(card, title) == 'outra-edicao':
+        return False
     return True
 
 
@@ -184,6 +241,16 @@ def reference_sales(card, refs, grade, variants, policy, today=None):
             continue
         if not identity_matches(card, title):
             excluded['carta-colecao-ou-numero'] += 1
+            continue
+        # Venda que se contradiz nao e evidencia do preco DESTA carta: uma venda de
+        # 2021 na pagina do Base Set 1999 puxa a referencia para a reimpressao. Aqui a
+        # exclusao e correta porque a alternativa e contaminar a mediana -- diferente
+        # do anuncio, onde ambiguidade vira ressalva e o operador decide olhando.
+        # So CONTRADICAO exclui venda. Ambiguidade nao: a venda legitima que apenas
+        # nao cita o ano e a maioria da cesta, e tira-la moveria a mediana -- o erro
+        # que o PR #32 ja tinha registrado.
+        if edition_conflict(card, title) in ('outra-edicao', 'conflito-de-ano'):
+            excluded['edicao-ou-ano-contraditorio'] += 1
             continue
         if pc_sales.variant_tokens(title) != variants:
             excluded['variante-diferente'] += 1
@@ -324,7 +391,12 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     if grade and not mapping:
         review.append('nota-sem-equivalencia-configurada')
     psa = resale = None
-    if mapping and identity_matches(card, listing.title) and details["listing_language"] == card.language:
+    conflito = edition_conflict(card, listing.title)
+    details['edition_conflict'] = conflito
+    if conflito in ('conflito-de-ano', 'edicao-ambigua'):
+        review.append(conflito)
+    if (mapping and conflito is None and identity_matches(card, listing.title)
+            and details["listing_language"] == card.language):
         ref_grade = grading.Grade('PSA', float(mapping['psa_grade']))
         psa = reference_sales(card, refs, ref_grade, frozenset(details['variant']), p)
         details['psa_evidence'] = psa

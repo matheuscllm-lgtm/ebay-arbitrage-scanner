@@ -94,7 +94,26 @@ def load_watchlist(path="watchlist.yaml"):
             rarity=str(entry.get("rarity", "") or ""),
             year=int(year) if year not in (None, "") else None,
         ))
+    _annotate_colliding_editions(cards)
     return cards
+
+
+def _annotate_colliding_editions(cards):
+    """Marca em cada carta as OUTRAS edicoes que repetem seu nome e numero.
+
+    Reimpressao repete nome e numero (Celebrations: Classic Collection reimprime o
+    Base Set inteiro mantendo #4/102), e o vendedor escreve no titulo o set
+    ESTAMPADO na carta. Sem saber que a colisao existe, nome + numero + "Base Set"
+    parecem identidade suficiente -- e nao sao. Derivar da watchlist em vez de manter
+    lista a mao: assim carta nova entra ja protegida.
+    """
+    index = {}
+    for card in cards:
+        index.setdefault((card.name.strip().lower(), str(card.number).strip()),
+                         set()).add(card.set_name)
+    for card in cards:
+        outras = index[(card.name.strip().lower(), str(card.number).strip())] - {card.set_name}
+        card.colliding_editions = tuple(sorted(outras))
 
 
 def group_counts(cards):

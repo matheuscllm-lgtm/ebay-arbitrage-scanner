@@ -74,8 +74,11 @@ def test_ano_fora_da_era_pokemon_ignorado():
 def test_celebrations_nao_casa_com_base_set_na_watchlist_real(titulo):
     assert not slab_strategy.identity_matches(_real("Charizard", "Base Set", "4"), titulo)
 
-def test_venusaur_2021_nao_casa_com_base_set_na_watchlist_real():
-    assert not slab_strategy.identity_matches(_real("Venusaur", "Base Set", "15"), VENUSAUR_2021)
+def test_venusaur_2021_nao_e_comparado_com_base_set_1999():
+    """Ano incompativel nao rejeita a identidade -- o anuncio segue visivel -- mas
+    impede a comparacao automatica. Era daqui que saia a margem de 2431% do run."""
+    assert slab_strategy.edition_conflict(
+        _real("Venusaur", "Base Set", "15"), VENUSAUR_2021) == "conflito-de-ano"
 
 def test_celebrations_casa_com_a_propria_edicao():
     zard = _real("Charizard", "Celebrations: Classic Collection", "4")
@@ -163,3 +166,25 @@ def test_venda_legitima_sem_ano_continua_na_cesta():
     # mediana. Ambiguidade (camada 3) NUNCA pode virar exclusao de venda.
     zard = _real("Charizard", "Base Set", "4")
     assert slab_strategy.identity_matches(zard, "Pokemon Charizard Base Set Holo 4/102 PSA 9")
+
+
+def test_venda_com_ano_contraditorio_nao_entra_na_cesta():
+    """Venda de 2021 na pagina do Base Set 1999 puxaria a mediana para a reimpressao."""
+    from datetime import datetime, timedelta, timezone
+    from types import SimpleNamespace
+    hoje = datetime.now(timezone.utc).date()
+    def venda(sale_id, titulo, preco, dias):
+        return dict(date=(hoje - timedelta(days=dias)).isoformat(), price=preco,
+                    title=titulo, source='ebay', sale_id=str(sale_id))
+    zard = _real("Charizard", "Base Set", "4")
+    pool = [venda(101, "1999 Pokemon Charizard 4/102 Base Set English PSA 9", 900, 3),
+            venda(102, "Pokemon Charizard 4/102 Base Set English PSA 9", 950, 4),
+            venda(103, "2021 Pokemon Charizard 4/102 Base Set English PSA 9", 120, 5)]
+    refs = SimpleNamespace(available=True, _sales=pool)
+    politica = slab_strategy.policy_config({})['slab_strategy']
+    cesta = slab_strategy.reference_sales(
+        zard, refs, __import__('src.grading', fromlist=['x']).Grade('PSA', 9.0),
+        frozenset(), politica)
+    titulos = [s['title'] for s in cesta['sales']]
+    assert not any('2021' in t for t in titulos), titulos
+    assert len(titulos) == 2
