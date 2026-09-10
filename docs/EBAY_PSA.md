@@ -84,6 +84,29 @@ ZH-HANT (tradicional) são identidades distintas. Chinês genérico é ambíguo.
 A configuração não garante cobertura do catálogo: a watchlist atual e os títulos
 disponíveis limitam quais idiomas/cartas realmente podem ser avaliados.
 
+Reimpressão repete NOME e NÚMERO da carta original, e o vendedor escreve no título
+o set ESTAMPADO na carta — a Celebrations: Classic Collection (2021) reimprime o Base
+Set inteiro mantendo #4/102. Por isso nome + número + "Base Set" NÃO identificam
+edição. As edições que colidem são DERIVADAS da watchlist (`colliding_editions`,
+preenchido em `scanner.load_watchlist`), nunca lista mantida à mão: carta nova entra
+já protegida. Três faixas, por força da evidência:
+
+| Evidência no anúncio | Tratamento | Motivo |
+|---|---|---|
+| Alias inequívoco de outra tiragem ("Celebrations", "Classic Coll") | rejeita a associação | `outra-edicao` |
+| Ano citado incompatível com a edição candidata | sem aprovação automática; sem comparação | `conflito-de-ano` |
+| Colide com reimpressão que estampa o mesmo set, sem ano e sem alias | identidade insuficiente | `edicao-ambigua` |
+| Carta que não colide com nenhuma outra edição | nada muda | — |
+
+O termo mais ESPECÍFICO vence o genérico: "Celebrations Classic" e "Base Set 2"
+ganham de "Base Set". `EDITION_ALIASES` só aceita apelido comprovado em anúncio real;
+alias por hipótese rejeita carta legítima, que é o dano caro. Ano vem de
+`title_parser.card_year_candidates`, que ignora fração ("4/102"), número de
+certificado e sequência dentro de dígitos — confundir um deles com ano rejeitaria
+carta boa. Na CESTA DE VENDAS só contradição exclui (`outra-edicao`,
+`conflito-de-ano`); ambiguidade nunca exclui venda, porque a venda legítima que apenas
+não cita o ano é a maioria da cesta e tirá-la moveria a mediana.
+
 Cada venda precisa ter origem eBay, ID, preço positivo e data válida não futura.
 Oferta aceita sem preço efetivo confirmado fica fora. Vendas repetidas contam uma
 vez. Anúncios com IDs diferentes permanecem visíveis mesmo se título/preço coincidirem.

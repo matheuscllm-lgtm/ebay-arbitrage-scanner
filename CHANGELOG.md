@@ -1,3 +1,25 @@
+## 2026-09-09 (3) — identidade por edição e ano (`fix/identidade-edicao-e-ano`)
+
+Achado no PRIMEIRO run real do grupo 3: anúncios da Celebrations: Classic Collection
+(2021) casaram como Base Set (1999) e produziram margem publicada de **2801%** contra a
+referência da carta errada. A reimpressão repete nome e número, e o título traz "Base
+Set" porque é o que está estampado na carta.
+
+O mecanismo de defesa (`exclude_keywords`) já existia, já tinha teste verde desde o 1º
+scan real — e a watchlist de produção tinha ZERO carta preenchida. Teste alimentado à
+mão não prova comportamento de produção; por isso os testes novos assertam sobre a
+WATCHLIST REAL e há guarda de drift exigindo que toda carta em colisão declare suas
+edições colidentes.
+
+Três faixas por força de evidência (`outra-edicao`, `conflito-de-ano`, `edicao-ambigua`),
+com a colisão DERIVADA da watchlist (58 pares nome+número em mais de uma edição). Na
+cesta de vendas só contradição exclui: ambiguidade não amputa venda legítima, erro já
+registrado no PR #32.
+
+Medido sobre as 6.278 linhas do run: 412 `outra-edicao`, 223 `conflito-de-ano`, 183
+`edicao-ambigua`. Das 174 linhas que publicavam margem, **8 passam a ter ressalva — e
+são as 7 acima de 150%, mais uma**. 822 testes verdes (798 na base + 24 novos).
+
 ## 2026-09-09 — coluna informativa "Longo prazo" (PR-C `feat/longterm-risk-benefit`)
 
 Nova coluna na tabela de entrega dos DOIS geradores (`src/slab_report.render`, vigente, e a
