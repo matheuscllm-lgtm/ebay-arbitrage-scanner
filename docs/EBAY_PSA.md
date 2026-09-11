@@ -1,14 +1,17 @@
-# Estratégia EBAY PSA — versão 2026-09-05.4
+# Estratégia EBAY PSA — versão 2026-09-11.1
 
 O código, a configuração e os testes demonstram a implementação. As decisões do
-operador nesta revisão substituem os filtros antigos. Base revisada: `86b8324`.
+operador nesta revisão substituem o gate exclusivamente de margem bruta.
 
 ## Regras confirmadas
 
-- Apenas cartas certificadas, com prioridade PSA, preço fixo e item nos EUA.
+- Modo padrão `longterm`: apenas PSA 10, EN/JP, preço fixo, item nos EUA e preço
+  do item até US$500, antes de frete/impostos. Análise, nunca compra automática.
 - Condição de busca eBay `2750` (Graded), repetindo as verificações no avaliador.
 - Referência: vendas concluídas PSA da mesma carta, coleção, número, variante,
   idioma e nota. Preços pedidos e colunas de estimativas não substituem vendas.
+- Os modos legados explícitos preservam as regras abaixo para outras notas e
+  certificadoras; elas não ampliam o escopo PSA 10 do modo `longterm`.
 - PSA não possui 9,5. Outras notas 9,5 usam PSA 9 ×1,05, sem conversão a PSA 10.
 - BGS: preço do item até PSA +5%. BGS 9,5 usa PSA 9 ×1,05 como referência e teto,
   sem acumular outro adicional, conforme decisão sob autonomia delegada.
@@ -19,26 +22,37 @@ operador nesta revisão substituem os filtros antigos. Base revisada: `86b8324`.
 - Compra no vault é preferencial quando confirmada. Saída operacional: COMC.
   O scanner não depende de listar no vault e não executa compras ou transferências.
 
-## Aprovação econômica: margem bruta
+## Crivo vigente: tese, entrada e evidência
 
-Regra canônica da frota (operador, 2026-09-09): o gate econômico usa **só margem bruta,
-sem taxa nenhuma**. O modo atual é `economics.gate_mode: gross_margin`, com
-`min_gross_margin_percent: 43`, limite estrito (exatamente 43% não satisfaz).
+O modo padrão é `economics.gate_mode: longterm`, com
+`min_gross_margin_percent: 20`: **20%**, limite estrito; exatamente 20% não satisfaz.
+A margem continua visível para comparabilidade histórica, mas **não aprova sozinha**.
 
-- Margem bruta = (**revenda da própria certificadora** − preço de compra) / preço ×100.
-  A base é `resale_evidence`, não a referência PSA ajustada: para CGC, TAG e BGS a
-  referência PSA é um valor que aquele slab nunca alcança, e medir contra ela daria 186%
-  de margem onde a real é 14%. Para PSA os dois números são o mesmo. Sem vendas da própria
-  certificadora o gate fica calado e nunca aprova por margem.
-- 43% preserva a fronteira do gate anterior, que aprovava a partir de 30% de desconto
-  sobre a referência: 30/(100−30) = 42,857…%. A convenção do repo é percentual inteiro,
-  então o limiar entra como 43, com 0,14 p.p. a mais de rigor.
-- O gate **não depende do modelo de custos**: avalia sempre que existirem preço e
-  referência. No run de 2026-09-09, 5.975 de 6.104 linhas não tinham base de custo, e um
-  gate preso ao custo simplesmente não teria opinião sobre elas.
+| Eixo | Exigência para OPORTUNIDADE | Quando não atende |
+|---|---|---|
+| Tese | Quatro sinais documentados e atuais; ≥3 favoráveis, incluindo demanda, sem adversos | Tese neutra: MONITORAR; desfavorável: REJEITAR; ausente/incompleta: REVISAR |
+| Entrada | Margem bruta >20%, lucro líquido operacional atual positivo e custos completos | Preço insuficientemente atrativo: MONITORAR; custos desconhecidos: REVISAR |
+| Evidência | Comparáveis exatos, vendedor verificável, dispersão aceitável e recorrência observada | Dúvida ou baixa cobertura: REVISAR; incompatibilidade estrutural: REJEITAR |
 
-Os custos de intermediação continuam **calculados e reportados como informação**, e
-nunca decidem veredito:
+São exigências conjuntas, não uma soma em que popularidade compensa falta de
+liquidez. Uma restrição de identidade/segurança prevalece sobre margem ou tese.
+OPORTUNIDADE é classificação técnica, não recomendação ou ordem de compra.
+
+Teses vêm de arquivo privado via `--thesis-file`: demanda, importância
+colecionável, oferta e resiliência devem ter direção (`supportive`, `neutral` ou
+`adverse`), fonte, data e justificativa. Prazo padrão de revisão: 180 dias.
+LP1, raridade SIR, idade do set, população baixa ou multiplicador raw ×3 não
+substituem esses dados. Esquema e limitações em [LONGO_PRAZO.md](LONGO_PRAZO.md).
+
+### Entrada e custos: denominadores explícitos
+
+- Margem bruta = (**revenda comprovada da própria certificadora** − preço do item)
+  / preço do item ×100. A base é `resale_evidence`, nunca preço pedido nem
+  referência de outra certificadora usada como revenda automática.
+- Desconto do item = (referência comparativa − preço do item) / referência ×100.
+  Não confundir o piso de margem de **20%** com desconto de 20%.
+- O teto US$500 incide sobre o item. O investimento inclui os custos abaixo;
+  uma referência sem custos completos não permite afirmar entrada líquida positiva.
 
 - Investimento = compra + US$10 + processamento COMC + armazenamento/segurança.
 - Líquido da venda = revenda ×(1 − taxa de venda/100) ×(1 − taxa de saque/100).
@@ -46,31 +60,42 @@ nunca decidem veredito:
 - Margem líquida sobre a venda = lucro / revenda bruta ×100.
 - ROI líquido = lucro / investimento ×100.
 
-**Teto de comparação.** O bloco por carta imprime o MAIOR preço que o modo ainda aprova:
-em `gross_margin` isso é `referência / (1 + limiar/100)`, arredondado para BAIXO ao centavo.
-Com referência US$100 e limiar 43%, o teto é US$69,93 — imprimir a referência crua
-prometeria um preço que o próprio gate rejeita.
+O modelo de custos em 120 dias testa a viabilidade de saída aos preços atuais;
+**não é previsão de retorno líquido em 3–5 anos**. Não são gerados cenários de
+preços conservador/base/otimista nem probabilidades artificiais de valorização.
+
+**Dois tetos distintos, nenhum deles uma recomendação all-in:**
+
+- `comparison_cap` é o teto de comparação da certificadora; no modo legado
+  `gross_margin`, incorpora o limite desse gate. No modo `longterm`, não indica
+  por si só uma entrada elegível.
+- `entry_item_cap`, exibido como **Teto condicional do item**, é o menor limite
+  compatível com margem bruta >20%, lucro líquido operacional positivo e item
+  até US$500. A margem exige `preço < revenda / 1,20`; a condição líquida também
+  é estrita, respeitando o centavo. Esse teto ainda depende de tese favorável e
+  evidência adequada: nunca compensa tese ausente ou evidência fraca.
 
 **Margem absurda pede conferência de identidade.** O gate só tem piso, então uma margem de
 centenas de por cento — assinatura clássica de referência errada ou carta trocada — chegaria
-a APROVAR sem ressalva. `economics.suspicious_gross_margin_percent: 150` marca essas linhas
-como REVISAR (nunca REJEITAR). É um corte próprio do modo: o `suspicious_margin_percent: 60`
-do topo foi calibrado para o gate antigo e, sob um gate que aprova a partir de 43%, ficaria
-logo acima do limiar e engoliria negócio normal. Ausente, o código cai no corte de 60, que
-revisa mais e nunca menos.
+a uma classificação indevida. `economics.suspicious_gross_margin_percent: 150` marca essas linhas
+como REVISAR (nunca REJEITAR por margem elevada, isoladamente). É alerta de possível
+erro de identidade/referência, não prova de fraude.
 
-Modos legados preservados no código e sem efeito hoje: `profit_or_discount`
-(`min_profit_usd` OU `min_discount_percent`) e o modo por `min_net_*`.
+### Compatibilidade histórica
+
+`gross_margin` continua disponível explicitamente: aplica só o piso de margem e
+mantém custos informativos, conforme a política anterior. `profit_or_discount`
+(`min_profit_usd` OU `min_discount_percent`) e `all_minima` (`min_net_*`) também
+continuam no código. Apenas o modo configurado decide a execução; não misturar
+suas fórmulas. A versão anterior usava 43%; o padrão desta revisão usa **20%**.
 
 Os limites entre certificadoras são independentes da regra econômica: um CGC
 acima de 40% da PSA é REJEITAR mesmo se o lucro projetado for alto. Cumprir um
-limite entre certificadoras não satisfaz, sozinho, as exigências de lucro/evidência.
-O filtro global antigo de 20% e o alerta genérico de ROI elevado não atuam no modo
-atual. `--min-discount` altera o braço de desconto da regra OR para aquela execução.
-
-Mesmo passando pelo desconto, lucro não positivo é REJEITAR. Custos ausentes,
-revenda não comprovada ou outra dúvida relevante exigem REVISAR. APROVAR indica
-somente aprovação analítica. Não é promessa de preço futuro nem compra executada.
+limite entre certificadoras não satisfaz, sozinho, os demais requisitos do modo.
+`--min-discount` só atua nos modos legados que usam desconto;
+`--min-gross-margin` altera o piso apenas em `gross_margin`; `longterm` mantém
+**20%** e rejeita outro valor. Os modos legados preservam
+APROVAR / REVISAR / REJEITAR; APROVAR é somente aprovação analítica.
 
 PSA é referência comparativa; revenda de CGC, BGS ou TAG exige vendas da própria
 certificadora, nota, idioma e categoria. Não usar o valor PSA como revenda automática.
@@ -108,8 +133,9 @@ continuam obrigatórios. Evidência de execução em [RUNTIME_REVIEW.md](RUNTIME
 
 Idioma deve ser explícito no título ou no atributo Language retornado pelo eBay;
 não assumir inglês por ausência de informação ou pela
-localização do vendedor. EN, JP, KO, PT, DE, FR, IT, ES, ZH-HANS (simplificado) e
-ZH-HANT (tradicional) são identidades distintas. Chinês genérico é ambíguo.
+localização do vendedor. EN e JP são identidades distintas no padrão atual.
+Os idiomas dos modos legados, incluindo ZH-HANS (simplificado) e ZH-HANT
+(tradicional), também permanecem separados. Chinês genérico é ambíguo.
 A configuração não garante cobertura do catálogo: a watchlist atual e os títulos
 disponíveis limitam quais idiomas/cartas realmente podem ser avaliados.
 
@@ -145,8 +171,12 @@ vez. Anúncios com IDs diferentes permanecem visíveis mesmo se título/preço c
 Ausência de garantia de autenticidade ou metadados de vault não é confirmação;
 não deduzir esses recursos pelo preço do anúncio.
 
-Mínimo de 3 vendas em 180 dias; na falta delas, janela de 365 dias com REVISAR por
-baixa liquidez. Uma ou duas vendas também exigem REVISAR. A mediana usa até 10
+Para formar a referência, mínimo de 3 vendas em 180 dias; na falta delas, janela
+de 365 dias com REVISAR por baixa liquidez. Uma ou duas vendas também exigem
+REVISAR. O crivo `longterm` exige adicionalmente ≥9 vendas comparáveis observadas
+em 90 dias, em ≥2 meses-calendário, antes de limitar a amostra da mediana.
+Isso aproxima o corte de 3 vendas/mês sem afirmar cobertura integral do eBay ou
+contagem de compradores únicos. A mediana usa até 10
 vendas mais recentes. Dispersão = (máximo − mínimo)/mediana ×100, calculada antes
 do arredondamento. Limite de dispersão indefinido exige REVISAR.
 
@@ -160,6 +190,19 @@ continua exigindo título explícito; não se presume idioma pela página agrega
 O JSON registra vendas incluídas, IDs, links, datas, amostra, janela, dispersão,
 data de avaliação e contagens por motivo de exclusão. O relatório mostra todos os
 candidatos, idioma do alvo separado do idioma identificado e vault não confirmado.
+
+## Universo e processamento sem quota
+
+Não há requisito de encontrar 100 cartas elegíveis. A lista de 100 personagens
+do catálogo não é Top100 de investimento. O gerador da watchlist deixa de impor
+teto por set por padrão; o catálogo versionado não é regenerado nesta alteração.
+Seu universo continua condicionado aos filtros e metadados disponíveis.
+
+`--max-cards` é orçamento opcional de processamento; `--card-offset` seleciona
+o início do lote em ordem determinística. Não alteram elegibilidade, não
+completam uma quota e não tornam dados ausentes favoráveis. Quantidades adiadas
+e resultado parcial são explícitos. Lotes usam saídas próprias; consultas
+posteriores renovam preços, sem retomar preços de scans antigos.
 
 ## Execução e falhas
 

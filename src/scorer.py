@@ -75,7 +75,7 @@ MIN_COMPARABLE_SALES = pc_sales.MIN_COMPARABLE_SALES
 
 # Contado pelo scanner DEPOIS da anotacao de referencia (veredito final).
 VERDICT_STAT = {"APROVAR": "rows_opportunity", "REJEITAR": "rows_rejected", "OPORTUNIDADE": "rows_opportunity", "REVISAR": "rows_review",
-                "SUSPEITO": "rows_suspect", "REJEITADO": "rows_rejected"}
+                "MONITORAR": "rows_monitor", "SUSPEITO": "rows_suspect", "REJEITADO": "rows_rejected"}
 
 
 def _skip(stats, key):

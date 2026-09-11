@@ -29,7 +29,7 @@ def test_incomplete_banner_precedes_opportunities_and_shared_evidence_is_not_dup
     assert text.index('EXECUÇÃO ABORTADA') < text.index('| Carta')
     # One clickable price in the table plus one sale in the evidence section. A coluna
     # informativa `Longo prazo` (antes de `Links`) nunca carrega URL.
-    assert '| Decisão | Longo prazo | Links |' in text
+    assert '| Decisão | Tese | Entrada | Evidência | Longo prazo | Links |' in text
     assert text.count('https://www.ebay.com/itm/100)') == 2
     assert 'mesma amostra PSA' in text
     saved = payload['meta']['config']

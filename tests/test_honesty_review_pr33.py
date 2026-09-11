@@ -43,7 +43,8 @@ def test_console_policy_report_uses_the_scan_meta(monkeypatch, tmp_path, capsys)
     out = capsys.readouterr().out
     head = out.split("| Carta")[0]
     # Coleta: vem do meta real (grupo, cartas, versao da politica), nunca "n/d" por omissao.
-    assert "1 carta(s)" in head and "2026-09-05.4" in head and "chamadas à Browse API: 2" in head
+    from src.slab_strategy import policy_config
+    assert "1 carta(s)" in head and policy_config()['slab_strategy']['version'] in head and "chamadas à Browse API: 2" in head
     assert "política `n/d`" not in head
     # Funil do relatorio: contador real (1), nunca o zero de um dict vazio.
     assert "Anúncios analisados (após dedupe): 1" in out
@@ -61,7 +62,7 @@ def test_to_markdown_accepts_meta_and_threads_it_to_the_policy_report():
     payload = _policy_payload(group="7")
     card, opp = _policy_opp()
     text = report.to_markdown([opp], meta=payload["meta"])
-    assert "grupo `7`" in text and "política `2026-09-05.4`" in text
+    assert "grupo `7`" in text and f"política `{payload['meta']['config']['slab_strategy']['version']}`" in text
 
 
 # --- review 2: todo contador que o scanner incrementa tem rotulo (nunca "outros:") --

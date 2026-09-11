@@ -30,6 +30,7 @@ from .models import FairValue, WatchCard
 from . import (grading, groups, longterm, pc_sales, pricecharting, scorer, tcg_reference,
                title_parser)
 from .ebay_api import EbayApiError, EbayAuthError, EbayBudgetExceeded, EbayClient
+from .selection import select_batch
 
 log = logging.getLogger(__name__)
 
@@ -60,6 +61,8 @@ def query_suffixes(config):
     """Sufixos de busca do run. Default: so a query generica ([""]). Com
     `grade_query_suffixes: true` (legado) busca por certificadora; com
     `allowed_grades` (--grades) so as certificadoras pedidas."""
+    if ((config.get('slab_strategy') or {}).get('economics') or {}).get('gate_mode') == 'longterm':
+        return [' PSA 10']
     if not config.get("grade_query_suffixes"):
         return [""]
     allowed = config.get("allowed_grades") or []
@@ -574,6 +577,9 @@ def scan_card(card, ebay, config, log=print, stats=None, breaker=None,
                 f"{type(exc).__name__}: {exc}")
             continue
         if opp is not None:
+            if (opp.strategy.get('investment_assessment') or {}).get('error'):
+                stats['investment_error'] += 1
+                log('  ERRO no crivo de investimento; anúncio mantido sem aprovação.')
             if not opp.strategy:
                 _annotate_ref_alignment(opp, asks)   # conta + efeito no veredito
             else:
@@ -606,9 +612,21 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
     tratar o resultado como scan completo."""
     from .slab_strategy import policy_config
     config = policy_config(config)
-    cards = filter_group(load_watchlist(watchlist_path), group)
+    scope = filter_group(load_watchlist(watchlist_path), group)
+    cards, selection = select_batch(scope, config.get('max_cards'),
+                                    config.get('card_offset', 0))
     stats = Counter()
-    stats["cards"] = len(cards)
+    stats["cards"] = len(scope)
+    # Only integers in the Counter. The JSON report reconstructs typed metadata;
+    # zero for selection_max_cards is the internal sentinel for no batch limit.
+    for key, value in selection.items():
+        stats[f'selection_{key}'] = int(value or 0)
+    stats['selection_cards_not_attempted_in_batch'] = len(cards)
+    stats['selection_cards_incomplete_in_batch'] = len(cards)
+    stats['selection_first_incomplete_offset'] = -1
+    if selection['scope_limited']:
+        log(f"Lote: {len(cards)} de {len(scope)} cartas no escopo; "
+            f"{selection['cards_deferred']} fora deste lote (não são rejeitadas).")
     if group:
         log(f"Watchlist (grupo '{group}'): {len(cards)} cartas")
         if not cards:
@@ -617,6 +635,9 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
     else:
         log(f"Watchlist: {len(cards)} cartas")
 
+    if not cards:
+        return {}, [], pricing_only, stats, False
+
     ebay = None
     if not pricing_only:
         ebay = EbayClient()
@@ -624,6 +645,8 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
         if not ebay.configured:
             log("EBAY_CLIENT_ID/SECRET ausentes: busca real indisponivel; nenhuma carta consultada.")
             stats["aborted"] = 1
+            if cards:
+                stats['selection_first_incomplete_offset'] = selection['card_offset']
             return {}, [], True, stats, True
 
     breaker = PcBreaker()
@@ -631,7 +654,13 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
     all_opportunities = []
     aborted = False
     ebay_errors_in_a_row = 0
-    for card in cards:
+    incomplete_keys = ('pc_error', 'pc_breaker', 'ebay_error', 'card_error',
+                       'item_details_error', 'skip_evaluation_error', 'investment_error')
+    for position, card in enumerate(cards, start=selection['card_offset']):
+        stats['selection_cards_attempted'] += 1
+        stats['selection_cards_not_attempted_in_batch'] -= 1
+        failures_before = sum(stats[k] for k in incomplete_keys)
+        returned = False
         try:
             if pricing_only:
                 fair, _ = load_card_page(card, config, stats=stats, breaker=breaker, log=log)
@@ -643,6 +672,9 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
                 fair_values[(card.name, card.number)] = (card, fair)
                 all_opportunities.extend(opps)
                 ebay_errors_in_a_row = 0
+            returned = True
+            stats['selection_cards_completed'] += 1
+            stats['selection_cards_incomplete_in_batch'] -= 1
         except EbayBudgetExceeded as e:
             log(f'{e} -- execução parcial; cartas restantes não consultadas')
             stats['ebay_budget_exhausted'] = 1
@@ -673,10 +705,14 @@ def run_scan(watchlist_path="watchlist.yaml", config=None, pricing_only=False,
             stats["card_error"] += 1
             log(f"  ERRO em {card.name} #{card.number}: {type(e).__name__}: {e} "
                 "-- carta pulada (contada no funil)")
+        finally:
+            if (not returned or sum(stats[k] for k in incomplete_keys) > failures_before):
+                if stats['selection_first_incomplete_offset'] == -1:
+                    stats['selection_first_incomplete_offset'] = position
     # `skip_evaluation_error` entra na mesma regra: cobertura parcial nunca passa
     # por scan completo (antes o mesmo erro virava `card_error`, ja listado aqui).
     if any(stats[k] for k in ('pc_error', 'pc_breaker', 'ebay_error', 'card_error',
-                              'item_details_error', 'skip_evaluation_error')):
+                              'item_details_error', 'skip_evaluation_error', 'investment_error')):
         aborted = True
         stats['aborted'] = 1
     return fair_values, all_opportunities, pricing_only, stats, aborted

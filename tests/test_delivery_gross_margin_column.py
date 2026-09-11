@@ -16,6 +16,7 @@ HEADER_CELL = "Margem bruta %"
 
 def _render(price):
     cfg = policy_config()
+    cfg['slab_strategy']['economics']['gate_mode'] = 'gross_margin'
     opp = evaluate(CARD, listing(price=price), config=cfg, refs=refs(sales()))
     return slab_report.render(report.scan_payload([opp], 1, cfg)), opp
 

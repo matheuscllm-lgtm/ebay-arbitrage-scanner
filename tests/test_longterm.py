@@ -795,11 +795,13 @@ def test_e4_config_block_has_exactly_the_declared_keys_and_defaults_match():
     assert lt.SUPPLY_MONTHS_HIGH == wanted["supply_months_high"]
     assert lt.SUPPLY_MONTHS_MID == wanted["supply_months_mid"]
     assert lt.SUPPLY_MIN_SALES_PM == wanted["supply_min_sales_pm"]
-    # gate, politica, piso e ranking intactos: nada muda fora do bloco novo
-    assert cfg["min_discount_percent"] == 30 and cfg["min_price_usd"] == 10.0
-    assert cfg["slab_strategy"]["economics"]["min_discount_percent"] == 30
-    assert cfg["slab_strategy"]["economics"]["gate_mode"] == "gross_margin"
-    assert cfg["slab_strategy"]["version"] == "2026-09-05.4"
+    # Legacy LP diagnostics remain unchanged above; the independently versioned
+    # production policy now uses thesis/entry/evidence and an explicit 20% floor.
+    assert cfg["min_discount_percent"] == 20 and cfg["min_price_usd"] == 10.0
+    assert cfg["slab_strategy"]["economics"]["min_discount_percent"] == 20
+    assert cfg["slab_strategy"]["economics"]["min_gross_margin_percent"] == 20
+    assert cfg["slab_strategy"]["economics"]["gate_mode"] == "longterm"
+    assert cfg["slab_strategy"]["version"] == "2026-09-11.1"
 
 
 def test_e5_card_refs_sales_history_accessor_reuses_comparable_sales_read_only(monkeypatch):

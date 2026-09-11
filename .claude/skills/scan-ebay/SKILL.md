@@ -1,215 +1,167 @@
 ---
 name: scan-ebay
 description: >-
-  Rodar o scan de cartas certificadas (slabs) do eBay — anúncios de preço fixo
-  nos EUA comparados com vendas concluídas PSA da mesma carta no PriceCharting,
-  pela política 2026-09-05.4 (bloco `slab_strategy` do config.yaml) — e entregar
-  a tabela do ebay_summary.py verbatim no chat. Use SEMPRE que o operador pedir
-  para rodar o scanner do eBay / "roda o eBay" / "scan eBay" / escanear a
-  watchlist do eBay: antes de rodar, PERGUNTE o grupo canônico (1–12, UM por
-  vez; --list-groups mostra os títulos) e os ajustes do run (--max-pages,
-  --min-discount, --grades) e entregue SEMPRE a saída do ebay_summary.py
-  verbatim (2 links em toda linha, todos os candidatos APROVAR / REVISAR /
-  REJEITAR, funil no rodapé).
+  Rodar o scanner eBay sob demanda e entregar o Markdown canônico no chat.
+  Política padrão 2026-09-11.1: PSA 10 EN/JP, preço fixo nos EUA, três eixos
+  (tese, entrada, evidência), margem bruta mínima de 20% e nenhuma quota Top100.
+  Use quando o operador pedir para rodar o scanner do eBay / "roda o eBay" /
+  "scan eBay" / escanear a watchlist do eBay. Antes de rodar, confirme o grupo
+  canônico e os ajustes do lote; entregue todas as linhas e o funil gerados pelo
+  ebay_summary.py, sem recomendação de compra ou publicação no GitHub.
 ---
 
-REGRA VIGENTE DO OPERADOR: ler DELIVERY_CHAT.md na raiz do repositório. Entrega somente no chat, preço de referência clicável, coleta nova sob demanda; não executar scans no GitHub Actions nem publicar resultados. Esta regra substitui instruções antigas conflitantes.
+# Scan do eBay — confirmar, coletar, entregar
 
-# Scan do eBay — pergunte, rode, entregue
+Leia `DELIVERY_CHAT.md`, `docs/EBAY_PSA.md` e `config.yaml`. Uma solicitação de
+revisão/implementação de código **não autoriza coleta de mercado**. Resultados,
+preços, teses privadas e logs não entram em commits, PRs, issues, comentários,
+Pages, Actions artifacts ou job summaries. Entrega de resultados somente no chat.
 
-O scanner compara anúncios ativos de **preço fixo** do eBay (Browse API — a API
-oficial de busca; leilão nem entra na busca), **só de cartas certificadas**
-(slabs: carta lacrada com nota de PSA / BGS / CGC / TAG — lista `graded_allow` no
-config.yaml), com a referência da política 2026-09-05.4 (definição completa em
-docs/EBAY_PSA.md):
+## Regra vigente
 
-- **Referência PSA** = mediana (valor do meio) das vendas concluídas PSA da MESMA
-  carta + coleção + número + variante + idioma + nota, lidas da página da carta no
-  PriceCharting (≥3 vendas em 180 dias = OK; só em 365 dias = REVISAR por baixa
-  liquidez; 1–2 vendas = REVISAR). Outras certificadoras são comparadas à PSA
-  ajustada (`graders` no config) e a revenda exige vendas da própria certificadora.
-- **Regra econômica** = `slab_strategy.economics` do config.yaml:
-  `gate_mode: gross_margin` com `min_gross_margin_percent: 43`, limite estrito.
-  Margem bruta = (referência − preço) / **preço** ×100. Regra canônica da frota: o
-  gate usa SÓ margem bruta, **sem taxa nenhuma**, e não depende do modelo de custos.
-  Os custos COMC de `costs` seguem calculados e reportados como INFORMAÇÃO
-  (`profit_estimate`, `net_margin_percent`, `net_roi_percent`), fora do veredito.
-  Margem alta demais (`suspicious_gross_margin_percent: 150`) sai REVISAR pedindo
-  conferência de identidade — nunca REJEITAR. O "Teto de comparação" do bloco por
-  carta é o maior preço que o gate ainda aprova (`referência / 1,43`), não a
-  referência crua.
-  Modos legados no código e sem efeito hoje: `profit_or_discount`
-  (`min_profit_usd: 40` / `min_discount_percent: 30`) e o modo por `min_net_*`.
-  Nada disso é recomendação: é classificação técnica.
-- **Carta solta (raw) não entra**: `graded_only: true` é obrigatório e a flag
-  antiga de raw é rejeitada pelo `main.py` com erro.
-- Vereditos = **APROVAR / REVISAR / REJEITAR**, sempre com motivos e evidências
-  (vendas usadas, janela, dispersão). APROVAR é aprovação na análise; nenhuma
-  compra é executada nem recomendada.
+`slab_strategy.economics` usa `gate_mode: longterm`, com
+`min_gross_margin_percent: 20`: **20%**, limite estrito. Apenas PSA 10, EN/JP
+separados, preço fixo, item nos EUA e preço do item até US$500. O orçamento de
+US$500 é antes de frete/impostos; investimento e custos aparecem separadamente.
 
-## Passo 0 — pré-requisitos
+- **Tese:** quatro sinais documentados e atuais (demanda, importância colecionável,
+  oferta, resiliência). Para favorável, pelo menos três `supportive`, incluindo
+  demanda, e nenhum `adverse`. Cada sinal tem fonte, data e justificativa; exige
+  também condição de invalidação da tese. Fonte é curadoria do operador, não
+  verificação independente feita pelo scanner. Mais de 180 dias ou data futura
+  tornam o sinal não confirmado por padrão. Sem tese privada, REVISAR.
+- **Entrada:** margem bruta = `(revenda comprovada − item) / item ×100`,
+  estritamente acima de **20%**, mais lucro líquido operacional atual positivo
+  com custos completos. Não confundir margem com desconto ou retorno all-in.
+  Uma boa tese não compensa preço excessivo. O teto do item é condicional aos
+  demais eixos; não é recomendação de compra nem preço futuro estimado.
+- **Evidência:** mesma carta, coleção, número, variante, idioma e nota nas vendas.
+  Mediana com ≥3 vendas em 180 dias; só em 365 dias implica REVISAR. Além disso,
+  `longterm` exige ≥9 comparáveis observados em 90 dias, em ≥2 meses-calendário,
+  contados antes do limite de 10 vendas da mediana. Dispersão máxima 30%,
+  vendedor verificável, sem duplicatas nem best offer de preço não confirmado.
+  Não chamar essa amostra de todas as vendas ou compradores do eBay.
+- **Custos:** reserva estimada única de US$10 para envios/impostos até COMC;
+  Elite US$2,50; venda 5%; saque informado 10%; armazenamento/segurança em 120
+  dias. É teste de saída aos preços atuais, não custódia/retorno de 3–5 anos.
+  Não inventar preço, usar raw ×3 nem gerar cenários de valorização.
+- **Classificação:** OPORTUNIDADE exige os três eixos favoráveis/adequados;
+  MONITORAR mantém tese neutra/favorável com evidência suficiente, mas entrada
+  fraca ou sem convergência completa; REVISAR para incerteza; REJEITAR para
+  restrição estrutural ou tese desfavorável. Demanda adversa ou ≥2 sinais
+  adversos, com todos documentados, tornam a tese desfavorável. Um alerta de
+  margem excessiva pede revisão de identidade, não prova fraude.
 
-- `EBAY_CLIENT_ID`/`EBAY_CLIENT_SECRET` no ambiente (env vars de usuário Windows —
-  keyset "MinhaLojaEbay"). Sessão de terminal antiga pode não herdar → rodar pela
-  ferramenta PowerShell, que herda as variáveis do usuário. Sem chaves, o run NÃO
-  consulta o eBay e NÃO grava artefato. Nunca passar chave inline nem imprimi-la.
-- `watchlist.yaml` **já vem no repo** (GERADA por `build_watchlist.py` e
-  versionada — decisão do operador 2026-09-03): um clone limpo roda sem preparo.
-  Universo = catálogo de 123 sets (`src/catalog/set_catalog.json`, os mesmos 12
-  grupos da COMC em `src/groups.py`) × 100 "chases" (`src/catalog/iconic_pokemon.csv`)
-  × raridade ≥ Holo Rare × teto 30 cartas por set; `pc_url` = página exata da
-  carta no PriceCharting (carta sem página fica fora; nunca se inventa URL).
-  **Não editar à mão**; regenerar (`python build_watchlist.py`) só quando o
-  catálogo/grupos/chases mudarem — o teste `tests/test_groups.py` falha de
-  propósito se o catálogo crescer sem os grupos acompanharem.
-- `python main.py --check-config` lista as pendências da política sem rede
-  (código 0 = nada pendente; 2 = há pendências, que viram REVISAR nas linhas).
+`gross_margin`, `profit_or_discount` e `all_minima` permanecem modos legados
+explícitos, com APROVAR / REVISAR / REJEITAR e regras próprias de outras notas e
+certificadoras. Não mudar para esses modos em silêncio. `gross_margin` usa só
+margem e custos informativos; isso não descreve o padrão `longterm`.
 
-## Passo 1 — perguntar grupo e ajustes (AskUserQuestion) — nunca assumir
+## 1. Preparar sem rede e confirmar o lote
 
-1. **Qual grupo canônico rodar (UM por vez)?** Obtenha títulos e contagens
-   DINAMICAMENTE (não precisa de chaves eBay):
-   ```powershell
-   .venv\Scripts\python main.py --list-groups
-   ```
-   Os 12 grupos são os mesmos da COMC (`src/groups.py`, títulos verbatim):
+- Chaves `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` somente no ambiente; nunca
+  imprimir nem passar inline. Sem chaves, não consultar eBay nem sobrescrever scan.
+- `watchlist.yaml` é catálogo gerado e versionado; não editar manualmente.
+  `build_watchlist.py` não impõe teto por set por padrão. Os 100 personagens
+  em `src/catalog/iconic_pokemon.csv` são metadados, não quota de elegíveis.
+  A mudança no gerador não regenera o catálogo existente automaticamente.
+- Teses são arquivo privado via `--thesis-file`, com esquema documentado em
+  `docs/LONGO_PRAZO.md`. Se não houver arquivo, declarar tese não confirmada;
+  não fabricar fonte ou tese para produzir oportunidades.
 
-   | Grupo | Título | Sets |
-   |---|---|---|
-   | 1 | SV recente | 7 |
-   | 2 | SV restante | 6 |
-   | 3 | WotC 1999-2000 | 8 |
-   | 4 | WotC 2001-2003 | 7 |
-   | 5 | EX 2004-2005 | 8 |
-   | 6 | EX 2006-2007 + DP 2007 | 8 |
-   | 7 | DP/Platinum 2008-2010 | 8 |
-   | 8 | HGSS + BW 2010-2013 | 17 |
-   | 9 | XY 2014-2016 | 14 |
-   | 10 | SM 2017-2019 | 17 |
-   | 11 | SWSH 2020-2021 | 12 |
-   | 12 | SWSH 2022 + Crown Zenith | 11 |
+```powershell
+.venv\Scripts\python main.py --check-config
+.venv\Scripts\python main.py --list-groups
+```
 
-   (1–2 = SV 2023–25; 3–4 = WotC 1999–2003; 5–10 = EX/DP/Platinum/HGSS/BW/
-   XY/SM 2004–19; 11–12 = SWSH + Crown Zenith 2020–23.) `--group` aceita
-   `N` | `N-M` | `1,3,10-12` | `all`; número fora de 1–12 erra alto. Apresente
-   os grupos com a contagem de cartas que o `--list-groups` imprimiu. Padrão do
-   operador = **um grupo por vez** (orçamento `max_ebay_calls: 500` por run e
-   cota grátis da Browse API de 5.000 chamadas/dia; a watchlist inteira tem
-   ~1.600 cartas).
-2. **Ajustes do run** (todos opcionais; o default é a política do config):
-   - `--max-pages N` — páginas de 200 anúncios por carta (default 3; os runs
-     validados de #29/#30 usaram `--max-pages 1`);
-   - `--min-gross-margin N` — inteiro; altera `min_gross_margin_percent` daquele
-     run (o gate vigente);
-   - `--min-discount N` — inteiro; altera `min_discount_percent`, que só tem efeito
-     nos modos legados (`profit_or_discount` e o modo por `min_net_*`);
-   - `--min-price USD` — piso do preço do item (default `min_price_usd: 10`);
-   - `--grades "PSA 10, CGC 10 Pristine"` — funil restrito a notas; nota
-     desconhecida erra alto; RAW é rejeitado;
-   - `--confiavel` — compatibilidade (o histórico do vendedor já é sempre
-     verificado; todos os candidatos continuam visíveis).
-   Orçamento: cada carta gasta 1 busca por página + até
-   `max_item_details_per_card: 10` consultas de detalhe (idioma); estourar o teto
-   de 500 encerra o run como parcial.
+`--check-config` não acessa rede; código 0 sem pendências, 2 com pendências.
+Configuração malformada falha antes da coleta. Obtenha os títulos e contagens de
+grupos dinamicamente com `--list-groups`; não reutilize contagem de scan anterior.
 
-## Passo 2 — rodar (rota determinística local)
+Confirme **um grupo canônico por vez** e os ajustes desejados. `--group` aceita
+um número, intervalo, lista ou `all`, mas não presumir busca do catálogo inteiro.
+Sem ajustes, vale a configuração. Opções relevantes:
+
+- `--max-pages N`: páginas por carta; padrão 3.
+- `--max-cards N`: limite opcional do lote de processamento, não de elegibilidade.
+- `--card-offset N`: início determinístico do lote no universo selecionado.
+- `--thesis-file CAMINHO`: arquivo privado de teses; ausência não aprova pela margem.
+- `--min-gross-margin N`: ajusta o piso inteiro apenas no modo legado
+  `gross_margin`; em `longterm`, **20%** é fixo e outro valor é rejeitado.
+- `--min-discount N`: só tem efeito nos modos legados que usam desconto.
+- `--min-price USD`, `--grades "PSA 10"`: restringem o funil; raw é rejeitado.
+  No modo `longterm`, selecionar outra certificadora não amplia a elegibilidade.
+- `--confiavel`: compatibilidade; histórico do vendedor já é verificado.
+
+Não buscar "até encontrar 100" nem afrouxar critérios para completar quantidade.
+Zero oportunidades é resultado válido. A watchlist pode conter mais cartas que
+o lote, e cartas adiadas não são rejeitadas nem avaliadas.
+
+## 2. Coletar somente quando solicitado
+
+Exemplo operacional; substitua grupo, lote e caminho por escolhas confirmadas:
 
 ```powershell
 $env:PYTHONIOENCODING="utf-8"
-.venv\Scripts\python main.py --group <N> --max-pages 1 --out results\last_scan_g<N>.json
+.venv\Scripts\python main.py --group 3 --max-pages 1 --max-cards 25 --card-offset 0 --thesis-file data\theses.yaml --out results\last_scan_g3.json
 ```
 
-- Estimar antes de rodar: cartas do grupo × (páginas + até 10 detalhes) contra
-  o teto de 500 chamadas, e dizer a conta na entrega.
-- `--out results\last_scan_g<N>.json` = um artefato por grupo (o run do grupo
-  seguinte não sobrescreve o anterior). Sem `--group` = watchlist inteira
-  (~1.600 cartas — não cabe na cota; só sob pedido explícito). `--pricing-only`
-  mostra só as colunas informativas do PriceCharting (não gera artefato e não
-  é evidência de venda).
-- **Exit code 1 = run parcial** (`aborted: true`): o artefato vai para
-  `<out>.aborted.json` e o `--out` anterior é preservado. A mensagem final diz a
-  causa: parada antecipada (autenticação, cota ou API — cartas restantes NÃO
-  varridas) ou erros contados no funil com todas as cartas visitadas. Entregar
-  assim mesmo, dizendo que é parcial; nunca tratar como scan completo.
-- Erro por carta não interrompe a varredura das outras cartas, mas cada caso
-  tem um destino diferente: PriceCharting fora do ar ou sem tabelas
-  (`pc_error`, `pc_breaker`) → a carta ainda é buscada no eBay e as linhas dela
-  saem em REVISAR com o motivo `sem-vendas-PSA-comparaveis` (o mesmo motivo de
-  "página sem vendas"; a causa aparece no funil); erro interno ou da Browse API
-  na carta (`card_error`, `ebay_error`) → carta pulada, SEM linhas, só contada
-  no funil. Em todos esses casos o run termina como parcial (`aborted: true`,
-  exit 1, artefato `.aborted.json`). "Carta sem vendas comparáveis" não é erro:
-  é motivo REVISAR normal.
+- Estime cartas do lote × (páginas + até `max_item_details_per_card: 10`
+  detalhes) contra `max_ebay_calls: 500`. Detalhes e retentativas entram no teto.
+- Cada lote tem saída própria. Não mesclar nem reaproveitar preços de outra
+  coleta. Uma execução posterior renova ofertas e referências.
+- Diferencie lote concluído de universo concluído. Preserve no relatório a
+  contagem de cartas selecionadas, processadas e adiadas, e qualquer parcialidade.
+- Autenticação, cota, fonte ou processamento com falha tornam a coleta parcial;
+  JSON parcial usa `.aborted.json`, CSV parcial `.aborted.csv`, sem substituir
+  o último scan completo (`aborted: true`). Use o caminho efetivamente informado
+  pela execução.
+- PriceCharting indisponível (`pc_error`, `pc_breaker`) mantém anúncios em
+  REVISAR quando possível, com `sem-vendas-PSA-comparaveis`; não usar preços antigos.
+  Erro interno por carta (`card_error`) ou da API (`ebay_error`) pode resultar em
+  carta pulada, sem linhas e com erro contado no funil. Nos dois casos a execução
+  é parcial. Falta de comparáveis não é erro de credencial.
+- `--pricing-only` mostra colunas informativas, não evidência de venda nem scan
+  validado. Não apresenta oportunidades confirmadas.
 
-## Passo 3 — entregar (ritual FIXO, contrato do repo, não negociável)
+## 3. Entregar a tabela canônica, sem remontá-la
 
 ```powershell
-.venv\Scripts\python ebay_summary.py results\last_scan_g<N>.json -o results\ebay-g<N>-<AAAA-MM-DD>.md
+.venv\Scripts\python ebay_summary.py results\last_scan_g3.json -o results\ebay-g3.md
 ```
 
-(Passar `results\last_scan_g<N>.aborted.json` quando o run foi parcial.) O gerador
-vigente é `src/slab_report.py` (`render`), chamado pelo `ebay_summary.py` sempre
-que o JSON é da política: linha "Coleta:" (quando, o quê e com qual regra
-coletou, lida só do meta do JSON) + tabela única com todos os candidatos, nas
-14 colunas do `render` (Carta / Compra / Investimento / PSA original /
-Comparação / Revenda / Lucro / Desconto / **Margem bruta**, que é o número que
-DECIDE no modo `gross_margin` / Margem líquida / ROI líquido — as três últimas
-são informativas e estão definidas em docs/EBAY_PSA.md / Decisão / **Longo
-prazo** / Links) + uma seção por carta com motivos, variante, idioma, custos e
-as vendas usadas na referência + funil no rodapé.
+O gerador vigente é `src/slab_report.py` (`render`). Para lote/parcial, passe o
+arquivo efetivamente produzido, não um resultado anterior com nome parecido.
+São 17 colunas no modo `longterm`, incluindo Tese / Entrada / Evidência; os modos
+econômicos legados mantêm 14 colunas. O diagnóstico LP permanece separado.
 
-1. Colar o conteúdo do `.md` **VERBATIM** no chat — **proibido** remontar
-   tabela à mão, renomear/reordenar colunas ou dropar link.
-2. **Todas as linhas, todos os vereditos** (APROVAR / REVISAR / REJEITAR, cada
-   um com motivos). Nunca amostra. `--sensitivity` (faixas de diagnóstico) só
-   vale para JSON do motor legado, anterior à política; num JSON da política a
-   ferramenta avisa no topo e ignora as faixas.
-3. Toda linha tem os **DOIS links**: `[oferta]` (anúncio eBay) e `[referência]`
-   (página da carta no PriceCharting); o preço de referência também é clicável.
-   URLs vêm do JSON — nunca inventar.
-4. Reportar o cabeçalho e o rodapé da ferramenta: a linha **Coleta** (data/hora
-   UTC, grupo, cartas da watchlist, versão da política e chaves do gate, chamadas
-   à Browse API usadas × teto), a contagem por veredito e o **Funil da busca**
-   (erros e, se o run foi parcial, a causa).
-5. **Sem recomendação de compra** — vereditos são classificação técnica; capital
-   é decisão do operador.
-6. A coluna **Longo prazo** é INFORMATIVA e sai junto: não é gate (filtro que
-   decide se a linha entra), não é veredito, não é ranking e não é recomendação.
-   Entregar como veio; se o operador perguntar, explicar assim (a legenda
-   completa já sai no rodapé do `.md`, e a régua está em docs/LONGO_PRAZO.md):
-   - Célula `LP2 64/35 (4/5·9/11)` = **classe** · **PERFIL/FRAGILIDADE DO
-     DADO** · (cobertura do perfil · cobertura da fragilidade).
-   - **PERFIL** (0-100) = características observadas da carta: personagem,
-     raridade, tempo fora de impressão, faixa da coluna PSA 10 e tendência real
-     das vendas. **FRAGILIDADE DO DADO** (0-100) = quão frágil é o dado daquela
-     linha: poucas vendas na referência, PSA 10 pouco vendida, referência
-     desalinhada, reimpressão, tiragem, dispersão, vendedor, concentração de
-     anúncios iguais no mesmo run e **meses de estoque** (`estoque-alto`:
-     anúncios ativos da mesma nota ÷ vendas PSA 10 por mês — oferta parada em
-     cima de demanda fina).
-   - **Classe** LP1 forte · LP2 médio · LP3 fraco · LP4 frágil — é
-     qualidade/completude do perfil, **não** é "oportunidade" nem nota de compra.
-   - **`LP2*`** (asterisco) = seria LP1, **mas faltou dado**: um dos três
-     insumos-chave da fragilidade (`ref-fragil`, `psa10-iliquido`,
-     `ref-desalinhada`) estava em `n/d`, ou a cobertura da fragilidade ficou
-     abaixo de `lp1_min_fragility_coverage` (8 das 11 flags). O teto `LP2*` que a
-     política tinha caiu: `ref-desalinhada` passou a ser calculada nos dois
-     caminhos, sem tocar em veredito.
-   - **Cobertura** `4/5` = 4 dos 5 componentes tinham dado; `9/11` = 9 das 11
-     flags de fragilidade existiam. Toda ausência sai escrita como
-     `LP:<nome>: n/d` nos motivos — nada some em silêncio. Célula inteira `n/d` =
-     coluna indisponível, nunca 0. **Leia a FRAGILIDADE junto com a cobertura:**
-     o PERFIL é uma média (o componente ausente sai mesmo da conta), mas a
-     FRAGILIDADE é uma soma, então ela mede "problemas **detectados** entre os
-     testes que puderam rodar" — `0 (3/11)` quer dizer "só 3 dos 11 testes
-     rodaram e nenhum acusou problema", e **não** "dado impecável".
-   - Os pontos e limiares são **calibração inicial, não validada** (sem backtest).
-     Nunca apresentar a classe como previsão de preço ou razão para comprar.
+1. Colar o Markdown **verbatim** no chat, com cabeçalho Coleta, todas as linhas,
+   todos os vereditos, seções por carta e funil. Se longo, dividir sem omitir linhas.
+2. Manter compra, investimento, referência, revenda, lucro, desconto, margem
+   bruta, margem líquida e ROI diferenciados, além dos três eixos. Não renomear
+   uma estimativa operacional atual como projeção de retorno em 3–5 anos.
+3. Preservar `[oferta]` e `[referência]`; preço da referência também clicável,
+   com URL da própria evidência. Fonte ausente é n/d, nunca busca genérica.
+4. Reportar data/hora UTC, universo/lote, versão da política, **20%** quando
+   esse for o piso utilizado, API usada/teto e causas de parcialidade.
+5. Nenhuma compra, transferência ou recomendação é executada. Não publicar
+   tabela, arquivo de teses ou dados de scan no GitHub.
 
-## Nota de logística (por que US-only e preço fixo são invariantes)
+`--sensitivity` só vale para artefatos do motor legado. Em JSON da política,
+preservar o aviso do gerador; não reclassificar manualmente.
 
-Compras têm **Ship To = COMC mailbox (Algona, WA 98001-7409, EUA)** — mailbox
-de armazenamento do operador. Por isso o filtro `itemLocationCountry: US` da
-API + o cinto de segurança no avaliador **não podem ser afrouxados**: item fora
-dos EUA não serve mesmo que a diferença de preço pareça ótima. E leilão não entra
-(`fixed_price_only: true`): lance atual não é preço.
+## Diagnóstico LP legado
+
+A coluna LP de `src/longterm.py` permanece **informativa**, separada da tese do
+novo crivo. `LP2 64/35 (4/5·9/11)` é classe · perfil/fragilidade · cobertura.
+Ela não decide gate, veredito ou ranking. LP1 não equivale a tese favorável.
+Perfil normalizado pelos componentes disponíveis pode parecer alto com lacunas;
+fragilidade `0 (3/11)` significa nenhum problema detectado em só 3 testes,
+não evidência impecável. Ausência é n/d; LP2* sinaliza limitação de cobertura.
+Entregar a legenda original e os motivos, sem converter notas em probabilidades.
+
+## Logística invariável
+
+Item nos EUA e preço fixo são obrigatórios: destino operacional COMC mailbox,
+Algona, WA. Lance atual de leilão não é preço de aquisição. Vault só é confirmado
+com metadados; não deduzir autenticação ou vault pelo valor anunciado.

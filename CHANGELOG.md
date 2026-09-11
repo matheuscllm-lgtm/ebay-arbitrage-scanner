@@ -1,4 +1,27 @@
 
+## 2026-09-11 — tese, entrada e evidência; elegibilidade sem quota
+
+- Política padrão `longterm` (2026-09-11.1): PSA 10 EN/JP, preço fixo nos EUA,
+  item até US$500. Margem bruta estritamente acima de **20%**, exibida com seu
+  denominador, mais lucro líquido operacional atual positivo; margem sozinha
+  deixa de aprovar.
+- Teses privadas por `--thesis-file`: demanda, importância colecionável, oferta
+  e resiliência com direção, fonte, data, justificativa e condição de invalidação.
+  Não transforma LP1 ou preço raw em tese; fonte ausente ou antiga exige revisão.
+- Evidência adicional exige ≥9 vendas exatas observadas em 90 dias, em ≥2
+  meses-calendário, contadas antes do limite de amostra da mediana.
+- OPORTUNIDADE / MONITORAR / REVISAR / REJEITAR separados dos modos econômicos
+  legados, que continuam disponíveis explicitamente. Sem compras automáticas ou
+  cenários de preço futuro; custo COMC de 120 dias não modela retorno de 3–5 anos.
+- Sem meta Top100: os 100 personagens são metadados. Gerador sem teto por set
+  por padrão; `--max-cards` e `--card-offset` limitam somente processamento,
+  com adiados/parcialidade explícitos e saídas de lote separadas. Catálogo não
+  regenerado nesta alteração.
+- Implementação e regressões offline; nenhuma coleta de mercado executada nesta
+  tarefa. Teses, alvos, preços, resultados e credenciais não são publicados.
+
+As entradas abaixo descrevem políticas históricas, não o padrão atual.
+
 ## 2026-09-09 (3) — identidade por edição e ano (`fix/identidade-edicao-e-ano`)
 
 Achado no PRIMEIRO run real do grupo 3: anúncios da Celebrations: Classic Collection

@@ -13,6 +13,9 @@ results/
 
 # Local strategy / method / target list (kept out of the public repo)
 METODO.md
+private/
+thesis*.yaml
+*.private.yaml
 # watchlist.yaml e GERADA e versionada (build_watchlist.py; operador 2026-09-03)
 
 # Local-only credentials

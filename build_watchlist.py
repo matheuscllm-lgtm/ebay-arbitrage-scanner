@@ -31,7 +31,7 @@ from src import tcg_reference as tcg
 
 CATALOG_DIR = Path(__file__).resolve().parent / "src" / "catalog"
 ICONIC_CSV = CATALOG_DIR / "iconic_pokemon.csv"
-DEFAULT_CAP = 30
+DEFAULT_CAP = 0  # discovery is not eligibility; optional --cap is only a build budget
 PC_MAX_CONSECUTIVE_ERRORS = 5
 
 # Raridades (tcgcsv `Rarity`, minusculo) que entram: holo/ultra/secret e afins.

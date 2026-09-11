@@ -464,8 +464,12 @@ def test_unreadable_item_details_do_not_drop_the_card(no_tcg):
     em `item_details_error`; a carta NAO cai inteira (review do PR #32)."""
     from src import slab_strategy
     stats = Counter()
+    # Historical multi-grade plumbing: keep PSA 9 in scope here so that the new
+    # investment-only PSA 10 restriction cannot mask the unreadable-detail review.
+    config = slab_strategy.policy_config({})
+    config['slab_strategy']['economics']['gate_mode'] = 'gross_margin'
     _, rows = scanner.scan_card(CARD, _DetailClient(_policy_batch(), "p2"),
-                                slab_strategy.policy_config({}), stats=stats,
+                                config, stats=stats,
                                 refs=FakeRefs(), fair=FairValue(), log=lambda *a: None)
     assert [row.listing.item_id for row in rows] == ["p1", "p2", "p3"]
     broken = rows[1]
