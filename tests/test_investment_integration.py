@@ -214,3 +214,20 @@ def test_legacy_gross_only_mode_is_still_available():
     opp = evaluate_synthetic(cfg=cfg)
     assert opp.verdict == 'APROVAR'
     assert 'investment_assessment' not in opp.strategy
+
+
+def test_check_config_reports_thesis_watchlist_coverage_without_identities(tmp_path, capsys):
+    matched = deepcopy(next(iter(config()['thesis_profiles'].values())))
+    unmatched = deepcopy(matched)
+    unmatched['set'] = 'Example'   # exact identity required; this one matches no card
+    theses = tmp_path / 'theses.private.yaml'
+    theses.write_text(yaml.safe_dump({'version': 1, 'cards': [matched, unmatched]}), encoding='utf-8')
+    watchlist = tmp_path / 'watchlist.private.yaml'
+    watchlist.write_text(yaml.safe_dump({'cards': [{
+        'name': CARD.name, 'set': CARD.set_name, 'number': CARD.number,
+        'language': CARD.language, 'pc_url': CARD.pc_url}]}), encoding='utf-8')
+    assert main.main(['--check-config', '--thesis-file', str(theses), '--watchlist', str(watchlist)]) == 0
+    output = capsys.readouterr().out
+    assert 'Teses: 2 carregadas · 1 com carta na watchlist · 1 sem carta correspondente' in output
+    assert 'REVISAR: 1 tese(s) sem carta correspondente' in output
+    assert CARD.name not in output and 'Example' not in output

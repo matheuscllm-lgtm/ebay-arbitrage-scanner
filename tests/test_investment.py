@@ -304,3 +304,18 @@ def test_invalid_classifier_settings_fail_instead_of_loosening(setting):
     config["investment"][setting] = 0
     with pytest.raises(ValueError):
         result(item, config)
+
+
+def test_watchlist_coverage_counts_exact_card_identity_only():
+    cards = [SimpleNamespace(name="Examplemon", set_name="Example Set", number="001", language="EN"),
+             SimpleNamespace(name="Othermon", set_name="Example Set", number="002", language="EN")]
+    profiles = {
+        investment.identity_key("Examplemon", "Example Set", "001", "EN"): profile(),
+        # Same card, set spelled differently: never matches (no fuzzy identity).
+        investment.identity_key("Examplemon", "Example", "001", "EN"): profile(set="Example"),
+        # Same card in another language: separate identity, no equivalence.
+        investment.identity_key("Examplemon", "Example Set", "001", "JP"): profile(language="JP"),
+    }
+    coverage = investment.watchlist_coverage(profiles, cards)
+    assert coverage == {"profiles": 3, "matched": 1, "unmatched": 2}
+    assert investment.watchlist_coverage({}, cards) == {"profiles": 0, "matched": 0, "unmatched": 0}
