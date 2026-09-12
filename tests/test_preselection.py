@@ -234,3 +234,15 @@ def test_export_does_not_inject_old_prices_into_downstream_scan(tmp_path, monkey
     monkeypatch.setattr(scanner, 'load_card_page', fresh)
     fair, _ = scanner.scan_card(card, EmptyEbay(), policy_config(), log=lambda _: None)
     assert calls == [card] and fair.prices['PSA 10'] == 75
+
+
+def test_report_prints_nd_not_none_for_missing_dispersion():
+    # Sales of the wrong grade: median and dispersion are absent, never 'None' in the table.
+    result = preselection.collect(
+        [CARD], policy_config(),
+        loader=lambda card, cfg, **kwargs: (FairValue(), refs(title=TITLE.replace('PSA 10', 'PSA 9'))),
+        log=lambda _: None)
+    text = preselection.render(result)
+    row = [line for line in text.splitlines() if line.startswith('| Examplemon')][0]
+    assert '| None |' not in row and 'None' not in row
+    assert row.split('|')[6].strip() == 'n/d'

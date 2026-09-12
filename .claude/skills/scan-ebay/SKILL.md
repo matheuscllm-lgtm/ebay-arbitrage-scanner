@@ -97,6 +97,29 @@ Não buscar "até encontrar 100" nem afrouxar critérios para completar quantida
 Zero oportunidades é resultado válido. A watchlist pode conter mais cartas que
 o lote, e cartas adiadas não são rejeitadas nem avaliadas.
 
+## 1b. Pré-seleção de candidatas (opcional; consulta só o PriceCharting)
+
+`preselect.py` consulta apenas a referência de vendas PSA 10 — sem credenciais
+eBay, sem tese, sem preço de anúncio — e gera uma fila privada de curadoria:
+CANDIDATA / REVISAR / FORA_DO_ESCOPO. **CANDIDATA é candidata à curadoria de
+tese**, nunca elegibilidade de investimento nem oportunidade. Também é coleta de
+mercado: só quando o operador solicitar, nunca por tarefa de código.
+
+```powershell
+.venv\Scripts\python preselect.py --group 3 --max-cards 25 --card-offset 0 --out results\preselection-run-01.json
+```
+
+- Mesmo comparador e pisos do modo `longterm` (≥9 vendas em 90 dias, ≥2
+  meses-calendário, dispersão ≤30%). O lote limita trabalho, não elegíveis;
+  referência acima de US$500 não exclui a carta — o teto vale para o preço do
+  anúncio, avaliado no scan seguinte.
+- O JSON gerado (privado, `results/` ou `private/`, nunca sobrescrito) pode ser
+  passado a `main.py --watchlist`; o scan seguinte renova os preços. Todas as
+  linhas ficam na tabela impressa; só candidatas entram em `cards`. Falha ou
+  lote parcial: código 1 e `meta.incomplete: true`; lista vazia não prova ausência.
+- Entregar no chat a tabela impressa pelo próprio `preselect.py`; o arquivo é
+  apoio privado e não entra em commit, PR ou comentário.
+
 ## 2. Coletar somente quando solicitado
 
 Exemplo operacional; substitua grupo, lote e caminho por escolhas confirmadas:
