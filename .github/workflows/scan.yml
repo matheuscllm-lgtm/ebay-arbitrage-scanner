@@ -1,0 +1,83 @@
+name: scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      group:
+        description: Grupo da watchlist (1-12)
+        required: true
+        default: '3'
+      max_pages:
+        description: Maximo de paginas por busca
+        required: false
+        default: '1'
+      max_cards:
+        description: Maximo de cartas no lote
+        required: false
+        default: '25'
+      card_offset:
+        description: Offset inicial do lote
+        required: false
+        default: '0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ebay-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Recriar teses a partir do secret (opcional)
+        env:
+          THESES_YAML: ${{ secrets.THESES_YAML }}
+        run: |
+          if [ -n "$THESES_YAML" ]; then
+            mkdir -p data
+            printf '%s\n' "$THESES_YAML" > data/theses.yaml
+            echo "Teses carregadas do secret THESES_YAML."
+          else
+            echo "Sem THESES_YAML: nenhuma linha vira OPORTUNIDADE (tese nao confirmada)."
+          fi
+
+      - name: Rodar scan (saida suprimida - logs sao publicos)
+        env:
+          EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
+          EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
+          GROUP: ${{ inputs.group }}
+          MAX_PAGES: ${{ inputs.max_pages }}
+          MAX_CARDS: ${{ inputs.max_cards }}
+          CARD_OFFSET: ${{ inputs.card_offset }}
+        run: |
+          mkdir -p results
+          ARGS=""
+          if [ -f data/theses.yaml ]; then ARGS="--thesis-file data/theses.yaml"; fi
+          python main.py --group "$GROUP" --max-pages "$MAX_PAGES" --max-cards "$MAX_CARDS" --card-offset "$CARD_OFFSET" $ARGS --out results/last_scan.json > /dev/null
+          python ebay_summary.py results/last_scan.json -o results/report.md > /dev/null
+
+      - name: Publicar resultados como artifact (retencao 1 dia)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-results
+          path: results/
+          retention-days: 1
+          if-no-files-found: warn
