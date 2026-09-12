@@ -70,6 +70,11 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
   padrão; `--max-cards` e `--card-offset` limitam apenas o processamento do scan.
   Declarar seleção adiada e resultado parcial; nunca completar a lista afrouxando critérios.
 - Teses privadas, fontes de análise, preços e alvos do operador não entram no Git.
+- `preselect.py` gera fila privada de curadoria com o comparador de vendas PSA 10.
+  CANDIDATA não significa elegibilidade de investimento. Sem filtro de referência
+  até US$500, sem quota; arquivo exportado preserva colisões de edição, e o scan
+  seguinte obrigatoriamente renova preços. Todas as linhas REVISAR permanecem no
+  relatório, embora só candidatas entrem no campo `cards` da watchlist exportada.
   Não regenerar catálogo nem fazer coleta de mercado em uma tarefa apenas de código.
 - Percentuais inteiros: 20 significa 20%; null é pendência, nunca zero.
 - Credenciais são `EBAY_CLIENT_ID` e `EBAY_CLIENT_SECRET`, somente no ambiente.

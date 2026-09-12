@@ -48,6 +48,43 @@ consultadas em [docs/COMC_COSTS.md](docs/COMC_COSTS.md), os parâmetros em
 
 ## Executar
 
+### Primeiro: pré-seleção para curadoria, sem quota
+
+```bash
+python preselect.py --group 3 --max-cards 25 --card-offset 0 --out results/preselection-run-01.json
+# Depois de analisar as teses das candidatas, com fontes reais e arquivo privado:
+python main.py --watchlist results/preselection-run-01.json --thesis-file private/theses.yaml --max-cards 5 --max-pages 1 --out results/pilot-run-01.json
+```
+
+`preselect.py` consulta apenas a referência de vendas; não usa credenciais eBay.
+**CANDIDATA é candidata à curadoria**, não investimento aprovado nem oportunidade
+de compra. Aplica o mesmo comparador PSA 10 por identidade/idioma/variante, ≥9
+vendas em 90 dias, ≥2 meses-calendário e dispersão ≤30%. REVISAR mantém dados
+insuficientes visíveis; FORA_DO_ESCOPO identifica idiomas/identidades incompatíveis.
+Não gera tese a partir de preço, raridade, raw ×3 ou popularidade.
+
+O padrão de 25 limita trabalho por execução, não a lista de elegíveis. Zero,
+sete ou mais de cem candidatas são resultados possíveis sem relaxar os critérios.
+US$500 limita **preço do item anunciado**, não a referência de vendas: uma carta
+com referência acima disso não é cortada antes de procurar uma oferta.
+Teto de entrada, custos, vendedor e tese são avaliados no scanner posterior.
+
+O JSON privado contém todas as linhas auditáveis e `cards` com as candidatas;
+pode alimentar diretamente `--watchlist`. Preserva colisões de edição do catálogo
+original. O scanner seguinte coleta preços novamente: não usa a mediana antiga
+do arquivo. Cada execução tem cache novo e saída inédita em `results/` ou
+`private/`; nunca substitui uma coleta anterior. Falha retorna código 1 e
+`meta.incomplete: true`; lote concluído não significa catálogo inteiro concluído.
+Não tratar arquivo parcial ou lista vazia como prova de ausência de oportunidades.
+
+Limitações: apenas vendas que o agregador expõe e o comparador consegue confirmar;
+não comprova população, demanda futura nem universo total de vendas. Dois meses
+podem ser apenas duas datas perto da virada: é um piso de cobertura, não prova
+de estabilidade. Cartas de baixa liquidez continuam na fila REVISAR, fora da
+exportação automática, disponíveis para curadoria excepcional sem aprovação.
+
+### Scanner de anúncios
+
 Python 3.12:
 
 ```bash

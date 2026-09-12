@@ -84,6 +84,9 @@ def load_watchlist(path="watchlist.yaml"):
     cards = []
     for entry in data.get("cards", []):
         year = entry.get("year")
+        collisions = entry.get('colliding_editions', [])
+        if not isinstance(collisions, list) or any(not isinstance(x, str) or not x.strip() for x in collisions):
+            raise ValueError('colliding_editions must be a list of non-empty strings')
         cards.append(WatchCard(
             name=entry["name"],
             set_name=entry["set"],
@@ -98,6 +101,7 @@ def load_watchlist(path="watchlist.yaml"):
             pokemon_rank=int(entry.get("pokemon_rank") or 9999),
             rarity=str(entry.get("rarity", "") or ""),
             year=int(year) if year not in (None, "") else None,
+            colliding_editions=tuple(collisions),
         ))
     _annotate_colliding_editions(cards)
     return cards
@@ -120,6 +124,8 @@ def _annotate_colliding_editions(cards):
     index = {}
     for card in cards:
         index.setdefault(chave(card), set()).add(card.set_name)
+        # A private subset must retain collision knowledge from the full catalog.
+        index[chave(card)].update(card.colliding_editions)
     catalog_path = Path(__file__).resolve().parent / 'catalog' / 'celebrations_classic_identity.json'
     with catalog_path.open(encoding='utf-8') as handle:
         catalog = json.load(handle)
