@@ -1,5 +1,28 @@
 # Registro de validação — EBAY PSA
 
+## Piloto da pré-seleção dinâmica (`preselect.py`) — 2026-09-12
+
+Primeira execução real do `preselect.py` (PR #40, com a correção `n/d` do #41), lotes de
+25 cartas (offset 0) nos grupos 3, 1 e 2, política `longterm` sem alteração de critério.
+Só o PriceCharting foi consultado; nenhuma chamada eBay. Contagens agregadas; identidades,
+preços e arquivos ficam locais (`results/`).
+
+| Grupo | Cartas | CANDIDATA | REVISAR | Motivos principais de REVISAR | Vendas PSA 10 descartadas por idioma não explícito |
+|---|---|---|---|---|---|
+| 3 (WotC 1999–2003) | 25 | 0 | 25 | `poucas-vendas-em-90d` (25), `sem-referencia-comparavel` (19) | 555 |
+| 1 (SV 2025) | 25 | 3 | 22 | `precos-dispersos` (16), `poucas-vendas-em-90d` (12) | 429 |
+| 2 (SV 2024) | 25 | 5 | 20 | `precos-dispersos` (15), `poucas-vendas-em-90d` (15) | 374 |
+
+Leitura: no vintage a regra de **idioma explícito no título da venda** (política, não bug —
+`docs/EBAY_PSA.md`) elimina quase toda a amostra PSA 10 antes dos pisos de liquidez; nos
+sets modernos a amostra existe e o bloqueio dominante é a **dispersão acima de 30%**. Nenhum
+critério foi afrouxado para gerar candidatas. CANDIDATA segue sendo fila de curadoria de
+tese, não elegibilidade.
+
+Decisão pendente do operador (não implementada): manter, ou não, a exigência de idioma
+explícito para vendas do PriceCharting em vintage. É mudança econômica — exige decisão
+registrada, testes de regressão e changelog.
+
 ## Estado atual — política 2026-09-05.4
 
 A comparação de coleções com códigos administrativos e a normalização de grafia

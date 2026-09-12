@@ -12,6 +12,13 @@
   interrupção pela proteção da fonte e criação exclusiva de saídas privadas.
 - Testes offline com dados sintéticos; coleta de mercado não é validada por CI.
   Teses, alvos, preços, resultados e credenciais não entram no repositório.
+- Correção #41: a tabela da pré-seleção imprime `n/d` (nunca `None`) em valor ausente;
+  passo 1b (pré-seleção) documentado na skill `scan-ebay`.
+- `--check-config --thesis-file` confere a cobertura tese × watchlist (contagens de teses
+  com/sem carta correspondente; `REVISAR` quando alguma não casa). Só contagens; nenhuma
+  identidade privada é impressa.
+- Piloto real (grupos 3, 1, 2; 25 cartas cada) registrado em `docs/VALIDATION_EBAY_PSA.md`,
+  sem identidades nem preços.
 
 ## 2026-09-11 — tese, entrada e evidência; elegibilidade sem quota
 

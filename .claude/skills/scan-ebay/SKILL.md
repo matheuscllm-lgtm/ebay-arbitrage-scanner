@@ -119,6 +119,10 @@ mercado: só quando o operador solicitar, nunca por tarefa de código.
   lote parcial: código 1 e `meta.incomplete: true`; lista vazia não prova ausência.
 - Entregar no chat a tabela impressa pelo próprio `preselect.py`; o arquivo é
   apoio privado e não entra em commit, PR ou comentário.
+- Depois da pré-seleção: gerar `private/theses.yaml` como esqueleto (identidade copiada
+  do JSON, sinais em `null`), o operador preenche sinais e fontes, e
+  `main.py --check-config --thesis-file private/theses.yaml --watchlist <json>` confere
+  a cobertura tese × watchlist antes do scan (`docs/LONGO_PRAZO.md`).
 
 ## 2. Coletar somente quando solicitado
 

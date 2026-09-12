@@ -81,5 +81,8 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
 - CI offline: `python -m pytest -q`. Busca real: `python main.py --group 3`.
 - Limite de 500 chamadas eBay por execução; esgotamento interrompe com resultado parcial.
 - Gerar relatório com `python ebay_summary.py results/last_scan.json -o results/report.md`.
+- Sem check-ins automáticos (operador, 2026-09-12): nenhuma sessão agenda `send_later`/Routine/cron
+  para re-checar PR, CI ou tarefa, nem mantém acompanhamento automático de PR por conta própria —
+  só sob pedido explícito. Assinatura de PR criada pelo harness deve ser cancelada.
 - Orientações antigas em comandos/skills históricos não podem reativar raw,
   retirar custos ou substituir as regras desta versão. Consulte o README atual.
