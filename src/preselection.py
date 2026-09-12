@@ -136,7 +136,8 @@ def collect(cards, config, *, max_cards=None, offset=0, log=print, loader=None):
 def render(payload):
     """Canonical chat table; all rows, missing prices explicit, references clickable."""
     def cell(value):
-        return str(value).replace('|', '\\|').replace('\n', ' ')
+        # Missing values are 'n/d', never 'None' or 0 (delivery rule of the fleet).
+        return 'n/d' if value is None else str(value).replace('|', '\\|').replace('\n', ' ')
 
     meta, lines = payload['meta'], []
     coverage = meta['selection']
