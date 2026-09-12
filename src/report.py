@@ -132,18 +132,26 @@ def gross_margin_value(row):
     """
     gate = (row.get("strategy") or {}).get("economic_gate") or {}
     if row.get('strategy'):
-        return gate.get('gross_margin_percent') if gate.get('mode') == 'gross_margin' else None
+        return gate.get('gross_margin_percent') if gate.get('mode') in ('gross_margin', 'longterm') else None
     return row.get("margin_pct")
 
 
 def sort_key(row):
     """Chave para sorted(): menor = melhor (negativos nas metricas).
-    Linha da POLITICA (`strategy`): veredito -> PSA primeiro -> maior
+    POLITICA longterm: classificação -> evidência -> tese -> vendas observadas
+    -> ROI líquido. POLITICA econômica legada: veredito -> PSA primeiro -> maior
     `net_roi_percent` -> vault confirmado. Linha LEGADA: ROI bruto -> desconto ->
     spread -> popularidade; JSON antigo (sem `roi_pct`) usa `margin_pct`, que e a
     mesma grandeza."""
     if row.get("strategy"):
         s = row["strategy"]
+        assessment = s.get('investment_assessment')
+        if assessment:
+            return ({'OPORTUNIDADE': 0, 'MONITORAR': 1, 'REVISAR': 2, 'REJEITAR': 3}.get(row.get('verdict'), 2),
+                    0 if assessment['evidence']['status'] == 'adequate' else 1,
+                    0 if assessment['thesis']['status'] == 'favorable' else 1,
+                    -(assessment['evidence'].get('sales_90d') or 0),
+                    -(s.get('net_roi_percent') or 0))
         return ({"APROVAR": 0, "REVISAR": 1, "REJEITAR": 2}.get(row.get("verdict"), 1),
                 0 if row.get("grade", "").startswith("PSA ") else 1,
                 # A METRICA QUE DECIDE vem primeiro. `net_roi_percent` so existe quando
@@ -171,6 +179,13 @@ def sort_rows(rows):
 # Rotulos do funil (ordem logica: coleta -> triagem -> referencia -> gate -> baldes).
 FUNNEL_LABELS = [
     ("cards", "Cartas da watchlist no escopo"),
+    ("selection_cards_in_scope", "Catálogo no escopo (não são cartas aprovadas)"),
+    ("selection_cards_scheduled", "Cartas programadas neste lote"),
+    ("selection_cards_deferred", "Cartas fora deste lote (sem coleta nesta execução)"),
+    ("selection_cards_attempted", "Cartas com processamento iniciado"),
+    ("selection_cards_completed", "Cartas cujo processamento retornou (ver erros de fonte)"),
+    ("selection_cards_not_attempted_in_batch", "Cartas do lote não iniciadas"),
+    ("selection_cards_incomplete_in_batch", "Cartas do lote sem retorno de processamento"),
     ("ebay_calls", "Chamadas à Browse API (cota grátis 5.000/dia)"),
     ("fetched", "Anuncios recebidos da Browse API (antes dos filtros)"),
     ("seen", "Anúncios analisados (após dedupe)"),
@@ -186,6 +201,7 @@ FUNNEL_LABELS = [
     ("skip_evaluation_error", "Descartados: erro interno ao avaliar anuncio"),
     ("skip_details_abort", "Descartados: interrupcao (cota/autenticacao eBay) antes de avaliar o anuncio"),
     ("longterm_error", "Linhas mantidas com a coluna Longo prazo em n/d por erro interno (ver log)"),
+    ("investment_error", "Linhas mantidas sem aprovação por erro no crivo de investimento"),
     # Contadores que so o caminho da politica produz (scanner.scan_card / run_scan):
     # sem rotulo cairiam em "outros:" como chave crua (review do PR #33).
     ("item_details_fetched", "Consultas de detalhe do anuncio (get_item) feitas"),
@@ -218,6 +234,11 @@ FUNNEL_LABELS = [
     ("aborted", "RUN ABORTADO — resultado parcial, não representa busca completa"),
 ]
 _KNOWN_FUNNEL_KEYS = {k for k, _ in FUNNEL_LABELS}
+_KNOWN_FUNNEL_KEYS.update({
+    'selection_cards_before_batch', 'selection_cards_after_batch',
+    'selection_card_offset', 'selection_max_cards', 'selection_scheduled_end_offset',
+    'selection_scope_limited', 'selection_first_incomplete_offset',
+})
 
 # Mesmos contadores, vocabulario da POLITICA (`slab_strategy`, vigente): `VERDICT_STAT`
 # manda APROVAR para `rows_opportunity` e REJEITAR para `rows_rejected`, entao os
@@ -225,11 +246,14 @@ _KNOWN_FUNNEL_KEYS = {k for k, _ in FUNNEL_LABELS}
 # (auditoria de honestidade 2026-09-09). JSON legado continua com FUNNEL_LABELS.
 _POLICY_ROW_LABELS = {
     "rows_opportunity": "Linhas APROVAR",
+    "rows_monitor": "Linhas MONITORAR",
     "rows_review": "Linhas REVISAR",
     "rows_rejected": "Linhas REJEITAR (com motivo)",
     "rows_suspect": "Linhas SUSPEITO (so existe no motor legado)",
 }
 POLICY_FUNNEL_LABELS = [(key, _POLICY_ROW_LABELS.get(key, label)) for key, label in FUNNEL_LABELS]
+POLICY_FUNNEL_LABELS.append(('rows_monitor', 'Linhas MONITORAR'))
+_KNOWN_FUNNEL_KEYS.add('rows_monitor')
 
 
 def funnel_lines(counts, labels=None):
@@ -248,10 +272,12 @@ def funnel_lines(counts, labels=None):
     return out
 
 
-def policy_funnel_lines(counts):
+def policy_funnel_lines(counts, mode=None):
     """Funil com o vocabulario da politica (APROVAR / REVISAR / REJEITAR) -- entrega
     vigente (`src/slab_report.render`) e console do `main.py` com a politica ativa."""
-    return funnel_lines(counts, POLICY_FUNNEL_LABELS)
+    labels = [(key, 'Linhas OPORTUNIDADE' if mode == 'longterm' and key == 'rows_opportunity' else label)
+              for key, label in POLICY_FUNNEL_LABELS]
+    return funnel_lines(counts, labels)
 
 
 # --- status / referencia / tabela canonica --------------------------------------
@@ -659,14 +685,33 @@ def scan_payload(opportunities, watchlist_count, config, include_raw=False,
             "fixed_price_only": bool(config.get("fixed_price_only", True)),
             "max_pages": config.get("max_pages", 3),
             "max_ebay_calls": config.get("max_ebay_calls", 500),
+            "max_cards": config.get("max_cards"),
+            "card_offset": config.get("card_offset", 0),
             "max_item_details_per_card": config.get("max_item_details_per_card", 10),
             "trusted_min_feedback": config.get("trusted_min_feedback", 50),
             "trusted_min_feedback_pct": config.get("trusted_min_feedback_pct", 98),
             # Bloco da coluna informativa, gravado como rodou (None = defaults do modulo).
             "longterm": config.get("longterm"),
+            "investment": config.get('investment'),
+            # Never copy thesis_profiles or its private file path into config metadata.
         },
         "funnel": dict(funnel or {}),
     }
+    counts = funnel or {}
+    if 'selection_cards_in_scope' in counts:
+        meta['selection'] = {
+            key.removeprefix('selection_'): value
+            for key, value in counts.items() if key.startswith('selection_')
+        }
+        meta['selection']['max_cards'] = counts.get('selection_max_cards') or None
+        meta['selection']['scope_limited'] = bool(counts.get('selection_scope_limited'))
+        first_incomplete = counts.get('selection_first_incomplete_offset', -1)
+        meta['selection']['first_incomplete_offset'] = (
+            first_incomplete if first_incomplete >= 0 else None)
+        meta['selection']['offset_note'] = (
+            'Offsets referem-se ao mesmo catálogo/ordem/grupo. scheduled_end_offset é o fim '
+            'programado, não um checkpoint. first_incomplete_offset é apenas orientação; '
+            'outra execução exige coleta nova.')
     rows = sort_rows([opportunity_row(o) for o in opportunities])
     return {"meta": meta, "rows": rows}
 

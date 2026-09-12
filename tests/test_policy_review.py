@@ -16,7 +16,7 @@ from tests.test_slab_strategy import CARD, listing, sales, refs, cfg
 
 def current_config():
     """Casos legados desta suite exercitam o gate `profit_or_discount` (lucro/desconto
-    com taxas). O config de producao passou a `gross_margin` -- entao o modo legado e
+    com taxas). O config de producao passou a `longterm` -- entao o modo legado e
     fixado aqui de proposito, para a cobertura dele continuar existindo."""
     c = policy_config()
     p = c['slab_strategy']
@@ -28,10 +28,10 @@ def current_config():
     return c
 
 
-def test_production_config_gate_is_gross_margin_not_the_legacy_mode():
+def test_production_config_uses_three_axes_and_explicit_twenty_percent_floor():
     eco = policy_config()['slab_strategy']['economics']
-    assert eco['gate_mode'] == 'gross_margin'
-    assert eco.get('min_gross_margin_percent') is not None
+    assert eco['gate_mode'] == 'longterm'
+    assert eco['min_gross_margin_percent'] == 20
 
 
 def test_delegated_defaults_are_complete_and_do_not_stack_bgs_premiums():
@@ -49,7 +49,11 @@ def test_default_dispersion_boundary_and_full_comc_costs(low, verdict):
     pool = sales()
     for sale, price in zip(pool, (low, 100, 110)):
         sale['price'] = price
-    o = evaluate(CARD, listing(price=50), config=policy_config(), refs=refs(pool))
+    # Test the unchanged 30% comparable-sale dispersion boundary independently of
+    # the new, additional long-term thesis and recent-volume requirements.
+    c = policy_config()
+    c['slab_strategy']['economics']['gate_mode'] = 'gross_margin'
+    o = evaluate(CARD, listing(price=50), config=c, refs=refs(pool))
     assert o.verdict == verdict
     assert o.strategy['profit_estimate'] > 0
     assert o.strategy['costs']['comc_storage_usd'] > 0

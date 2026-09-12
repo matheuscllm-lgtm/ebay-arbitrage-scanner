@@ -1,11 +1,13 @@
 # EBAY PSA — configuração canônica. Percentuais inteiros: 20 = 20%.
 # Null não significa zero; armazenamento null usa a projeção parametrizada abaixo.
-min_discount_percent: 30          # espelho CLI; regra efetiva em economics abaixo
+min_discount_percent: 20          # somente modos legados; não é margem bruta
 min_price_usd: 10.0
 suspicious_margin_percent: 60      # legado; não atua no modo profit_or_discount
 fixed_price_only: true
 graded_only: true                 # obrigatório; --include-raw é rejeitado
 max_pages: 3
+max_cards: null                  # orçamento de processamento opcional, nunca quota de elegíveis
+card_offset: 0
 max_ebay_calls: 500               # teto por execução, incluindo detalhes e retentativas; parada parcial
 max_item_details_per_card: 10      # consultas pontuais de idioma, incluídas na contagem da API
 trusted_min_feedback: 50
@@ -15,7 +17,7 @@ required_location_country: US
 graded_allow: ["PSA 8", "PSA 9", "PSA 10", "BGS 9", "BGS 9.5", "BGS 10", "BGS 10 BLACK", "TAG 9.5", "TAG 10", "CGC 9", "CGC 9.5", "CGC 10 GEM", "CGC 10 PRISTINE"]
 
 slab_strategy:
-  version: '2026-09-05.4'
+  version: '2026-09-11.1'
   languages: [EN, JP, ZH-HANS, ZH-HANT, KO, PT, DE, FR, IT, ES]
   graders:
     PSA:
@@ -63,28 +65,32 @@ slab_strategy:
     cashout_fee_percent: 10        # taxa informada pelo operador nesta revisão
     fee_basis: sale_then_cashout    # venda primeiro, saque sobre o saldo restante
   economics:
-    # REGRA CANÔNICA DA FROTA (operador, 2026-09-09): o gate usa SÓ MARGEM BRUTA,
-    # sem taxa nenhuma. Custos de intermediação continuam sendo CALCULADOS e vão
-    # para o JSON/relatório como informação, mas NÃO entram no veredito.
-    gate_mode: gross_margin
+    # Três eixos: tese, entrada e evidência. Margem isolada não aprova.
+    # gross_margin permanece disponível para comparabilidade histórica.
+    gate_mode: longterm
     # Margem tão alta que é assinatura de referência errada ou carta trocada. REVISA,
     # nunca rejeita. Vale só no modo `gross_margin`: o `suspicious_margin_percent: 60`
     # do topo foi calibrado para o gate antigo (desconto de 20-30% = 25-43% de margem
     # bruta), e sob um gate que aprova a partir de 43% ele fica logo acima do limiar e
     # engoliria negócio normal. 150% = comprar a 40% da referência.
     suspicious_gross_margin_percent: 150
-    min_gross_margin_percent: 43    # (referência - preço) / preço x 100, estritamente acima.
-                                    # Convenção do repo: percentual INTEIRO. 43 preserva a
-                                    # fronteira do antigo desconto de 30% sobre a referência
-                                    # (30/(100-30) = 42,857...), com 0,14 p.p. a mais de rigor.
-    # --- chaves dos modos legados; sem efeito com gate_mode: gross_margin ---
+    min_gross_margin_percent: 20    # 20%; (revenda - item) / item; estritamente acima.
+    # --- chaves dos modos legados; sem efeito em longterm/gross_margin ---
     min_profit_usd: 40             # estritamente acima, após todos os custos
-    min_discount_percent: 30       # estritamente acima, contra PSA ajustado
+    min_discount_percent: 20       # só no modo legado profit_or_discount
     require_positive_profit: true # desconto não aprova prejuízo
   logistics:
     prefer_vault: true
     resale_route: COMC
     direct_vault_listing: false
+
+# Sem quota de elegíveis: zero oportunidades é um resultado válido.
+# Teses documentadas são carregadas por --thesis-file, nunca versionadas.
+investment:
+  max_item_price_usd: 500
+  min_sales_90d: 9                 # ~3/mês, vendas exatas antes do corte da mediana
+  min_active_months_90d: 2         # proxy por mês-calendário; não prova demanda recorrente
+  max_thesis_age_days: 180         # revisar os quatro sinais; não estima probabilidade
 
 # Coluna informativa "Longo prazo" (docs/LONGO_PRAZO.md, src/longterm.py): perfil da
 # carta / fragilidade do dado, só leitura na tabela — não é gate, veredito, ranking nem

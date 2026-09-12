@@ -27,6 +27,7 @@ def policy_config(config=None):
         defaults = yaml.safe_load(f)
     if 'slab_strategy' not in cfg:
         cfg['slab_strategy'] = deepcopy(defaults['slab_strategy'])
+    cfg.setdefault('investment', deepcopy(defaults['investment']))
     cfg.setdefault('graded_allow', defaults['graded_allow'])
     cfg['graded_only'] = True
     from .policy_validation import validate_config
@@ -291,6 +292,9 @@ def reference_sales(card, refs, grade, variants, policy, today=None):
     selected.sort(key=lambda s: (s['date'], s['sale_id']), reverse=True)
     used = selected[:policy['evidence']['median_sample_limit']]
     prices = [money(s['price_exact']) for s in used]
+    # Observed valid sales, BEFORE the median's sample cap. Not unique buyers,
+    # and not a claim that PriceCharting covers the entire eBay market.
+    recent = [s for s in matches if (today - date.fromisoformat(s['date'])).days <= 90]
     median = statistics.median(prices) if prices else None
     dispersion = (max(prices) - min(prices)) / median * 100 if prices and median else None
     excluded['fora-da-janela'] += len(matches) - len(selected)
@@ -299,6 +303,8 @@ def reference_sales(card, refs, grade, variants, policy, today=None):
             'window_days': window, 'dispersion_percent': amount(dispersion),
             'dispersion_exact': str(dispersion) if dispersion is not None else None,
             'source_sales_count': len(pool), 'excluded_counts': dict(excluded),
+            'sales_90d': len(recent),
+            'active_months_90d': len({s['date'][:7] for s in recent}),
             'as_of_date': today.isoformat()}
 
 
@@ -310,7 +316,7 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     # desconto minimo e margem suspeita pertencem aos modos legados e nao podem decidir
     # nada aqui -- por isso testam o modo pelo nome, nunca por `!= 'profit_or_discount'`.
     gate_mode = p['economics'].get('gate_mode')
-    legacy_discount_gate = gate_mode not in ('profit_or_discount', 'gross_margin')
+    legacy_discount_gate = gate_mode not in ('profit_or_discount', 'gross_margin', 'longterm')
     observed_language, language_source = listing_language(listing)
     review, reject = [], []
     gr = grading.grade_from_title(listing.title, allow=frozenset(cfg['graded_allow']))
@@ -340,6 +346,11 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         review.append('certificadora-ou-nota-a-confirmar')
     if gr.status == 'out_of_scope' and 'sem nota' not in gr.reason:
         reject.append('certificadora-ou-nota-fora-do-escopo')
+    if gate_mode == 'longterm':
+        if grade and grade.key != 'PSA 10':
+            reject.append('longo-prazo-apenas-PSA-10')
+        if card.language not in ('EN', 'JP'):
+            reject.append('longo-prazo-idioma-fora-do-escopo')
     if re.search(r'\bPSA\s*9[.,]5\b', listing.title, re.I):
         reject.append('PSA-nao-possui-nota-9.5')
     if listing.currency != 'USD':
@@ -397,6 +408,9 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         review.append('preco-invalido')
     elif price < Decimal(str(cfg.get('min_price_usd', 10))):
         reject.append('preco-abaixo-do-piso')
+    if (gate_mode == 'longterm' and listing.currency == 'USD' and price is not None
+            and price > Decimal(str(cfg['investment']['max_item_price_usd']))):
+        reject.append('preco-acima-do-orcamento-por-carta')
     if grade and cfg.get('allowed_grades') and grade.key not in cfg['allowed_grades']:
         reject.append('nota-fora-do-filtro-da-execucao')
     if grade and cfg.get('graded_allow') and grade.key not in cfg['graded_allow']:
@@ -513,6 +527,9 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         review.append('cobertura-dos-US10-a-confirmar')
     if reserve is None:
         review.append('reserva-por-slab-indefinida')
+    if (gate_mode == 'longterm' and listing.currency == 'USD' and reserve is not None
+            and money(listing.shipping) is not None and money(listing.shipping) > reserve):
+        review.append('frete-observado-excede-reserva-de-envio-impostos')
     fixed = [money(costs.get(key)) for key in ('comc_processing_usd', 'comc_storage_usd')]
     if fixed[1] is None and costs.get('storage_horizon_days') is not None:
         from .comc_costs import estimate_storage
@@ -538,15 +555,17 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
         details['investment_known_subtotal'] = amount(investment)
         if all(v is not None for v in fixed) and costs.get('coverage_confirmed') and costs.get('covers') == ['shipping', 'taxes']:
             details['investment_total'] = amount(investment)
+            details['investment_total_exact'] = str(investment)
             if resale and resale['price'] is not None and sell is not None and cashout is not None and costs.get('fee_basis') == 'sale_then_cashout':
                 gross = Decimal(resale['price_exact'])
                 net = gross * (1-sell/100) * (1-cashout/100)
                 profit = net-investment
                 details.update(profit_estimate=amount(profit), net_margin_percent=amount(profit/gross*100),
-                               net_roi_percent=amount(profit/investment*100), net_sale_proceeds=amount(net))
+                               net_roi_percent=amount(profit/investment*100), net_sale_proceeds=amount(net),
+                               net_sale_proceeds_exact=str(net))
                 details['costs']['selling_fee_usd'] = amount(gross*sell/100)
                 details['costs']['cashout_fee_usd'] = amount(gross*(1-sell/100)*cashout/100)
-                if profit <= 0 and gate_mode != 'gross_margin':
+                if profit <= 0 and gate_mode not in ('gross_margin', 'longterm'):
                     reject.append('lucro-nao-positivo')
                 if gate_mode == 'profit_or_discount':
                     profit_min = money(p['economics'].get('min_profit_usd'))
@@ -559,7 +578,7 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                                                 'discount_pass': discount_pass, 'strictly_above': True}
                     if profit_min is not None and discount_min is not None and not (profit_pass or discount_pass):
                         reject.append('nao-atende-lucro-ou-desconto-minimo')
-                elif gate_mode != 'gross_margin':
+                elif gate_mode not in ('gross_margin', 'longterm'):
                     # Em `gross_margin` a conta com taxas acima e so informacao no JSON.
                     for key, actual in [('min_profit_usd', profit), ('min_net_margin_percent', profit/gross*100),
                                         ('min_net_roi_percent', profit/investment*100)]:
@@ -571,7 +590,7 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     # de-revenda') e, dentro daquele `if`, nenhum veredito economico saia. A margem bruta
     # nao usa custo nenhum: basta preco e referencia. Comparacao em Decimal exato, aprovada
     # ESTRITAMENTE acima do limiar; o arredondamento existe so na saida.
-    if gate_mode == 'gross_margin':
+    if gate_mode in ('gross_margin', 'longterm'):
         # Clear the legacy PSA-comparison return even when own resale is absent.
         # JSON and the report must not publish that different base as gross return.
         opp.gross_margin_pct = None
@@ -589,14 +608,14 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
             gross_margin = (base - price) / price * 100
             opp.gross_margin_pct = float(gross_margin)
             margin_pass = threshold is not None and gross_margin > threshold
-            details['economic_gate'] = {'mode': 'gross_margin',
+            details['economic_gate'] = {'mode': gate_mode,
                                         'gross_margin_percent': amount(gross_margin),
                                         'gross_margin_percent_exact': str(gross_margin),
                                         'margin_base': amount(base),
                                         'margin_base_source': 'resale',
                                         'threshold': float(threshold) if threshold is not None else None,
                                         'margin_pass': margin_pass, 'strictly_above': True}
-            if threshold is not None and not margin_pass:
+            if gate_mode == 'gross_margin' and threshold is not None and not margin_pass:
                 reject.append('abaixo-da-margem-bruta-minima')
             if threshold is not None:
                 # Teto do gate: maior preco que ainda aprova, arredondado para BAIXO ao
@@ -614,6 +633,26 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
                 cap = gate_cap if atual is None else min(atual, gate_cap)
                 details['comparison_cap'] = amount(cap)
                 details['comparison_cap_exact'] = str(cap)
+    if gate_mode == 'longterm':
+        # Entry ceiling is NOT an approval: thesis/evidence must also pass. The
+        # 120-day legacy exit-cost model is a present-day stress check, not a
+        # forecast of custody costs or return over the 3–5-year holding horizon.
+        investment_exact = money(details.get('investment_total_exact'))
+        net_exact = money(details.get('net_sale_proceeds_exact'))
+        margin_cap = money(details.get('comparison_cap_exact'))
+        entry_cap = None
+        if (investment_exact is not None and net_exact is not None and margin_cap is not None
+                and details.get('economic_gate') and price is not None):
+            net_cap_exact = net_exact - (investment_exact - price)
+            net_cap = net_cap_exact.quantize(Decimal('0.01'), rounding=ROUND_DOWN)
+            if net_cap == net_cap_exact:
+                net_cap -= Decimal('0.01')
+            entry_cap = max(Decimal(0), min(margin_cap, net_cap,
+                                Decimal(str(cfg['investment']['max_item_price_usd']))))
+        details['entry_item_cap'] = amount(entry_cap)
+        details['entry_item_cap_exact'] = str(entry_cap) if entry_cap is not None else None
+        details['entry_cap_conditional'] = True
+        details['holding_return_forecast'] = None
     for key in policy_economic_keys(p['economics']):
         if money(p['economics'].get(key)) is None:
             review.append(f'{key}-indefinido')
@@ -629,9 +668,9 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     # Corte proprio do modo `gross_margin`. Ausente, cai no corte legado do topo do
     # config (60): fail-safe, revisa MAIS e nunca menos.
     suspicious = (money(p['economics'].get('suspicious_gross_margin_percent'))
-                  if gate_mode == 'gross_margin' else None)
+                  if gate_mode in ('gross_margin', 'longterm') else None)
     suspicious = float(suspicious) if suspicious is not None else cfg.get('suspicious_margin_percent', 60)
-    if gate_mode == 'gross_margin':
+    if gate_mode in ('gross_margin', 'longterm'):
         gate = details.get('economic_gate') or {}
         actual = money(gate.get('gross_margin_percent_exact'))
         if actual is not None and actual > Decimal(str(suspicious)):
@@ -643,4 +682,17 @@ def evaluate(card, listing, fair=None, config=None, refs=None, **kwargs):
     opp.verdict = 'REJEITAR' if reject else 'REVISAR' if review else 'APROVAR'
     details['rejection_reasons'] = reject
     details['review_reasons'] = list(dict.fromkeys(review))
+    if gate_mode == 'longterm':
+        from .investment import apply
+        try:
+            apply(opp, cfg)
+        except Exception as exc:
+            # A classifier defect must keep the listing visible, never leave
+            # the provisional policy APROVAR as the final investment status.
+            opp.verdict = 'REJEITAR' if reject else 'REVISAR'
+            opp.reasons.append('investment-assessment-error')
+            details['investment_assessment'] = {
+                'classification': opp.verdict, 'error': type(exc).__name__,
+                'thesis': {'status': 'unconfirmed'}, 'entry': {'status': 'unconfirmed'},
+                'evidence': {'status': 'insufficient'}, 'automatic_purchase': False}
     return opp

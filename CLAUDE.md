@@ -2,22 +2,34 @@
 
 # Instruções de desenvolvimento — EBAY PSA
 
-As instruções do projeto EBAY PSA de 2026-09-05 substituem as regras econômicas
+As instruções do projeto EBAY PSA de 2026-09-11 substituem as regras econômicas
 anteriores deste arquivo. O histórico integral permanece no Git. Leia
 [`docs/EBAY_PSA.md`](docs/EBAY_PSA.md), [`config.yaml`](config.yaml) e os testes
 antes de alterar regras. O código, a configuração e os testes demonstram o que
 está implementado; a documentação registra a intenção.
 
-- Apenas cartas já certificadas, priorizando PSA. Não reativar raw por argumento CLI.
+- No modo padrão `longterm`, apenas PSA 10, EN/JP, preço fixo, item nos EUA e
+  preço do item até US$500. Não reativar raw por argumento CLI.
 - Referência: vendas concluídas PSA da mesma carta, coleção, número, variante,
   idioma e nota correspondente. Não usar preços pedidos como prova de revenda.
-- BGS: teto configurado de PSA +5%; nota 9,5 usa PSA 9 +5%, sem acumular ajustes
+- Modos econômicos legados preservam outras certificadoras/notas. Neles, BGS:
+  teto configurado de PSA +5%; nota 9,5 usa PSA 9 +5%, sem acumular ajustes
   quando a combinação estiver indefinida. PSA não possui 9,5.
 - TAG 10 equivale a PSA 10 para comparação estratégica. Revenda em outra
   certificadora depende de vendas próprias; categorias especiais ficam separadas.
 - CGC: preço do item até 40% da referência PSA ajustada (confirmado).
-- Regra econômica: lucro estimado >US$40 OU desconto >30%, preservando lucro positivo.
-- US$10 cobrem envios/impostos até COMC. Elite US$2,50; venda 5%; saque 10%
+- Regra vigente: `gate_mode: longterm`, três eixos separados — tese, entrada e
+  evidência. Margem bruta mínima configurada **20%**, estritamente acima:
+  `(revenda comprovada − preço do item) / preço do item ×100`. Não é desconto.
+  Margem sozinha não aprova; exige tese favorável, evidência adequada e lucro
+  líquido operacional atual positivo com custos completos.
+- Tese vem de arquivo privado `--thesis-file`, com demanda, importância
+  colecionável, oferta e resiliência documentadas por fonte, data e justificativa.
+  Falta de tese é REVISAR; LP1, preço baixo, SIR e raw ×3 não suprem evidência.
+- Evidência adicional: ≥9 vendas comparáveis nos últimos 90 dias, distribuídas
+  em ≥2 meses-calendário, contadas antes do limite de 10 vendas da mediana.
+  Não apresentar essa amostra observada como o mercado eBay inteiro.
+- US$10 estimam envios/impostos até COMC. Elite US$2,50; venda 5%; saque 10%
   informado pelo operador; horizonte 120 dias (faixa solicitada 90–120).
 - Armazenamento calculado com carência; segurança adicional sem carência.
 - Dispersão máxima 30%; BGS 9,5 sem acumulação (PSA 9 ×1,05). Decisões delegadas
@@ -28,20 +40,22 @@ está implementado; a documentação registra a intenção.
   desconto, margem sobre a venda e retorno sobre o investimento.
 - Comprar no vault é compatível e preferencial quando confirmado. Revenda COMC;
   nunca depender de listarmos diretamente no vault.
-- APROVAR / REJEITAR / REVISAR, sempre com motivos e evidências. APROVAR é
-  aprovação na análise, sem executar compra. Falta de informação não aprova.
+- No modo `longterm`: OPORTUNIDADE / MONITORAR / REVISAR / REJEITAR, sempre com
+  motivos e os três eixos. OPORTUNIDADE é classificação analítica, sem recomendar
+  ou executar compra. Modos legados mantêm APROVAR / REVISAR / REJEITAR.
+- Custo de saída em 120 dias não é previsão financeira para 3–5 anos. Não gerar
+  cenários de preço nem probabilidades de valorização sem modelo validado.
 - Manter links, datas, contagem de vendas, diferenças relevantes e baixa liquidez.
 - Mudanças econômicas exigem testes de regressão; registrar a alteração no changelog.
 - Distinguir planejado, implementado, testado e validado em execução real.
 - Consolidar regras, implementar, testar, validar busca real e só então automatizar.
 
-Coluna "Longo prazo" (`src/longterm.py`, [`docs/LONGO_PRAZO.md`](docs/LONGO_PRAZO.md)) é
-**informativa**: descreve a carta e a fragilidade do dado, e nunca é gate (filtro que decide
-se a linha entra), veredito nem ranking (ordem da tabela). O ranking vigente é o da política
-`slab_strategy` versão 2026-09-05.4 (veredito, depois PSA primeiro, depois ROI líquido,
-depois vault confirmado); a escada ROI bruto → desconto → spread → rank de popularidade é
-**legada**, só de artefatos do motor `src/scorer.py` anterior à política. Calibração da
-coluna é inicial e não validada; ela não recomenda compra.
+A coluna LP (`src/longterm.py`) permanece **diagnóstico legado informativo**, sem
+decidir gate, veredito ou ranking. A análise vigente de investimento
+(`src/investment.py`, [`docs/LONGO_PRAZO.md`](docs/LONGO_PRAZO.md)) é distinta: tese,
+entrada e evidência participam da classificação. Não converter a média LP normalizada
+por componentes disponíveis em confiança ou tese favorável. A escada de popularidade
+de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
 
 ## Repositório e operação
 
@@ -51,6 +65,12 @@ coluna é inicial e não validada; ela não recomenda compra.
 - As regras solicitadas pelo operador ficam versionadas em config, docs e testes.
 - `watchlist.yaml` é gerada e versionada: não editar manualmente. As entradas de
   catálogo são públicas e têm origem registrada em `src/catalog/README.md`.
+- Não há quota Top100 de cartas elegíveis. Os 100 personagens do catálogo são
+  metadados, não uma meta de oportunidades. O gerador não limita cartas por set por
+  padrão; `--max-cards` e `--card-offset` limitam apenas o processamento do scan.
+  Declarar seleção adiada e resultado parcial; nunca completar a lista afrouxando critérios.
+- Teses privadas, fontes de análise, preços e alvos do operador não entram no Git.
+  Não regenerar catálogo nem fazer coleta de mercado em uma tarefa apenas de código.
 - Percentuais inteiros: 20 significa 20%; null é pendência, nunca zero.
 - Credenciais são `EBAY_CLIENT_ID` e `EBAY_CLIENT_SECRET`, somente no ambiente.
 - CI offline: `python -m pytest -q`. Busca real: `python main.py --group 3`.

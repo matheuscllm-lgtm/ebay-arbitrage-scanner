@@ -37,9 +37,9 @@ def test_skill_uses_only_flags_the_cli_accepts_and_no_removed_modes():
     assert "--min-price 5" not in text
     assert "min_discount_percent: 20" not in text and "--min-discount 20" not in text
     # baldes do motor legado nao sao a entrega vigente
-    assert "SUSPEITO" not in text and "OPORTUNIDADE" not in text
-    for needle in ("APROVAR", "REJEITAR", "REVISAR", "DELIVERY_CHAT.md",
-                   "gate_mode: gross_margin", "min_gross_margin_percent: 43",
+    assert "SUSPEITO" not in text
+    for needle in ("OPORTUNIDADE", "MONITORAR", "REJEITAR", "REVISAR", "DELIVERY_CHAT.md",
+                   "gate_mode: longterm", "min_gross_margin_percent: 20",
                    "docs/EBAY_PSA.md", "slab_report"):
         assert needle in text, f"skill sem {needle!r}"
     # O gate vigente usa SO margem bruta: a skill nao pode voltar a vender o modo
@@ -55,7 +55,7 @@ def test_skill_and_docs_declare_the_gate_mode_the_config_actually_has():
     cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
     eco = cfg["slab_strategy"]["economics"]
     mode = eco["gate_mode"]
-    threshold_key = {"gross_margin": "min_gross_margin_percent",
+    threshold_key = {"gross_margin": "min_gross_margin_percent", "longterm": "min_gross_margin_percent",
                      "profit_or_discount": "min_discount_percent"}[mode]
     threshold = eco[threshold_key]
     assert isinstance(threshold, int), (

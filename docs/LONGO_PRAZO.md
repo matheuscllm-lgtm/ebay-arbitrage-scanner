@@ -1,13 +1,137 @@
-# Coluna "Longo prazo" — perfil da carta / fragilidade do dado
+# Longo prazo — tese, entrada e evidência
 
-Coluna **informativa** que acompanha cada anúncio na tabela de entrega (nos dois
+## Crivo vigente (`src/investment.py`)
+
+O modo `slab_strategy.economics.gate_mode: longterm` separa três eixos, sem
+esconder incerteza em uma nota média e sem produzir cenários de preço futuro.
+Ele considera apenas PSA 10 EN/JP, preço fixo, item nos EUA e preço do item até
+US$500. Capital e decisão final continuam com o operador.
+
+| Eixo | Estados | Informação que decide |
+|---|---|---|
+| Tese | `favorable`, `neutral`, `unfavorable`, `unconfirmed` | Quatro sinais documentados e atuais, independentes do preço do anúncio |
+| Entrada | `attractive`, `unattractive`, `unconfirmed` | Margem bruta estritamente acima de **20%** e lucro líquido operacional atual positivo com custos completos |
+| Evidência | `adequate`, `insufficient` | Identidade, vendedor, comparáveis, dispersão e recorrência observada |
+
+O critério de dois meses-calendário é um indício fraco de distribuição, não
+prova recorrência: vendas concentradas na virada de um mês podem satisfazê-lo.
+A curadoria de demanda e resiliência deve verificar esse risco de pico temporário.
+
+OPORTUNIDADE exige tese favorável, entrada atrativa e evidência adequada ao mesmo
+tempo. MONITORAR mantém uma tese neutra/favorável com dados suficientes, mas sem
+convergência completa para oportunidade, inclusive preço alto. REVISAR significa
+incerteza de dados ou referência; REJEITAR, restrição estrutural ou tese
+desfavorável. Nenhuma classe é recomendação de compra.
+
+### Tese documentada: convergência, não previsão
+
+Cada carta tem quatro sinais: `demand` (demanda perene), `collectibility`
+(importância da carta/arte), `supply` (oferta efetiva e provável) e `resilience`
+(resistência a hype e substitutos). Cada sinal exige direção, fonte HTTPS, data
+ISO e justificativa. Também se registra a condição que invalidaria a tese.
+
+- **Favorável:** os quatro sinais confirmados, demanda `supportive`, pelo menos
+  três sinais `supportive` e nenhum `adverse`.
+- **Desfavorável:** os quatro confirmados e demanda `adverse` ou pelo menos dois
+  sinais `adverse`.
+- **Neutra:** quatro confirmados, mas sem atender às duas regras anteriores.
+- **Não confirmada:** sinal ausente, data futura ou evidência com mais de
+  `max_thesis_age_days` (180 dias por padrão). Não vira favorável pela média dos
+  sinais restantes. Omitir `--thesis-file` é permitido, mas não aprova
+  oportunidades; informar caminho inexistente falha explicitamente.
+
+A validade formal de uma URL não prova seu conteúdo. Trata-se de curadoria manual
+do operador: o scanner não busca nem verifica automaticamente as fontes da tese.
+Popularidade, primeira aparição e arte relevante são argumentos possíveis, não
+pontuação automática. População baixa sem demanda não comprova escassez econômica;
+set fora de impressão não prova queda da oferta futura de PSA 10. População e
+ritmo de novas graduações precisam de fontes próprias quando usados na tese.
+
+### Arquivo privado de teses
+
+Carregar com `--thesis-file data/theses.yaml`. Formato abaixo é **sintético**, não
+uma carta nem uma oportunidade real; datas e fontes devem ser substituídas por
+evidência válida. Não versionar este arquivo preenchido nem seus resultados.
+
+```yaml
+version: 1
+cards:
+  - name: Example Card
+    set: Example Set
+    number: "1/100"
+    language: EN
+    grade: PSA 10
+    variants: []
+    invalidation: "Descrever o fato observável que invalidaria esta tese."
+    signals:
+      demand:
+        direction: supportive
+        source: https://example.test/demand
+        as_of: "2026-09-11"
+        reason: "Justificativa documentada da demanda."
+      collectibility:
+        direction: supportive
+        source: https://example.test/collectibility
+        as_of: "2026-09-11"
+        reason: "Justificativa da importância colecionável."
+      supply:
+        direction: neutral
+        source: https://example.test/supply
+        as_of: "2026-09-11"
+        reason: "Oferta conhecida, sem vantagem clara."
+      resilience:
+        direction: supportive
+        source: https://example.test/resilience
+        as_of: "2026-09-11"
+        reason: "Justificativa além de hype de curto prazo."
+```
+
+Direções aceitas: `supportive`, `neutral`, `adverse`. A identidade combina nome,
+set, número, idioma, nota e variantes explícitas; não há wildcard nem equivalência
+entre EN e JP. Duplicatas ou esquema inválido falham sem imprimir o conteúdo
+privado. Fontes, datas, justificativas e invalidação são preservadas no resultado
+local para auditoria. O cadastro não fornece preço justo nem altera vendas.
+
+### Entrada e evidência
+
+`min_gross_margin_percent: 20` significa **20%** sobre o preço do item:
+`(revenda comprovada − item) / item ×100`. Exatamente 20% não passa; a comparação
+é feita antes de arredondar. Não é desconto sobre a referência nem retorno all-in.
+No modo `longterm`, o piso de 20% é fixo; CLI/config com outro valor são rejeitados.
+Lucro líquido atual positivo também é obrigatório para OPORTUNIDADE, após a
+estimativa de custos existente. Os 120 dias do modelo COMC **não modelam custódia
+de 3–5 anos** e não permitem anunciar retorno líquido futuro.
+
+O eixo de evidência exige pelo menos `min_sales_90d: 9` vendas exatas observadas
+nos últimos 90 dias, distribuídas em `min_active_months_90d: 2` meses-calendário
+ou mais. Contar antes do corte das 10 vendas usadas na mediana evita truncar a
+liquidez. A referência mantém as janelas de 180/365 dias, guardas de identidade,
+exclusão de duplicatas/best offer sem preço confirmado e dispersão máxima de 30%.
+Recorrência aproximada de 3 vendas/mês não significa todos os negócios do eBay,
+compradores únicos ou liquidez garantida. Os limiares ainda exigem calibração
+empírica; não representam probabilidade de sucesso.
+
+### Sem Top100 de elegíveis
+
+O universo pesquisável e o lote operacional são diferentes de elegibilidade.
+Nenhuma quantidade mínima de oportunidades é exigida; zero é válido. Os 100
+personagens do catálogo não são 100 cartas para comprar. O gerador não limita
+cartas por set por padrão, mas mantém os outros filtros e a cobertura disponível.
+`--max-cards`/`--card-offset` recortam apenas o processamento e reportam adiados;
+não afrouxam a tese, a margem ou a evidência para preencher vagas.
+
+## Diagnóstico legado LP (`src/longterm.py`)
+
+A coluna LP **informativa** acompanha cada anúncio na tabela de entrega (nos dois
 geradores: `src/slab_report.render`, vigente, e a tabela legada de `src/report.py`).
 Ela descreve a carta e a qualidade do dado que sustenta a linha. **Não decide nada**:
 não muda veredito, não entra no gate (filtro obrigatório que decide se um anúncio
-entra na tabela), não entra no ranking, não recomenda. Capital é decisão do operador.
+entra na tabela), não entra no ranking, não recomenda. É separada do crivo de
+investimento acima: uma LP1 não equivale a `thesis.status: favorable`.
 
 Limiares e pontos são **calibração inicial, não validada** (nunca medidos contra o
-mercado real — como o outlook, que tem 1 snapshot só). Triagem descritiva, não previsão.
+mercado real). Triagem descritiva, não previsão. As seções abaixo documentam esse
+diagnóstico legado; suas heurísticas não preenchem os sinais da tese nova.
 
 ## Como ler a célula
 
@@ -126,9 +250,9 @@ teto **não** mexe na cobertura: cada flag continua contando como fonte que rodo
    insumo-chave em `n/d` ou cobertura de fragilidade abaixo do piso → **`LP2*`**.
 5. **LP3** caso contrário.
 
-Consequência declarada: no caminho da política (`slab_strategy`, vigente), o teto
-nesta rodada é **`LP2*`**, porque `ref-desalinhada` é `n/d` (`asks = {}`) até o operador
-decidir sobre o cálculo dos asks só para a flag informativa.
+Desde a revisão de 2026-09-09, `ref-desalinhada` é calculada também no caminho da
+política, com os anúncios já coletados. Não existe teto universal `LP2*`; a
+limitação depende dos dados e da cobertura daquela linha.
 
 ## O que NÃO é
 
@@ -166,7 +290,8 @@ backtest futuro só com ≥ 2 snapshots com ≥ 21 dias de intervalo.
 
 ## Limitações conhecidas
 
-- Bandas de B4 = faixas raw ×3, calibradas em n = 25 (dispersão p25 2,5× / p75 5,4×).
+- Bandas históricas de B4 derivaram de faixas raw ×3. Isso não é estimador válido
+  de PSA 10 e não pode preencher preço, referência ou tese do crivo vigente.
 - `chart_data` tem 6 buckets (Ungraded, Grade 7, 8, 9, 9.5, PSA 10): sem série própria
   de BGS/CGC/SGC/TAG — por isso o proxy PSA 10 é rotulado.
 - Histórico diário do tcgcsv por productId (market de carta solta EN) fica no backlog.

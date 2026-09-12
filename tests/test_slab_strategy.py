@@ -211,9 +211,15 @@ def test_run_scan_injects_policy_even_with_custom_config(monkeypatch):
     monkeypatch.setattr(scanner,'scan_card',scan)
     _,os,_,_,aborted=scanner.run_scan(config={'graded_only':False},log=lambda *a:None)
     assert not aborted and os[0].strategy['policy_version'] == policy_config()['slab_strategy']['version']
-    # O config injetado e o de producao (gate `gross_margin`): 75 contra referencia 100
-    # da 33,3% de margem bruta, abaixo do minimo -- e o veredito vem SO dessa conta.
-    assert os[0].verdict == 'REJEITAR' and 'abaixo-da-margem-bruta-minima' in os[0].reasons
+    # The injected production policy is now three-axis: a gross return above 20%
+    # cannot approve an undocumented thesis, nor is lack of a thesis a rejection.
+    gate = os[0].strategy['economic_gate']
+    assert gate['mode'] == 'longterm' and gate['threshold'] == 20
+    assert gate['margin_pass'] is True
+    assert os[0].verdict == 'REVISAR'
+    assert 'thesis-demand-unconfirmed' in os[0].reasons
+    assert os[0].strategy['investment_assessment']['thesis']['status'] == 'unconfirmed'
+    assert 'abaixo-da-margem-bruta-minima' not in os[0].reasons
     assert 'lucro-nao-positivo' not in os[0].reasons
 
 

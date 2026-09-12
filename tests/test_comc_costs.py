@@ -40,6 +40,9 @@ def test_missing_horizon_is_not_free_storage():
 
 def test_real_policy_costs_are_all_counted_once():
     c = policy_config(); c['slab_strategy']['evidence']['max_dispersion_percent'] = 30
+    # Historical approval mode isolates accounting; no synthetic investment thesis
+    # is needed to prove that fees and shipping are counted exactly once.
+    c['slab_strategy']['economics']['gate_mode'] = 'gross_margin'
     o = evaluate(CARD, listing(price=60, shipping=8), config=c, refs=refs(sales()))
     assert o.verdict == 'APROVAR'
     assert o.strategy['net_sale_proceeds'] == 85.5

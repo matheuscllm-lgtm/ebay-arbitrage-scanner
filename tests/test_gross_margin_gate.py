@@ -42,11 +42,13 @@ def evaluate_margin(reference, price=100, cfg=None):
 
 # --- o modo existe, valida e e o vigente no config de producao -----------------------
 
-def test_config_validation_accepts_gross_margin_mode():
+def test_config_defaults_to_longterm_but_accepts_legacy_gross_margin_mode():
     c = policy_config()
-    assert c['slab_strategy']['economics']['gate_mode'] == 'gross_margin'
+    assert c['slab_strategy']['economics']['gate_mode'] == 'longterm'
     threshold = c['slab_strategy']['economics']['min_gross_margin_percent']
-    assert threshold is not None and Decimal(str(threshold)) > 0
+    assert threshold == 20
+    c['slab_strategy']['economics']['gate_mode'] = 'gross_margin'
+    validate_config(c)
 
 
 def test_config_validation_rejects_unknown_mode_and_bad_threshold():
@@ -61,7 +63,7 @@ def test_config_validation_rejects_unknown_mode_and_bad_threshold():
 
 
 def test_pending_config_lists_the_key_of_the_active_gate():
-    c = policy_config()
+    c = gm_cfg()  # legacy mode still permits a pending/undefined floor
     c['slab_strategy']['economics']['min_gross_margin_percent'] = None
     pending = pending_config(c)
     assert 'economics.min_gross_margin_percent' in pending

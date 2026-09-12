@@ -76,11 +76,11 @@ def test_policy_report_prints_funnel_with_human_labels_and_policy_verdicts():
     tail = text.split("Funil da busca:")[1]
     assert "Anúncios analisados (após dedupe): 7" in tail
     assert "escopo exclusivo de slabs): 2" in tail
-    assert "Linhas APROVAR: 1" in tail and "Linhas REVISAR: 2" in tail
+    assert "Linhas OPORTUNIDADE: 1" in tail and "Linhas REVISAR: 2" in tail
     assert "Linhas REJEITAR (com motivo): 3" in tail
     assert "outros: weird=1" in tail            # contador sem rotulo nunca some
     assert '{"seen"' not in text                 # nao e mais JSON cru
-    assert "OPORTUNIDADE" not in text and "REJEITADO" not in text
+    assert "APROVAR" not in text and "REJEITADO" not in text
 
 
 def test_console_funnel_uses_policy_labels_when_policy_is_active(monkeypatch, tmp_path, capsys):
@@ -95,8 +95,8 @@ def test_console_funnel_uses_policy_labels_when_policy_is_active(monkeypatch, tm
                         lambda **kw: ({}, [opp], False, Counter(seen=1, rows_opportunity=1), False))
     assert main.main(["--out", str(tmp_path / "o.json"), "--csv", str(tmp_path / "o.csv")]) == 0
     out = capsys.readouterr().out
-    assert "Linhas APROVAR: 1" in out
-    assert "OPORTUNIDADE" not in out.split("Funil:")[1]
+    assert "Linhas OPORTUNIDADE: 1" in out
+    assert "APROVAR" not in out.split("Funil:")[1]
 
 
 def test_legacy_funnel_labels_unchanged_for_legacy_json():
@@ -119,9 +119,9 @@ def test_policy_report_header_states_collection_time_scope_and_policy_keys():
     stamp = payload["meta"]["timestamp"][:16].replace("T", " ")
     assert stamp in head and "UTC" in head
     assert "grupo `3`" in head and "3 carta(s)" in head
-    assert "2026-09-05.4" in head
-    for key in ("gate_mode: gross_margin", "min_profit_usd: 40",
-                "min_discount_percent: 30", "min_price_usd: 10"):
+    assert payload['meta']['config']['slab_strategy']['version'] in head
+    for key in ("gate_mode: longterm", "min_gross_margin_percent: 20", "20%",
+                "min_price_usd: 10"):
         assert key in head, key
     assert "chamadas à Browse API: 5" in head and "max_ebay_calls: 500" in head
     assert "max_pages: 3" in head

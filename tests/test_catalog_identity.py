@@ -51,8 +51,12 @@ def test_production_evidence_accepts_label_without_catalog_code():
     # Preco 125 contra referencia 200 = 60% de margem bruta, dentro da faixa normal do
     # gate. O preco antigo (50) dava 300% e desde 2026-09-09 pede conferencia de
     # identidade -- este teste e sobre evidencia de producao, nao sobre economia.
+    # Isolate the historical gross-margin mode: this regression validates identity,
+    # not the new requirement for a separately sourced long-term thesis.
+    c = policy_config()
+    c['slab_strategy']['economics']['gate_mode'] = 'gross_margin'
     o = evaluate(card, listing(price=125, title=title, item_aspects={'Set':['Temporal Forces']}),
-                 config=policy_config(), refs=refs(pool))
+                 config=c, refs=refs(pool))
     assert o.verdict == 'APROVAR', o.reasons
     assert o.strategy['psa_evidence']['n_used'] == 3
     assert discovery_query(card) == 'pokemon Gengar ex 193 Temporal Forces'
@@ -66,7 +70,10 @@ def test_collection_in_catalog_name_is_not_a_lot_but_real_lots_stay_rejected(set
     for sale in pool:
         sale['title'] = title
     c = policy_config()
-    # Preco 125 contra referencia 200 = 60% de margem bruta: acima do piso do gate (43)
+    # Historical-mode isolation keeps this test about lots versus set identity;
+    # an absent long-term thesis must not mask the expected identity behavior.
+    c['slab_strategy']['economics']['gate_mode'] = 'gross_margin'
+    # Preco 125 contra referencia 200 = 60% de margem bruta: acima do piso do gate (20)
     # e abaixo do corte de suspeita do modo (150). O preco antigo (50) dava 300% de
     # margem, que desde 2026-09-09 pede conferencia de identidade e sai REVISAR -- este
     # teste e sobre LOTE x COLECAO no nome do set, nao sobre economia.

@@ -112,7 +112,7 @@ class Opportunity:
     spread_psa10_pct: float   # quanto a PSA 10 vale acima do raw (%) (so p/ RAW)
     risk_flags: list = field(default_factory=list)
     score: float = 0.0        # 0-100
-    verdict: str = ""         # APROVAR / REVISAR / REJEITAR (politica) · OPORTUNIDADE / SUSPEITO / REJEITADO (legado)
+    verdict: str = ""         # longterm: OPORTUNIDADE / MONITORAR / REVISAR / REJEITAR; legacy policy: APROVAR
     fair_value_source: str = ""  # URL do PriceCharting (link de referencia)
     median_ask: float = 0.0   # mediana dos anuncios eBay da mesma grade (sanity check)
     trust_score: float = 0.0  # 0-100: confiabilidade do vendedor/anuncio (separado da margem)

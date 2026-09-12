@@ -5,22 +5,21 @@ Uso:
   python main.py --check-config               # regras e pendências da política, sem rede
   python main.py --list-groups                # lista os grupos da watchlist e sai
   python main.py --pricing-only               # so colunas informativas do PriceCharting (sem chaves)
-  python main.py --grades "PSA 10, CGC 10 Pristine"   # funil restrito a notas
-  python main.py --min-gross-margin 50        # altera a margem bruta minima deste run
+  python main.py --grades "PSA 10"           # único grade do modo longterm
+  python main.py --thesis-file private/theses.yaml --max-cards 25
   python main.py --watchlist w.yaml           # watchlist alternativa
 
 Depois do scan, a ENTREGA canonica sai de:
   python ebay_summary.py results/last_scan_g3.json -o results/ebay-<data>.md
   (JSON da política -> `src/slab_report.render`; `--sensitivity` so vale para JSON legado)
 
-Convencao de threshold deste repo: percentuais INTEIROS (30 = 30%).
+Convencao de threshold deste repo: percentuais INTEIROS (20 = 20%).
 Política vigente = bloco `slab_strategy` do config.yaml (docs/EBAY_PSA.md):
-`economics.gate_mode: gross_margin` com `min_gross_margin_percent` -- o gate usa SO
-margem bruta, sem taxa nenhuma (regra canonica da frota). Custos de intermediacao
-seguem calculados e reportados como INFORMACAO, fora do veredito. `--min-gross-margin`
-altera o limiar daquele run; `--min-discount` so tem efeito nos modos legados
-(`profit_or_discount` e o modo por `min_net_*`). Carta solta (raw) nao entra (`graded_only: true`): a flag antiga de
-raw e rejeitada com erro.
+`economics.gate_mode: longterm`: tese, entrada e evidência independentes.
+Piso fixo de 20% de margem bruta (revenda - item)/item, estritamente acima,
+mais proteção de entrada após custos. Sem tese documentada: REVISAR.
+`--min-gross-margin` só altera o piso em gross_margin legado; longterm mantém 20%.
+`--min-discount` só tem efeito nos modos legados. Apenas cartas já certificadas.
 """
 import argparse
 import io
@@ -30,6 +29,7 @@ import sys
 import yaml
 
 from src import report, scanner
+from src.selection import select_batch, validate_batch_options
 
 EXIT_ABORTED = 1
 
@@ -77,6 +77,10 @@ def apply_cli_overrides(config, *, min_gross_margin=None, log=print):
     economics = (config.get('slab_strategy') or {}).get('economics')
     if economics is None:
         return config
+    if economics.get('gate_mode') == 'longterm':
+        if min_gross_margin != 20:
+            raise ValueError('longterm mantém margem mínima de 20%; alteração não aplicada')
+        return config
     if economics.get('gate_mode') != 'gross_margin':
         log(f"AVISO: --min-gross-margin sem efeito com gate_mode "
             f"{economics.get('gate_mode')!r}: o limiar de margem bruta so decide no modo "
@@ -93,6 +97,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="eBay Pokemon TCG arbitrage scanner")
     ap.add_argument("--watchlist", default="watchlist.yaml")
     ap.add_argument("--config", default="config.yaml")
+    ap.add_argument('--thesis-file', default=None,
+                    help='YAML privado de teses documentadas; sem arquivo, tese não confirmada')
     ap.add_argument('--check-config', action='store_true', help='verifica regras e lista pendências sem consultar fontes')
     ap.add_argument("--pricing-only", action="store_true",
                     help="so colunas informativas do PriceCharting por carta (nao sao referencia "
@@ -102,13 +108,11 @@ def main(argv=None):
     ap.add_argument("--include-raw", action="store_true",
                     help="opcao legada: rejeitada; o projeto aceita apenas cartas certificadas")
     ap.add_argument("--grades", default="",
-                    help='restringe o funil DESTE run a notas especificas, separadas '
-                         'por virgula (ex.: --grades "PSA 10, CGC 10 Pristine, BGS 10 '
-                         'Black"). RAW e rejeitado (so cartas certificadas). Nota fora da '
-                         'allowlist erra ALTO')
+                    help='longterm admite só PSA 10; modos legados aceitam outras notas '
+                         'da allowlist, separadas por vírgula')
     ap.add_argument("--min-gross-margin", type=int, default=None, metavar="N",
                     help="Margem bruta%% minima (INTEIRO) deste run; sobrescreve "
-                         "min_gross_margin_percent do config (gate vigente, sem taxas)")
+                         "min_gross_margin_percent no modo legado; longterm mantém 20%%")
     ap.add_argument("--min-discount", type=int, default=None, metavar="N",
                     help="Desconto%% minimo (INTEIRO) deste run; sobrescreve "
                          "min_discount_percent do config (so tem efeito nos modos legados)")
@@ -116,6 +120,12 @@ def main(argv=None):
                     help="piso de preco (US$) deste run; sobrescreve min_price_usd")
     ap.add_argument("--max-pages", type=int, default=None, metavar="N",
                     help="paginas de 200 anuncios por busca na Browse API (default 3)")
+    ap.add_argument("--max-cards", type=int, default=None, metavar="N",
+                    help="limite operacional de cartas neste lote; não é quota de elegibilidade "
+                         "(padrão: todo o escopo)")
+    ap.add_argument("--card-offset", type=int, default=None, metavar="N",
+                    help="posição inicial no catálogo após filtro de grupo (zero-based); "
+                         "não reutilizar após mudar catálogo/ordem/grupo")
     ap.add_argument("--group", default="",
                     help="escaneia so as cartas do grupo indicado "
                          "(campo `group:` da watchlist); vazio = todas")
@@ -134,6 +144,17 @@ def main(argv=None):
 
     try:
         config = _load_config(args.config)
+        if args.max_cards is not None:
+            config['max_cards'] = args.max_cards
+        if args.card_offset is not None:
+            config['card_offset'] = args.card_offset
+        validate_batch_options(config.get('max_cards'), config.get('card_offset', 0))
+        if args.thesis_file:
+            from src.investment import load_profiles
+            try:
+                config['thesis_profiles'] = load_profiles(args.thesis_file)
+            except OSError:
+                raise ValueError('Arquivo privado de teses indisponível; nenhuma fonte consultada') from None
     except (ValueError, yaml.YAMLError) as exc:
         ap.error(str(exc))
     if args.check_config:
@@ -142,6 +163,10 @@ def main(argv=None):
         print(f'Política {config["slab_strategy"]["version"]}: estrutura válida.')
         for item in pending:
             print(f'REVISAR: {item}')
+        if config['slab_strategy']['economics'].get('gate_mode') == 'longterm':
+            print('Crivo: tese + entrada + evidência; margem mínima 20% (limite estrito).')
+            if not config.get('thesis_profiles'):
+                print('Teses documentadas não carregadas: candidatos ficarão em REVISAR; LP não substitui tese.')
         return 2 if pending else 0
     if args.confiavel:
         config["trusted_mode"] = True
@@ -152,7 +177,10 @@ def main(argv=None):
                   "já é verificado em toda linha); a flag fica registrada no meta do JSON.")
     if args.include_raw:
         ap.error("EBAY PSA aceita apenas cartas certificadas; --include-raw foi removido da estrategia")
-    apply_cli_overrides(config, min_gross_margin=args.min_gross_margin)
+    try:
+        apply_cli_overrides(config, min_gross_margin=args.min_gross_margin)
+    except ValueError as exc:
+        ap.error(str(exc))
     if args.min_discount is not None:
         config["min_discount_percent"] = int(args.min_discount)
         if config['slab_strategy']['economics'].get('gate_mode') == 'profit_or_discount':
@@ -176,10 +204,16 @@ def main(argv=None):
             sys.exit(f"ERRO: {e}")
     if not config.get("graded_allow"):
         config["graded_allow"] = sorted(scanner.grading.DEFAULT_GRADED_ALLOW)
+    try:
+        validate_config(config)  # includes the --grades scope, before any network call
+    except ValueError as exc:
+        ap.error(str(exc))
 
     try:
         cards_in_scope = scanner.filter_group(
             scanner.load_watchlist(args.watchlist), args.group)
+        _, batch = select_batch(cards_in_scope, config.get('max_cards'),
+                                config.get('card_offset', 0))
     except ValueError as e:  # grupo fora de 1-12 / spec invalida: erro ALTO, nunca traceback
         sys.exit(f"ERRO: {e}")
 
@@ -187,6 +221,11 @@ def main(argv=None):
         watchlist_path=args.watchlist, config=config,
         pricing_only=args.pricing_only, group=args.group,
     )
+    scope_limited = bool(batch['scope_limited'])
+    if scope_limited:
+        print(f"LOTE LIMITADO: {batch['cards_scheduled']} de {batch['cards_in_scope']} "
+              f"cartas programadas; {batch['cards_deferred']} fora deste lote. "
+              "Não representa coleta do catálogo inteiro nem quantidade de cartas elegíveis.")
 
     # O artefato JSON (meta + funil + rows) e montado ANTES de imprimir: o console
     # da politica usa o MESMO meta da entrega canonica (review do PR #33 -- sem
@@ -206,16 +245,19 @@ def main(argv=None):
             print(report.fair_value_markdown(card, fair))
             print()
     if opportunities:
-        print("## Candidatos avaliados — APROVAR / REJEITAR / REVISAR\n")
+        print("## Candidatos avaliados — classificação técnica, não recomendação\n")
         print(report.to_markdown(opportunities, meta=payload["meta"] if payload else None))
         csv_path = args.csv
         if aborted:
             base, ext = os.path.splitext(csv_path)
             csv_path = f"{base}.aborted{ext or '.csv'}"
+        elif scope_limited:
+            base, ext = os.path.splitext(csv_path)
+            csv_path = f"{base}.batch{ext or '.csv'}"
         path = report.to_csv(opportunities, csv_path)
         print(f"\nRegistro local: {path} ({len(opportunities)} linhas)")
     # Rotulos do funil no vocabulario do motor ativo (politica: APROVAR/REJEITAR).
-    funnel = (report.policy_funnel_lines(stats) if "slab_strategy" in config
+    funnel = (report.policy_funnel_lines(stats, mode=config['slab_strategy']['economics'].get('gate_mode')) if "slab_strategy" in config
               else report.funnel_lines(stats))
     print("Funil: " + " · ".join(funnel))
 
@@ -234,6 +276,9 @@ def main(argv=None):
             # irmao, marcado aborted=true.
             base, ext = os.path.splitext(args.out)
             out = f"{base}.aborted{ext or '.json'}"
+        elif scope_limited:
+            base, ext = os.path.splitext(args.out)
+            out = f"{base}.batch{ext or '.json'}"
         out_path = report.write_json(payload, out)
         print(f"Artefato JSON: {out_path} ({len(payload['rows'])} rows) -- "
               f"entrega: python ebay_summary.py {out_path} -o results/ebay-<data>.md")

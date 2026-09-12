@@ -53,6 +53,11 @@ def _gate_keys(cfg, economics):
     (estao no config, e o operador as encontra la), mas ROTULADAS como sem efeito, e
     depois do unico limiar que de fato decide."""
     mode = economics.get('gate_mode')
+    if mode == 'longterm':
+        return [f"`gate_mode: longterm`",
+                f"`min_gross_margin_percent: {_nd(economics.get('min_gross_margin_percent'))}` "
+                f"({_nd(economics.get('min_gross_margin_percent'))}%; limite estrito)",
+                'tese favorável + evidência suficiente + entrada; margem isolada não aprova']
     if mode == 'gross_margin':
         return [f"`gate_mode: {_nd(mode)}`",
                 f"`min_gross_margin_percent: {_nd(economics.get('min_gross_margin_percent'))}`",
@@ -102,6 +107,8 @@ def render(payload):
     rows = payload.get('rows', [])
     counts = Counter(r['verdict'] for r in rows)
     meta = payload.get('meta') or {}
+    investment_mode = ((meta.get('config') or {}).get('slab_strategy') or {}).get('economics', {}).get('gate_mode') == 'longterm' or any(
+        (r.get('strategy') or {}).get('investment_assessment') for r in rows)
     lines = ['# EBAY PSA — avaliação de cartas certificadas', '',
              f'{len(rows)} candidatos: {counts["APROVAR"]} APROVAR, {counts["REVISAR"]} REVISAR, {counts["REJEITAR"]} REJEITAR.', '',
              # Coluna informativa (docs/LONGO_PRAZO.md): contagem por classe; LP2* conta como LP2.
@@ -111,6 +118,20 @@ def render(payload):
              'APROVAR é aprovação na análise; nenhuma compra é executada.', '',
              '| Carta / coleção / idioma / nota | Compra US$ | Investimento US$ | PSA original US$ | Comparação US$ | Revenda US$ | Lucro US$ | Desconto % | Margem bruta % | Margem líquida % | ROI líquido % | Decisão | Longo prazo | Links |',
              '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|']
+    if investment_mode:
+        lines[2] = (f'{len(rows)} anúncios avaliados: {counts["OPORTUNIDADE"]} OPORTUNIDADE, '
+                    f'{counts["MONITORAR"]} MONITORAR, {counts["REVISAR"]} REVISAR, '
+                    f'{counts["REJEITAR"]} REJEITAR. Sem quota mínima de elegíveis.')
+        lines[8] = 'Classificação técnica, não recomendação nem execução de compra. LP é apenas diagnóstico auxiliar.'
+        lines[-2] = lines[-2].replace('| Decisão |', '| Decisão | Tese | Entrada | Evidência |')
+        lines[-1] += '---|---|---|'
+    selection = meta.get('selection') or {}
+    if selection.get('scope_limited'):
+        lines[2:2] = ['LOTE LIMITADO: ' +
+                      f"{_nd(selection.get('cards_scheduled'))} programadas de "
+                      f"{_nd(selection.get('cards_in_scope'))} no escopo; "
+                      f"{_nd(selection.get('cards_deferred'))} fora deste lote, não rejeitadas. "
+                      'Este resultado não representa a cobertura de todo o catálogo.', '']
     if meta.get('aborted'):
         # Causa da parcialidade (review #32): parada antecipada x erros contados no funil.
         cause = ('parada antecipada (autenticação, cota ou API): cartas restantes NÃO foram varridas'
@@ -129,6 +150,9 @@ def render(payload):
                 num(gross_margin_value(r)),
                 num(s['net_margin_percent']),num(s['net_roi_percent']),r['verdict'],
                 longterm_cell(r),links_cell(r.get('url'), r.get('pc_url'))]
+        if investment_mode:
+            assessment = s.get('investment_assessment') or {}
+            values[-2:-2] = [_axis(assessment.get(axis)) for axis in ('thesis', 'entry', 'evidence')]
         lines.append('| '+f'[{label}]({md_url(r["url"])})'+' | '+' | '.join(values)+' |')
     for r in rows:
         s=r['strategy']
@@ -157,6 +181,16 @@ def render(payload):
                   'Ajustes de comparação: '+escape_md(json.dumps(s['adjustments']))+'.',
                   'Teto de comparação da certificadora (preço do item): US$ '+num(s['comparison_cap'])+'.',
                   'Regra econômica aplicada: '+escape_md(json.dumps(s.get('economic_gate', {'status': 'pendente'}), ensure_ascii=False))+'.']
+        assessment = s.get('investment_assessment')
+        if assessment:
+            lines += ['', 'Crivo de investimento: ' + escape_md(json.dumps(assessment, ensure_ascii=False)) + '.',
+                      'Teto condicional do item (ainda exige tese/evidência): US$ ' + num(s.get('entry_item_cap')) + '.',
+                      'Custos de saída atuais são um teste de entrada; o modelo de 120 dias não projeta retorno ou custódia de 3–5 anos.']
+            for signal, evidence in (assessment.get('thesis', {}).get('signals') or {}).items():
+                if evidence.get('source'):
+                    lines.append(f'- Tese {escape_md(signal)}: '
+                                 f'[{escape_md(evidence.get("as_of", "n/d"))}]({md_url(evidence["source"])}) '
+                                 '(fonte informada pelo operador; não verificada pelo scanner).')
         if s['costs'].get('storage_forecast'):
             lines.append('Projeção de armazenamento e segurança: '+escape_md(json.dumps(s['costs']['storage_forecast'], ensure_ascii=False))+'.')
         for kind in ('psa','resale'):
@@ -175,8 +209,17 @@ def render(payload):
     # Funil com rotulos humanos (nada some: contador sem rotulo sai em "outros: ...").
     # Sem funil no meta = n/d: um dict vazio viraria "analisados: 0", zero inventado.
     funnel = meta.get('funnel')
-    lines += ['', 'Funil da busca: ' + (escape_md(' · '.join(policy_funnel_lines(funnel))) if funnel is not None
+    lines += ['', 'Funil da busca: ' + (escape_md(' · '.join(policy_funnel_lines(funnel, mode='longterm' if investment_mode else None))) if funnel is not None
                                        else 'n/d (sem metadados do scan; ver a entrega canônica via ebay_summary.py)') + '.']
-    lines += ['', 'Desconto = (comparação − compra)/comparação. A coluna Margem bruta mostra o retorno bruto sobre a compra = (revenda da certificadora − compra)/compra, sem taxas; é o valor usado no modo `gross_margin`, não margem sobre a venda. Sem esse cálculo no gate, fica pendente. Retorno elevado exige conferir identidade, referência e natureza do preço do anúncio. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.',
+    lines += ['', 'Desconto = (comparação − compra)/comparação. A coluna Margem bruta mostra o retorno bruto sobre a compra = (revenda da certificadora − compra)/compra, sem taxas; é o valor usado nos modos `gross_margin` e `longterm`, não margem sobre a venda. Sem esse cálculo no gate, fica pendente. Em `longterm`, margem é necessária mas não suficiente; tese e evidência decidem junto. Retorno elevado exige conferir identidade, referência e natureza do preço do anúncio. Margem líquida = lucro/venda bruta. ROI líquido = lucro/investimento. Valores pendentes nunca são zero.',
               '', LONGTERM_LEGEND, '']
     return '\n'.join(lines)
+
+
+def _axis(axis):
+    labels = {'favorable': 'favorável', 'neutral': 'neutra/mista',
+              'unfavorable': 'desfavorável', 'unconfirmed': 'n/d',
+              'attractive': 'adequada', 'unattractive': 'insuficiente',
+              'adequate': 'suficiente', 'insufficient': 'insuficiente'}
+    status = (axis or {}).get('status')
+    return escape_md(labels.get(status, status or 'n/d'))

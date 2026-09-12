@@ -75,8 +75,24 @@ def validate_config(config):
                 'min_discount_percent', 'min_gross_margin_percent'):
         number(p['economics'].get(key), f'economics.{key}', nullable=True)
     mode = p['economics'].get('gate_mode', 'all_minima')
-    if mode not in ('all_minima', 'profit_or_discount', 'gross_margin'):
+    if mode not in ('all_minima', 'profit_or_discount', 'gross_margin', 'longterm'):
         fail('economics.gate_mode')
+    if mode == 'longterm':
+        # Single explicit entry floor throughout this strategy; historical
+        # configurable gross-only thresholds remain in the legacy mode.
+        number(p['economics'].get('min_gross_margin_percent'),
+               'longterm.min_gross_margin_percent: 20%', low=20, high=20)
+        inv = config.get('investment')
+        if not isinstance(inv, dict):
+            fail('investment deve ser um objeto')
+        number(inv.get('max_item_price_usd'), 'investment.max_item_price_usd', low=1, high=500)
+        for key in ('min_sales_90d', 'min_active_months_90d', 'max_thesis_age_days'):
+            if type(inv.get(key)) is not int or inv[key] < 1:
+                fail(f'investment.{key}')
+        if inv['min_active_months_90d'] > 4:
+            fail('investment.min_active_months_90d')
+        if config.get('allowed_grades') and set(config['allowed_grades']) != {'PSA 10'}:
+            fail('longterm admite apenas PSA 10')
     if mode == 'profit_or_discount' and p['economics'].get('require_positive_profit') is not True:
         fail('economics.require_positive_profit')
     for key, default in [('min_price_usd', 10), ('trusted_min_feedback', 50), ('suspicious_margin_percent', 60)]:
@@ -97,7 +113,7 @@ def economic_keys(economics):
     margem bruta (sem taxa nenhuma), entao as chaves de lucro/taxa dos modos legados
     nao sao exigidas nem viram pendencia."""
     mode = economics.get('gate_mode')
-    if mode == 'gross_margin':
+    if mode in ('gross_margin', 'longterm'):
         return ('min_gross_margin_percent',)
     if mode == 'profit_or_discount':
         return ('min_profit_usd', 'min_discount_percent')
