@@ -1,4 +1,18 @@
 
+## 2026-09-12 — pré-seleção dinâmica antes da curadoria/eBay
+
+- Novo `preselect.py`: referências novas PSA 10 EN/JP, comparação exata por
+  variante e os mesmos pisos de liquidez/dispersão; CANDIDATA / REVISAR /
+  FORA_DO_ESCOPO. Não avalia tese, preço de anúncio, custos ou investimento.
+- Sem meta de elegíveis; lote limita somente trabalho. Referência acima de
+  US$500 não exclui carta: o limite de compra depende do anúncio posterior.
+- JSON privado reutilizável como watchlist, preservando colisões de edição do
+  catálogo completo. Scanner posterior renova preços e verifica todos os eixos.
+- Cache novo por execução, todas as linhas auditáveis, falhas explícitas,
+  interrupção pela proteção da fonte e criação exclusiva de saídas privadas.
+- Testes offline com dados sintéticos; coleta de mercado não é validada por CI.
+  Teses, alvos, preços, resultados e credenciais não entram no repositório.
+
 ## 2026-09-11 — tese, entrada e evidência; elegibilidade sem quota
 
 - Política padrão `longterm` (2026-09-11.1): PSA 10 EN/JP, preço fixo nos EUA,
