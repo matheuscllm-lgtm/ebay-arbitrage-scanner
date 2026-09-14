@@ -92,6 +92,17 @@ entre EN e JP. Duplicatas ou esquema inválido falham sem imprimir o conteúdo
 privado. Fontes, datas, justificativas e invalidação são preservadas no resultado
 local para auditoria. O cadastro não fornece preço justo nem altera vendas.
 
+Prática validada em 2026-09-12 (piloto): gere o arquivo como **esqueleto** — identidade
+copiada do JSON de pré-seleção (`name`, `set`, `number`, `language`, `grade: PSA 10`,
+`variants: []`) e todo o resto em `null`. O loader recusa o arquivo inteiro
+(`Invalid thesis field: cards[i].<campo>`) até o último campo ser preenchido — use isso
+como checklist; **nunca** use URL/data de exemplo como placeholder, porque uma URL válida
+de exemplo viraria sinal "confirmado". O `set` tem de ser a string **exata** da watchlist
+(`SV: Paldean Fates`, não `Paldean Fates`): identidade diferente não casa nenhum anúncio e
+a carta cai em REVISAR como tese não confirmada. Confira antes do scan:
+`python main.py --check-config --thesis-file private/theses.yaml --watchlist <json da pré-seleção>`
+imprime quantas teses têm carta correspondente (só contagens, nunca identidades).
+
 ### Entrada e evidência
 
 `min_gross_margin_percent: 20` significa **20%** sobre o preço do item:

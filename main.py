@@ -167,6 +167,24 @@ def main(argv=None):
             print('Crivo: tese + entrada + evidência; margem mínima 20% (limite estrito).')
             if not config.get('thesis_profiles'):
                 print('Teses documentadas não carregadas: candidatos ficarão em REVISAR; LP não substitui tese.')
+            else:
+                # Guard against a thesis that matches no card: the scan would silently
+                # leave that card in REVISAR (thesis unconfirmed). Counts only — no
+                # private identity is printed.
+                from src.investment import watchlist_coverage
+                try:
+                    cards = scanner.load_watchlist(args.watchlist)
+                except OSError:
+                    print('Watchlist indisponível: cobertura das teses não conferida.')
+                else:
+                    cov = watchlist_coverage(config['thesis_profiles'], cards)
+                    print(f"Teses: {cov['profiles']} carregadas · {cov['matched']} com carta na watchlist · "
+                          f"{cov['unmatched']} sem carta correspondente "
+                          "(identidade exata: nome, set, número, idioma).")
+                    if cov['unmatched']:
+                        print(f"REVISAR: {cov['unmatched']} tese(s) sem carta correspondente na watchlist "
+                              "informada; no scan essas cartas ficariam em REVISAR (tese não confirmada). "
+                              "Nenhuma identidade é impressa.")
         return 2 if pending else 0
     if args.confiavel:
         config["trusted_mode"] = True

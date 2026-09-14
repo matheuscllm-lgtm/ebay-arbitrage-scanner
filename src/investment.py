@@ -294,3 +294,25 @@ def apply(opp, config, today=None):
     opp.reasons = list(dict.fromkeys(list(opp.reasons) + assessment["reasons"]))
     opp.strategy["investment_assessment"] = assessment
     return opp
+
+
+def _card_identity(name, set_name, number, language):
+    return json.dumps([str(name).strip(), str(set_name).strip(), str(number).strip(),
+                       str(language).strip()], ensure_ascii=False, separators=(",", ":"))
+
+
+def watchlist_coverage(profiles, cards):
+    """Count loaded profiles whose exact card identity exists in the watchlist.
+
+Identity is name + set + number + language, exactly as ``identity_key`` compares
+them at scan time; grade is always PSA 10 and variants depend on the listing, so
+neither takes part here. A profile whose set is spelled differently from the
+watchlist never matches and would leave that card in REVISAR (thesis unconfirmed).
+Returns counts only: no private identity is echoed.
+"""
+    known = {_card_identity(card.name, card.set_name, card.number, card.language)
+             for card in cards}
+    matched = sum(_card_identity(raw["name"], raw["set"], raw["number"], raw["language"]) in known
+                  for raw in profiles.values())
+    return {"profiles": len(profiles), "matched": matched,
+            "unmatched": len(profiles) - matched}
