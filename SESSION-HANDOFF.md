@@ -83,6 +83,17 @@ recalibrar a régua, trocando o PERFIL de fama (personagem, raridade, faixa de p
 eixos, escassez e demanda. O coletor de população é a única peça que exige fonte de dado nova;
 verificar acesso e limite de requisição da PSA antes de prometer prazo.
 
+> **Atualização 2026-09-21 — o coletor de população JÁ EXISTE, não duplicar aqui.** Foi
+> construído no repo `pokemon-longterm-outlook` (PR #27, modo `--lowpop`):
+> `outlook/psa10.py::fetch_psa10(nome, set, número)` lê da página da carta no PriceCharting
+> (sem navegador, ~3 s/carta, cache em disco de 1 dia) o censo PSA e CGC por nota
+> (`pop_psa`/`pop_cgc`, listas 1..10), o preço e as vendas/mês da PSA 10, o preço da crua e o
+> `tcg_product_id` (chave de join com o tcgcsv). O eBay foi testado como fonte do mesmo dado e
+> **bloqueia requisição sem navegador** — descartado. Taxa gem (pop10 ÷ total) e velocidade
+> de população (duas leituras; o censo do PriceCharting é mensal) já estão modeladas lá
+> (`ScoredCard.gem_rate`, campos no snapshot diário). Quando este scanner precisar de
+> escassez, importe/porte esse módulo; o passo "verificar acesso à PSA" está resolvido.
+
 ## Perguntas ao operador ainda em aberto
 
 - Virar `legacy_reference.require_number_in_sale_title` para `true`? Hoje `false`, pelo motivo
