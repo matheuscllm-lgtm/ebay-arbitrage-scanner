@@ -195,6 +195,21 @@ def lot_or_reject(title: str | None) -> str | None:
     return None
 
 
+# Outra carta com o mesmo nome dentro: tag team ("Charizard & Braixen GX", "Reshiram &
+# Charizard-GX") e sufixo colado por hífen ("Charizard-GX", "Mewtwo-EX") — o guarda
+# de sufixo do repo só vê espaço. Guarda PRÓPRIA deste modo (não mexe no title_parser).
+_AFTER_NAME_CONFLICT = re.compile(r"^\s*(?:&|and\b|-\s*(?:ex|gx|v|vmax|vstar)\b)", re.I)
+_BEFORE_NAME_CONFLICT = re.compile(r"(?:&|\band)\s*$", re.I)
+
+
+def _other_card_with_same_name(base_or_name: str, t: str) -> bool:
+    m = re.search(r"(?<!\w)" + re.escape(base_or_name) + r"(?!\w)", t)
+    if not m:
+        return False
+    return (_AFTER_NAME_CONFLICT.search(t[m.end():]) is not None
+            or _BEFORE_NAME_CONFLICT.search(t[:m.start()]) is not None)
+
+
 def match_level(card: WatchCard, title: str) -> str | None:
     """'nome+numero' (nome EN inteiro + número EN no título) · 'nome' (nome EN
     inteiro OU base + dono escrito de outro jeito; número diferente/ausente —
@@ -204,9 +219,11 @@ def match_level(card: WatchCard, title: str) -> str | None:
     for kw in card.exclude_keywords:
         if kw.lower() in t:
             return None
+    base, suffix = name_parts(card.name)
+    if _other_card_with_same_name(card.name.lower().strip(), t) or (base and _other_card_with_same_name(base, t)):
+        return None
     if not title_parser._name_conflicts(card, t):
         return "nome+numero" if title_parser.card_matches_title(card, title) else "nome"
-    base, suffix = name_parts(card.name)
     if not base:
         return None
     probe = WatchCard(f"{base} {suffix}".strip(), card.set_name, "", card.language, card.pc_url)
@@ -602,11 +619,27 @@ def rescore(payload: dict) -> dict:
     JSON já guarda (sem rede). Idempotente: a entrega sempre sai da régua atual,
     mesmo para um JSON gravado antes de um ajuste de faixa/guarda."""
     params = {**DEFAULT_PARAMS, **((payload.get("meta") or {}).get("params") or {})}
+    kept = []
+    dropped = 0
     for r in payload.get("rows") or []:
+        # identidade com a regra VIGENTE (tag team, sufixo colado, dono, raridade)
+        card = WatchCard(r.get("card") or "", r.get("set") or "", r.get("number") or "", "EN", r.get("pc_url") or "",
+                         pokemon=r.get("pokemon") or "", rarity=r.get("rarity") or "")
+        title = (r.get("listing") or {}).get("title") or ""
+        level = match_level(card, title)
+        if level is None:
+            dropped += 1
+            continue
+        r["match"], r["rarity_check"] = level, rarity_compatible(card.rarity, title)
+        kept.append(r)
         zh = r.get("zh") if (r.get("zh") or {}).get("status") == "ok" else None
         r["lt"] = longterm(r.get("card") or "", r.get("rarity") or (r.get("listing") or {}).get("title") or "", zh)
         r["zh_margin_pct"] = zh_margin_pct(r)
         r["bucket"], r["reasons"] = classify(r, params)
+    payload["rows"] = kept
+    if dropped:
+        funnel = (payload.setdefault("meta", {})).setdefault("funnel", {})
+        funnel["rescore_outra_carta"] = funnel.get("rescore_outra_carta", 0) + dropped
     return payload
 
 

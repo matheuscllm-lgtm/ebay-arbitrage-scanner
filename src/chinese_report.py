@@ -46,6 +46,7 @@ FUNNEL_LABELS = (
     ("zh_page_ausente", "Páginas chinesas: sem resultado"),
     ("zh_page_ambigua", "Páginas chinesas: resultado ambíguo (não chuta)"),
     ("zh_page_teto", "Páginas chinesas: teto por carta atingido"),
+    ("rescore_outra_carta", "Descartados na entrega: outra carta (tag team / sufixo colado)"),
     ("ebay_error", "eBay: erros"),
     ("aborted_ebay", "Abortado (credencial/orçamento eBay)"),
 )
