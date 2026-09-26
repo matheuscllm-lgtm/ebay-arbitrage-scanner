@@ -623,6 +623,56 @@ def zh_margin_pct(row: dict) -> float | None:
     return round((median - price) / price * 100, 1)
 
 
+# --- correspondência de set (par idêntico sem número igual) ---------------------------
+# Página chinesa (slug do PriceCharting, sem o sufixo F do tradicional) → set(s) EN da
+# watchlist que reimprimem a MESMA lista de cartas. Tradicional espelha os códigos
+# japoneses; "151 Collect" é o sv2a em simplificado. Compilações simplificadas
+# (CS/CSV/CSM/CBB), promos, Gem Pack e 30th misturam sets → SEM correspondência
+# (a arte pode ser de outro set EN; fica em "validar"). Tabela CURADA, ampliável.
+ZH_SET_TO_EN: dict[str, frozenset[str]] = {k: frozenset(v) for k, v in {
+    "151-collect": {"SV: Scarlet & Violet 151"}, "sv2a": {"SV: Scarlet & Violet 151"},
+    "sv3": {"SV03: Obsidian Flames"}, "sv4": {"SV04: Paradox Rift"}, "sv4a": {"SV: Paldean Fates"},
+    "sv5k": {"SV05: Temporal Forces"}, "sv5m": {"SV05: Temporal Forces"}, "sv5a": {"SV06: Twilight Masquerade"},
+    "sv6": {"SV06: Twilight Masquerade"}, "sv7": {"SV07: Stellar Crown"}, "sv7a": {"SV08: Surging Sparks"},
+    "sv8": {"SV08: Surging Sparks"}, "sv8a": {"SV: Prismatic Evolutions"}, "sv9": {"SV09: Journey Together"},
+    "sv10": {"SV10: Destined Rivals"},
+    "s8a": {"Celebrations", "Celebrations: Classic Collection"},
+    "s12a": {"SWSH: Crown Zenith", "SWSH: Crown Zenith: Galarian Gallery"},
+    "s9": {"SWSH09: Brilliant Stars", "SWSH09: Brilliant Stars Trainer Gallery"},
+    "s9a": {"SWSH10: Astral Radiance", "SWSH10: Astral Radiance Trainer Gallery"},
+    "s10d": {"SWSH10: Astral Radiance"}, "s10p": {"SWSH10: Astral Radiance"}, "s10b": {"Pokemon GO"},
+    "s10a": {"SWSH11: Lost Origin", "SWSH11: Lost Origin Trainer Gallery"}, "s11": {"SWSH11: Lost Origin"},
+    "s11a": {"SWSH12: Silver Tempest", "SWSH12: Silver Tempest Trainer Gallery"}, "s12": {"SWSH12: Silver Tempest"},
+    "s7r": {"SWSH07: Evolving Skies"}, "s7d": {"SWSH07: Evolving Skies"}, "s6a": {"SWSH07: Evolving Skies"},
+    "s8": {"SWSH08: Fusion Strike"}, "s6h": {"SWSH06: Chilling Reign"}, "s6k": {"SWSH06: Chilling Reign"},
+    "s5r": {"SWSH05: Battle Styles"}, "s5i": {"SWSH05: Battle Styles"}, "s5a": {"SWSH05: Battle Styles"},
+    "s4a": {"Shining Fates", "Shining Fates: Shiny Vault"}, "s4": {"SWSH04: Vivid Voltage"}, "s3a": {"SWSH04: Vivid Voltage"},
+    "s3": {"SWSH03: Darkness Ablaze"}, "s2a": {"SWSH03: Darkness Ablaze"}, "s2": {"SWSH02: Rebel Clash"},
+    "s1h": {"SWSH01: Sword & Shield Base Set"}, "s1w": {"SWSH01: Sword & Shield Base Set"},
+    "base-set": {"Base Set"},
+}.items()}
+
+
+def zh_set_code(url: str | None) -> str | None:
+    """'sv4a' de https://www.pricecharting.com/game/pokemon-chinese-sv4af/…; None sem URL."""
+    m = re.search(r"/game/pokemon-chinese-([a-z0-9.\-]+)/", url or "")
+    if not m:
+        return None
+    code = m.group(1).lower()
+    if code not in ZH_SET_TO_EN and code.endswith("f") and code[:-1] in ZH_SET_TO_EN:
+        code = code[:-1]  # sufixo F do tradicional (sv4aF)
+    return code
+
+
+def set_corresponds(en_set: str | None, zh_url: str | None) -> bool | None:
+    """True = a página chinesa reimprime o set EN da carta (mesma lista de cartas);
+    False = espelha OUTRO set EN; None = compilação/promo/desconhecido."""
+    code = zh_set_code(zh_url)
+    if not code or code not in ZH_SET_TO_EN:
+        return None
+    return (en_set or "") in ZH_SET_TO_EN[code]
+
+
 # --- classificação --------------------------------------------------------------
 def classify(row: dict, params: dict) -> tuple[str, list[str]]:
     reasons: list[str] = []
@@ -635,11 +685,18 @@ def classify(row: dict, params: dict) -> tuple[str, list[str]]:
     if ratio < float(params["min_ratio"]):
         return "abaixo-do-corte", [f"razao<{params['min_ratio']:g}"]
     rc, m = row.get("rarity_check"), row.get("match")
+    zh0 = row.get("zh") or {}
     if m == "nome+numero":
         if rc is False:
             reasons.append("raridade-divergente")
     elif m == "nome" and rc is True:
-        pass  # nome inteiro + mesma família de raridade: par forte mesmo sem número
+        # nome inteiro + mesma família de raridade: par forte SÓ se a página chinesa
+        # reimprime o mesmo set EN (numeração difere, mas a lista de cartas é a mesma)
+        corr = set_corresponds(row.get("set"), zh0.get("url")) if zh0.get("status") == "ok" else None
+        if corr is False:
+            reasons.append("set-zh-divergente")
+        elif corr is None:
+            reasons.append("set-zh-sem-correspondencia")
     else:
         reasons.append(f"match-{m}")
         reasons.append("raridade-divergente" if rc is False else "raridade-nao-confirmada")

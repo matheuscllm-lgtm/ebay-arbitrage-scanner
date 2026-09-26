@@ -54,13 +54,16 @@ def main(argv=None):
         base, ext = os.path.splitext(out)
         out = f"{base}.aborted{ext or '.json'}"
     report.write_json(payload, out)
-    md = render(payload)
     md_path = args.report or (os.path.splitext(out)[0] + ".md")
+    chat_path = os.path.splitext(md_path)[0] + ".chat.md"
     os.makedirs(os.path.dirname(md_path) or ".", exist_ok=True)
     with open(md_path, "w", encoding="utf-8") as f:
+        f.write(render(payload))              # completo: todas as linhas
+    md = render(payload, compact=True)        # chat: validar/exclusivas agrupadas quando grandes
+    with open(chat_path, "w", encoding="utf-8") as f:
         f.write(md)
     print(md)
-    print(f"\n[JSON: {out} · markdown: {md_path}]", file=sys.stderr)
+    print(f"\n[JSON: {out} · markdown completo: {md_path} · chat: {chat_path}]", file=sys.stderr)
     return EXIT_ABORTED if payload["meta"].get("aborted") else 0
 
 

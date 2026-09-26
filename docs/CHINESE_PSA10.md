@@ -80,6 +80,20 @@ abortado (credencial/orçamento); o parcial vai para `<out>.aborted.json`.
 Tabela 2 (exclusivas): todas as linhas com marcador, ordenadas pela régua LT, com
 evidência chinesa, tendência observada e o título do anúncio para o operador validar.
 
+Candidata sem número igual exige ainda que a página chinesa reimprima o **mesmo set
+EN** (tabela curada `ZH_SET_TO_EN`: 151 Collect ↔ SV 151, sv8a ↔ Prismatic Evolutions,
+s8a ↔ Celebrations…); compilação simplificada (CS/CSV/CSM/CBB), promo ou Gem Pack não
+tem correspondência → `validar` com `set-zh-sem-correspondencia` (a arte pode ser de
+outro set EN).
+
+**Duas versões do markdown** (mesmo JSON, mesma régua): `<out>.md` completo (todas as
+linhas) e `<out>.chat.md` (`ebay_summary.py --compact`) para o chat — quando um balde
+⚠️ validar ou a tabela de exclusivas passa de 40 linhas, sai **agrupado por carta
+chinesa** (contagem, preço mínimo/mediano, evidência, margem no mínimo, LT, link do
+mais barato); 🟢 candidatas saem sempre inteiras. Um grupo SV gera milhares de
+anúncios (dezenas do mesmo promo em preços diferentes) e o chat não comporta a
+tabela completa — ela fica no `.md`/JSON local.
+
 Toda linha tem `[oferta]` (eBay) e, quando existem, a referência EN **clicável** com
 n e janela, e `[ref ZH]` (página chinesa). URLs vêm do JSON, nunca inventadas.
 

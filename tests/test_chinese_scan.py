@@ -281,7 +281,8 @@ def test_classify_buckets():
     assert cs.classify(_row_dict(en_ref={"price": None, "source": "sem-referencia"}, ratio=None), p)[0] == "sem-referencia-en"
     b, why = cs.classify(_row_dict(match="nome", rarity_check=None), p)
     assert b == "validar" and why == ["match-nome", "raridade-nao-confirmada"]
-    assert cs.classify(_row_dict(match="nome", rarity_check=True), p) == ("candidata", [])
+    b, why = cs.classify(_row_dict(match="nome", rarity_check=True), p)
+    assert b == "validar" and why == ["set-zh-sem-correspondencia"]   # sem número igual, exige o mesmo set (test_chinese_setmap)
     b, why = cs.classify(_row_dict(match="nome", rarity_check=False), p)
     assert b == "validar" and why == ["match-nome", "raridade-divergente"]
     b, why = cs.classify(_row_dict(match="nome+numero", rarity_check=False), p)

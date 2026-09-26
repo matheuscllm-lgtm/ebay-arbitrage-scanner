@@ -111,7 +111,8 @@ def _en_cell(en: dict | None) -> str:
     if not en or en.get("price") is None:
         return "n/d"
     if en.get("source") == "vendas":
-        label = f"{_usd(en['price'])} (n={en.get('n', 0)}, {en.get('window_days')} d)"
+        window = f", {en['window_days']} d" if en.get("window_days") else ""
+        label = f"{_usd(en['price'])} (n={en.get('n', 0)}{window})"
     else:
         label = f"{_usd(en['price'])} (coluna PC, n={en.get('n', 0)})"
     return reference_price(label, en.get("url"))
@@ -204,7 +205,83 @@ def _excl_row(i: int, r: dict) -> str:
     return "| " + " | ".join(cells) + " |"
 
 
-def render(payload: dict) -> str:
+COMPACT_THRESHOLD = 40  # acima disto, no modo compacto, validar/exclusivas saem agrupadas
+_GROUP_HEADER = ("| Carta EN | Set EN | Idioma | Match | ZH nº · set | Anúncios | ZH US$ mín – mediana | Razão EN÷ZH (no mín.) | "
+                 "ZH PSA 10 vendas US$ (n/90 d) | Margem vs revenda ZH (no mín.) | LT | Motivos | Links (mais barato) |")
+_GROUP_SEP = "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+_EXCL_GROUP_HEADER = ("| Carta (ZH) | Idioma | Anúncios | ZH US$ mín – mediana | ZH PSA 10 vendas US$ (n/90 d) | "
+                      "Margem vs revenda ZH (no mín.) | Tend. obs. | Pop10 ZH | LT | Marcador | Links (mais barato) |")
+_EXCL_GROUP_SEP = "|---|---|---|---|---|---|---|---|---|---|---|"
+
+
+def _median(vals: list[float]) -> float | None:
+    vals = sorted(v for v in vals if v is not None)
+    if not vals:
+        return None
+    n = len(vals)
+    return vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2
+
+
+def _best_zh(rs: list[dict]) -> dict:
+    ok = [r["zh"] for r in rs if (r.get("zh") or {}).get("status") == "ok"]
+    return ok[0] if ok else ((rs[0].get("zh") or {}) if rs else {})
+
+
+def _grouped_pairs(rows: list[dict]) -> list[str]:
+    groups: dict[tuple, list] = {}
+    for r in rows:
+        groups.setdefault((r.get("card"), r.get("number"), r.get("set"), r.get("zh_number") or "", r.get("zh_set_hint") or "",
+                           r.get("language"), r.get("match")), []).append(r)
+    out = [_GROUP_HEADER, _GROUP_SEP]
+    for key, rs in sorted(groups.items(), key=lambda kv: -max(x.get("ratio") or 0 for x in kv[1])):
+        card, number, set_name, zh_num, hint, lang, match = key
+        rs.sort(key=lambda x: (x.get("listing") or {}).get("price") or 0)
+        cheap = rs[0]
+        prices = [(x.get("listing") or {}).get("price") for x in rs]
+        zh = _best_zh(rs)
+        lt = max((x.get("lt") or {}).get("score", 0) for x in rs)
+        cov = next((x.get("lt") or {}).get("coverage", "0/4") for x in rs if (x.get("lt") or {}).get("score", 0) == lt)
+        reasons = sorted({w for x in rs for w in (x.get("reasons") or [])})
+        out.append("| " + " | ".join([
+            report.escape_md(report.carta_label(card, number)), report.escape_md(set_name or "—"),
+            LANG_LABEL.get(lang, lang or "—"), match or "—", report.escape_md(f"{zh_num or '?'} · {hint or '—'}"), str(len(rs)),
+            f"{_usd(min(prices))} – {_usd(_median(prices))}", _ratio(cheap.get("ratio")), _zh_cell(zh),
+            _margin({"listing": cheap.get("listing"), "zh": zh}), f"{lt} ({cov})",
+            report.escape_md(", ".join(reasons) or "—"), _links({"listing": cheap.get("listing"), "en_ref": cheap.get("en_ref"), "zh": zh}),
+        ]) + " |")
+    return out
+
+
+def _grouped_exclusives(rows: list[dict]) -> list[str]:
+    groups: dict[tuple, list] = {}
+    for r in rows:
+        groups.setdefault(((r.get("pokemon") or r.get("base_name") or r.get("card") or "").title(), r.get("zh_number") or "",
+                           r.get("zh_set_hint") or "", r.get("language")), []).append(r)
+    out = [_EXCL_GROUP_HEADER, _EXCL_GROUP_SEP]
+    for key, rs in sorted(groups.items(), key=lambda kv: (-max((x.get("lt") or {}).get("score", 0) for x in kv[1]),
+                                                          min((x.get("listing") or {}).get("price") or 0 for x in kv[1]))):
+        name, zh_num, hint, lang = key
+        rs.sort(key=lambda x: (x.get("listing") or {}).get("price") or 0)
+        cheap = rs[0]
+        prices = [(x.get("listing") or {}).get("price") for x in rs]
+        zh = _best_zh(rs)
+        lt_row = max(rs, key=lambda x: (x.get("lt") or {}).get("score", 0))
+        lt = lt_row.get("lt") or {}
+        out.append("| " + " | ".join([
+            report.escape_md(report.carta_label(name, zh_num) + (f" · {hint}" if hint else "")), LANG_LABEL.get(lang, lang or "—"),
+            str(len(rs)), f"{_usd(min(prices))} – {_usd(_median(prices))}", _zh_cell(zh),
+            _margin({"listing": cheap.get("listing"), "zh": zh}), _trend(zh), _pop_cell(zh, lt), _lt_cell(lt),
+            report.escape_md(cheap.get("exclusive_marker") or "—"), _links({"listing": cheap.get("listing"), "zh": zh}),
+        ]) + " |")
+    return out
+
+
+def render(payload: dict, compact: bool = False) -> str:
+    """Markdown da entrega. `compact=True` = versão para o CHAT: os baldes ⚠️ validar e
+    exclusivas com mais de COMPACT_THRESHOLD linhas saem AGRUPADOS por carta chinesa
+    (contagem, preço mínimo/mediano, evidência, margem no mínimo, LT, link do mais
+    barato); 🟢 candidatas sempre inteiras. A versão completa (todas as linhas) é o
+    mesmo JSON renderizado com compact=False."""
     from .chinese_scan import rescore
     payload = rescore(payload)
     meta = payload.get("meta") or {}
@@ -252,22 +329,28 @@ def render(payload: dict) -> str:
         if not sub:
             lines += ["_nenhuma linha_", ""]
             continue
-        full, compact = sub, []
+        full, compact_rows = sub, []
         if bucket == "abaixo-do-corte":
             full = [r for r in sub if (r.get("ratio") or 0) >= near]
-            compact = [r for r in sub if (r.get("ratio") or 0) < near]
+            compact_rows = [r for r in sub if (r.get("ratio") or 0) < near]
+        if compact and bucket in ("validar", "abaixo-do-corte") and len(full) > COMPACT_THRESHOLD:
+            lines.append(f"Versão para o chat: {len(full)} anúncios agrupados por carta chinesa (todas as linhas estão no `.md` completo e no JSON).")
+            lines.append("")
+            lines += _grouped_pairs(full)
+            lines.append("")
+            full = []
         if full:
             lines += [_PAIR_HEADER, _PAIR_SEP]
             for i, r in enumerate(full, 1):
                 lines.append(_pair_row(i, r))
             lines.append("")
-        if compact:
-            lines.append(f"Razão < {near:g}× (anúncio chinês vale mais da metade do PSA 10 inglês): {len(compact)} linhas, "
+        if compact_rows:
+            lines.append(f"Razão < {near:g}× (anúncio chinês vale mais da metade do PSA 10 inglês): {len(compact_rows)} linhas, "
                          f"agrupadas por carta EN — cada linha continua no JSON; o link é o anúncio mais barato do grupo.")
             lines.append("")
             lines += [_COMPACT_HEADER, _COMPACT_SEP]
             groups: dict[tuple, list] = {}
-            for r in compact:
+            for r in compact_rows:
                 groups.setdefault((r.get("card"), r.get("number"), r.get("set")), []).append(r)
             for (card, number, set_name), rs in sorted(groups.items(), key=lambda kv: -max(x.get("ratio") or 0 for x in kv[1])):
                 rs.sort(key=lambda x: (x.get("listing") or {}).get("price") or 0)
@@ -284,6 +367,12 @@ def render(payload: dict) -> str:
     lines.append("")
     if not excl:
         lines += ["_nenhuma linha_", ""]
+    elif compact and len(excl) > COMPACT_THRESHOLD:
+        lines.append(f"Versão para o chat: {len(excl)} anúncios agrupados por carta chinesa (número · código de set · idioma); "
+                     "todas as linhas estão no `.md` completo e no JSON.")
+        lines.append("")
+        lines += _grouped_exclusives(excl)
+        lines.append("")
     else:
         lines += [_EXCL_HEADER, _EXCL_SEP]
         for i, r in enumerate(sorted(excl, key=lambda r: (-(r.get("lt") or {}).get("score", 0), (r.get("listing") or {}).get("price") or 0)), 1):

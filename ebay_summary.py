@@ -256,15 +256,17 @@ def _verdict_sections(by_verdict):
     return lines
 
 
-def build_markdown(payload, sensitivity=None):
+def build_markdown(payload, sensitivity=None, compact=False):
     """JSON do scan -> markdown de entrega (todas as linhas, todos os buckets)."""
     meta = payload.get("meta") or {}
     rows = payload.get("rows") or []
     if meta.get("kind") == "chinese-psa10":
         # Modo CHINÊS (chinese_scan.py): JSON próprio, gerador próprio. Testado
         # ANTES do teste da política: as linhas não têm `strategy`/custos.
+        # `compact` (só neste modo) = versão para o chat, com validar/exclusivas
+        # agrupadas por carta chinesa quando passam de 40 linhas.
         from src.chinese_report import render as render_chinese
-        return render_chinese(payload)
+        return render_chinese(payload, compact=compact)
     if meta.get("config", {}).get("slab_strategy") or any(r.get("strategy") for r in rows):
         from src.slab_report import render
         text = render(payload)
@@ -304,12 +306,15 @@ def main(argv=None):
                     help="SO JSON do motor legado (anterior a politica 2026-09-05.4): limiares "
                          "de desconto crescentes; o maior e o operacional, os demais viram faixas "
                          "'NAO e oportunidade'. Num JSON da politica e ignorado, com aviso no topo")
+    ap.add_argument("--compact", action="store_true",
+                    help="SO JSON do modo chines (meta.kind=chinese-psa10): versao para o chat, com os baldes "
+                         "validar/exclusivas agrupados por carta chinesa quando passam de 40 linhas")
     args = ap.parse_args(argv)
 
     with open(args.scan_json, encoding="utf-8-sig") as f:
         payload = json.load(f)
 
-    md = build_markdown(payload, sensitivity=args.sensitivity)
+    md = build_markdown(payload, sensitivity=args.sensitivity, compact=args.compact)
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(md)
