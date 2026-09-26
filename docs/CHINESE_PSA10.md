@@ -20,7 +20,7 @@ python ebay_summary.py results/chinese-g1.json -o results/chinese-g1.md   # entr
 
 Flags: `--group`, `--max-cards`/`--card-offset` (lote, como no `main.py`), `--min-ratio`
 (default **4**), `--min-price` (default **10**, preço do item), `--min-zh-sales` (default
-**3**), `--max-zh-pages-per-card` (default **10**), `--max-ebay-calls` (500 por execução),
+**3**), `--max-zh-pages-per-card` (default **20**), `--max-ebay-calls` (500 por execução),
 `--location-country` (vazio = **qualquer país**; decisão do operador: vendedor asiático
 aceito, frete/alfândega **fora** da reserva de US$10 e por conta dele). Exit 1 = run
 abortado (credencial/orçamento); o parcial vai para `<out>.aborted.json`.
@@ -62,6 +62,7 @@ abortado (credencial/orçamento); o parcial vai para `<out>.aborted.json`.
    exclusiva; teto por carta): localiza a página `pokemon-chinese-*` no PriceCharting
    pela busca `pokemon chinese <nome> <número do título>` (`pick_zh_page`: slug termina
    no número, todos os tokens do nome no slug, pista de set quando o título tem código;
+   sem número no título, só o código de set do título pode tornar a página única;
    resultado ambíguo **não chuta**). Da página: vendas concluídas PSA 10 em 90 d (n,
    meses distintos, mediana, links das vendas), janela 90–365 d (tendência observada),
    coluna PSA 10 do site (informativa), vendas/mês do site (parser do outlook) e censo
@@ -73,7 +74,7 @@ abortado (credencial/orçamento); o parcial vai para `<out>.aborted.json`.
 |---|---|
 | 🟢 candidata | razão ≥ corte **e** identidade forte (`nome+numero`, ou `nome` com raridade compatível) **e** idioma definido (HANS/HANT) **e** ≥3 vendas PSA 10 em chinês em 90 d **e** referência EN por vendas |
 | ⚠️ validar | razão ≥ corte, mas falta algo — motivo por linha (`match-nome`, `raridade-nao-confirmada`, `raridade-divergente`, `idioma-nao-especificado`, `evidencia-zh-insuficiente(n<3)`, `zh-sem-pagina`/`zh-ambigua(...)`, `ref-en-coluna-PC`) |
-| 🔎 abaixo do corte | razão < corte — diagnóstico (todas as linhas, nunca amostra) |
+| 🔎 abaixo do corte | razão < corte — diagnóstico; linhas com razão ≥ 2× saem inteiras, as com razão < 2× (anúncio vale mais da metade do PSA 10 inglês) saem agrupadas por carta EN com contagem, faixa de razão e o link do anúncio mais barato — todas continuam no JSON |
 | ❌ sem referência EN | página EN sem venda e sem coluna |
 
 Tabela 2 (exclusivas): todas as linhas com marcador, ordenadas pela régua LT, com
@@ -92,9 +93,12 @@ Espelha os 4 componentes do `pokemon-longterm-outlook` (0–25 cada, soma 0–10
 | Personagem | apelo perene do Pokémon/treinador da carta EN | `outlook.notorious` (repo irmão; ausente → n/d) | S 25 · A 18 · B 12 · fora 8 |
 | Raridade | família colecionável | raridade EN da watchlist (pares) ou siglas do título (exclusivas: SAR/AR/CSR/UR/SSR/SR/RR) | SIR/SAR 25 · IR/AR 20 · CHR/TG 16 · HR/UR/gold/shiny 14 · SR/FA/VMAX 12 · ACE 10 · RR 6 · resto 3 |
 | Escassez | nº de **PSA 10 do slab chinês** | censo da página chinesa do PriceCharting (mensal, atrasa; GemRate bloqueia sessão de nuvem) | ≤50 25 · ≤500 22 · ≤2.000 18 · ≤5.000 12 · ≤10.000 7 · acima 3 |
-| Demanda | **vendas/mês do PSA 10 chinês** | vendas/mês do site; senão as observadas em 90 d | ≥60 25 · ≥30 20 · ≥5 14 · ≥2 8 · abaixo 3 |
+| Demanda | **vendas/mês do PSA 10 chinês** | vendas PSA 10 observadas em 90 d na página chinesa ÷ 3 (o "N sales per month" do site fica só informativo: o layout da tabela chinesa desalinha o parser) | ≥60 25 · ≥30 20 · ≥5 14 · ≥2 8 · abaixo 3 |
 
-Colunas de apoio: **Razão EN÷ZH** (prêmio do inglês sobre o chinês; o crivo),
+Colunas de apoio: **Margem vs revenda ZH** = (mediana das vendas PSA 10 em chinês em
+90 d − preço pedido) ÷ preço pedido — a margem bruta da frota contra a revenda honesta
+do slab chinês (negativa = o anúncio pede mais do que a carta vem vendendo em chinês);
+**Razão EN÷ZH** (prêmio do inglês sobre o chinês; o crivo),
 **Tend. obs.** (mediana 90 d vs 90–365 d das vendas chinesas, só com ≥3 em cada
 janela), **Pop10 ZH**, **Vendas/mês ZH**. As faixas foram calibradas em 2026-09-21
 sobre cartas **EN** (ver o outlook) e **não** foram recalibradas para chinês — os

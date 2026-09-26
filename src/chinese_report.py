@@ -50,12 +50,14 @@ FUNNEL_LABELS = (
     ("aborted_ebay", "Abortado (credencial/orçamento eBay)"),
 )
 
-_PAIR_HEADER = ("| # | Razão EN÷ZH | ZH US$ | Frete | EN PSA 10 US$ (n) | ZH PSA 10 vendas US$ (n/90 d) | Carta | Set EN | "
+_PAIR_HEADER = ("| # | Razão EN÷ZH | ZH US$ | Frete | EN PSA 10 US$ (n) | ZH PSA 10 vendas US$ (n/90 d) | Margem vs revenda ZH | Carta | Set EN | "
                 "Raridade EN | Idioma | Match | País | Pop10 ZH | Vendas/mês ZH | LT | Motivos | Links |")
-_PAIR_SEP = "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
-_EXCL_HEADER = ("| # | LT | ZH US$ | Frete | ZH PSA 10 vendas US$ (n/90 d) | Tend. obs. | Carta | Título do anúncio | "
+_PAIR_SEP = "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+_EXCL_HEADER = ("| # | LT | ZH US$ | Frete | ZH PSA 10 vendas US$ (n/90 d) | Margem vs revenda ZH | Tend. obs. | Carta | Título do anúncio | "
                 "Idioma | País | Pop10 ZH | Vendas/mês ZH | Marcador | Motivos | Links |")
-_EXCL_SEP = "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+_EXCL_SEP = "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+_COMPACT_HEADER = "| Carta EN | Anúncios | Razão EN÷ZH (mín–máx) | Menor ZH US$ | Idiomas | Países | Menor anúncio |"
+_COMPACT_SEP = "|---|---|---|---|---|---|---|"
 
 def funnel_lines(counts: dict) -> list[str]:
     """'rótulo: N' só dos contadores > 0; chave sem rótulo sai como 'outros: k=v'
@@ -147,6 +149,14 @@ def _links(row: dict) -> str:
     return " · ".join(parts) if parts else "—"
 
 
+def _margin(row: dict) -> str:
+    v = row.get("zh_margin_pct")
+    if v is None:
+        from .chinese_scan import zh_margin_pct
+        v = zh_margin_pct(row)
+    return "n/d" if v is None else f"{v:+.0f}%"
+
+
 def _trend(zh: dict | None) -> str:
     if not zh or zh.get("status") != "ok" or zh.get("trend_observed_pct") is None:
         return "n/d"
@@ -159,7 +169,7 @@ def _pair_row(i: int, r: dict) -> str:
     lt = r.get("lt") or {}
     cells = [
         str(i), _ratio(r.get("ratio")), _usd(lst.get("price")), _shipping(lst.get("shipping")),
-        _en_cell(r.get("en_ref")), _zh_cell(zh),
+        _en_cell(r.get("en_ref")), _zh_cell(zh), _margin(r),
         report.escape_md(report.carta_label(r.get("card"), r.get("number"))),
         report.escape_md(r.get("set") or "—"), report.escape_md(r.get("rarity") or "—"),
         LANG_LABEL.get(r.get("language"), r.get("language") or "—"), r.get("match") or "—",
@@ -176,7 +186,7 @@ def _excl_row(i: int, r: dict) -> str:
     lt = r.get("lt") or {}
     title = (lst.get("title") or "")[:90]
     cells = [
-        str(i), _lt_cell(lt), _usd(lst.get("price")), _shipping(lst.get("shipping")), _zh_cell(zh), _trend(zh),
+        str(i), _lt_cell(lt), _usd(lst.get("price")), _shipping(lst.get("shipping")), _zh_cell(zh), _margin(r), _trend(zh),
         report.escape_md(report.carta_label((r.get("pokemon") or r.get("base_name") or r.get("card") or "").title(), r.get("zh_number") or "")),
         report.escape_md(title), LANG_LABEL.get(r.get("language"), r.get("language") or "—"),
         lst.get("country") or "—", _int(zh.get("pop_psa10") if zh.get("status") == "ok" else None),
@@ -224,6 +234,7 @@ def render(payload: dict) -> str:
     excl = [r for r in rows if r.get("exclusive")]
     lines.append(f"## 1. Pares — mesma carta EN da watchlist, versão em chinês ({len(pairs)} linhas)")
     lines.append("")
+    near = float(params.get("near_miss_ratio", 2.0))
     for bucket, title in BUCKET_TITLES:
         sub = [r for r in pairs if r.get("bucket") == bucket]
         lines.append(f"### {title.format(n=min_sales, ratio=ratio)} — {len(sub)}")
@@ -231,10 +242,34 @@ def render(payload: dict) -> str:
         if not sub:
             lines += ["_nenhuma linha_", ""]
             continue
-        lines += [_PAIR_HEADER, _PAIR_SEP]
-        for i, r in enumerate(sub, 1):
-            lines.append(_pair_row(i, r))
-        lines.append("")
+        full, compact = sub, []
+        if bucket == "abaixo-do-corte":
+            full = [r for r in sub if (r.get("ratio") or 0) >= near]
+            compact = [r for r in sub if (r.get("ratio") or 0) < near]
+        if full:
+            lines += [_PAIR_HEADER, _PAIR_SEP]
+            for i, r in enumerate(full, 1):
+                lines.append(_pair_row(i, r))
+            lines.append("")
+        if compact:
+            lines.append(f"Razão < {near:g}× (anúncio chinês vale mais da metade do PSA 10 inglês): {len(compact)} linhas, "
+                         f"agrupadas por carta EN — cada linha continua no JSON; o link é o anúncio mais barato do grupo.")
+            lines.append("")
+            lines += [_COMPACT_HEADER, _COMPACT_SEP]
+            groups: dict[tuple, list] = {}
+            for r in compact:
+                groups.setdefault((r.get("card"), r.get("number"), r.get("set")), []).append(r)
+            for (card, number, set_name), rs in sorted(groups.items(), key=lambda kv: -max(x.get("ratio") or 0 for x in kv[1])):
+                rs.sort(key=lambda x: (x.get("listing") or {}).get("price") or 0)
+                cheapest = rs[0]
+                ratios = [x.get("ratio") or 0 for x in rs]
+                langs = sorted({LANG_LABEL.get(x.get("language"), x.get("language") or "—") for x in rs})
+                countries = sorted({(x.get("listing") or {}).get("country") or "—" for x in rs})
+                lines.append("| " + " | ".join([
+                    report.escape_md(report.carta_label(card, number)) + f" ({report.escape_md(set_name or '—')})", str(len(rs)),
+                    f"{min(ratios):.1f}×–{max(ratios):.1f}×", _usd((cheapest.get("listing") or {}).get("price")),
+                    ", ".join(langs), ", ".join(countries), _links(cheapest)]) + " |")
+            lines.append("")
     lines.append(f"## 2. Exclusivas chinesas — sem par em inglês, só evidência chinesa ({len(excl)} linhas)")
     lines.append("")
     if not excl:
@@ -250,6 +285,9 @@ def render(payload: dict) -> str:
         "(dono/prefixo EN ausente). **Idioma** vem do título (aspecto `Language` do eBay é pouco confiável); "
         "`chinês (não especificado)` pede confirmação simplificado × tradicional. **Exclusiva** = marcador de produto sem par EN "
         "(promo, Gem Pack, gift box, 25th/30th…): heurística documentada em `src/chinese_scan.py::EXCLUSIVE_RE`. "
+        "**Margem vs revenda ZH** = (mediana das vendas PSA 10 em chinês em 90 d − preço pedido) ÷ preço pedido: a margem bruta da "
+        "frota contra a revenda honesta do slab chinês (negativa = o anúncio pede mais do que a carta vende em chinês). "
+        "**Vendas/mês ZH** = vendas PSA 10 observadas em 90 d ÷ 3 na página chinesa. "
         "`n/d` nunca é zero. Frete = valor do anúncio quando informado (frete internacional pode diferir).",
         "",
     ]

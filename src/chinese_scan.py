@@ -59,7 +59,7 @@ DEFAULT_PARAMS = {
     "min_price_usd": 10.0,       # piso da frota (preço do item)
     "min_zh_sales": 3,           # vendas PSA 10 em chinês em 90 d para "candidata"
     "evidence_window_days": 90,
-    "max_zh_pages_per_card": 10, # páginas chinesas do PriceCharting por carta EN
+    "max_zh_pages_per_card": 20, # páginas chinesas do PriceCharting por carta EN
     "max_ebay_calls": 500,
     "ebay_limit": 200,
     "location_country": "",      # vazio = qualquer país (decisão do operador)
@@ -268,15 +268,19 @@ def zh_set_hint(title: str | None) -> str | None:
     return m.group(1).replace(".", "").lower() if m else None
 
 
-def zh_search_url(base: str, suffix: str, number: str) -> str:
-    q = f"pokemon chinese {base} {suffix} {number}".split()
+def zh_search_url(base: str, suffix: str, number: str | None, hint: str | None = None) -> str:
+    """Busca `pokemon chinese <nome> <número>`; sem número no título, busca pelo
+    código de set do título (`hint`) — só então a página pode ser única."""
+    q = f"pokemon chinese {base} {suffix} {number or ''}".split()
+    if not number and hint:
+        q.append(hint.replace("-", " "))
     return "https://www.pricecharting.com/search-products?type=prices&q=" + quote(" ".join(q))
 
 
 _ZH_LINK_RE = re.compile(r'href="(/game/pokemon-chinese-([a-z0-9.\-]+)/([a-z0-9.\-]+))"', re.I)
 
 
-def pick_zh_page(body: str, base: str, suffix: str, number: str, hint: str | None) -> tuple[str | None, str]:
+def pick_zh_page(body: str, base: str, suffix: str, number: str | None, hint: str | None) -> tuple[str | None, str]:
     """Escolhe a página chinesa a partir do HTML da busca (função pura).
 
     Regras: só `/game/pokemon-chinese-*/`; o slug da carta termina no número
@@ -287,24 +291,27 @@ def pick_zh_page(body: str, base: str, suffix: str, number: str, hint: str | Non
     """
     want = {tok for tok in re.split(r"[^a-z0-9]+", f"{base} {suffix}".lower()) if tok}
     num = str(int(number)) if number and number.isdigit() else (number or "")
+    if not num and not hint:
+        return None, "sem-numero-e-sem-pista"
+
+    def _ok(card_slug: str) -> bool:
+        toks = [tok for tok in card_slug.lower().split("-") if tok]
+        if not toks or not want.issubset(set(toks)):
+            return False
+        return (not num) or (toks[-1].isdigit() and str(int(toks[-1])) == num)
+
     candidates: list[tuple[str, str]] = []
     seen = set()
     for path, set_slug, card_slug in _ZH_LINK_RE.findall(body):
-        if path in seen:
+        if path in seen or not _ok(card_slug):
             continue
         seen.add(path)
-        toks = [tok for tok in card_slug.lower().split("-") if tok]
-        if not toks or not toks[-1].isdigit() or str(int(toks[-1])) != num:
-            continue
-        if not want.issubset(set(toks)):
-            continue
         candidates.append((path, set_slug.lower()))
     if not candidates:
         canon = pricecharting.product_url_from_search(body)
         if canon and "/game/pokemon-chinese-" in canon:
-            slug = canon.rstrip("/").split("/")[-1].split("?")[0]
-            toks = [tok for tok in slug.lower().split("-") if tok]
-            if toks and toks[-1].isdigit() and str(int(toks[-1])) == num and want.issubset(set(toks)):
+            parts = canon.rstrip("/").split("?")[0].split("/")
+            if len(parts) >= 2 and _ok(parts[-1]) and (not hint or hint.replace(".", "") in parts[-2].replace(".", "")):
                 return canon, "redirect-canonical"
         return None, "sem-pagina"
     if hint:
@@ -312,6 +319,8 @@ def pick_zh_page(body: str, base: str, suffix: str, number: str, hint: str | Non
         narrowed = [c for c in candidates if h in c[1].replace(".", "")]
         if narrowed:
             candidates = narrowed
+        elif not num:
+            return None, "sem-pagina"   # sem número, a pista de set é obrigatória
     if len(candidates) == 1:
         return "https://www.pricecharting.com" + candidates[0][0], "unica"
     return None, f"ambigua({len(candidates)})"
@@ -510,22 +519,38 @@ def demand_points(spm: float | None) -> int | None:
 
 def longterm(card_name: str, rarity_text: str, zh: dict | None) -> dict:
     """Score 0-100 = soma dos componentes disponíveis; `coverage` = k/4. Componente
-    sem dado fica None (nunca zero). Demanda: vendas/mês do site quando o parser
-    existe, senão as observadas em 90 d."""
+    sem dado fica None (nunca zero). Demanda: vendas PSA 10 observadas em 90 d ÷ 3
+    (o número do site é só informativo)."""
     ch = character_points(card_name)
     ra = rarity_points(rarity_text)
     pop10 = zh.get("pop_psa10") if zh else None
     spm = None
     if zh:
-        spm = zh.get("sales_per_month_site")
+        # Demanda = vendas PSA 10 OBSERVADAS em 90 d na própria página (÷3). O
+        # "N sales per month" do site fica só informativo: nas páginas chinesas o
+        # layout da tabela muda e o parser do outlook lê a coluna errada/None.
+        spm = zh.get("sales_per_month_observed")
         if spm is None:
-            spm = zh.get("sales_per_month_observed")
+            spm = zh.get("sales_per_month_site")
     sc = scarcity_points(pop10)
     de = demand_points(spm)
     parts = {"character": ch, "rarity": ra, "scarcity": sc, "demand": de}
     have = [v for v in parts.values() if v is not None]
     return {**parts, "character_tier": character_tier(ch), "pop_psa10": pop10, "sales_per_month": spm,
             "score": sum(have), "coverage": f"{len(have)}/4"}
+
+
+def zh_margin_pct(row: dict) -> float | None:
+    """Margem BRUTA da frota contra a revenda HONESTA do slab chinês:
+    (mediana das vendas PSA 10 em chinês em 90 d − preço pedido) ÷ preço pedido.
+    Sem mediana (n=0 ou sem página) → None. É informativa: negativa significa que o
+    anúncio pede mais do que a carta vem vendendo em chinês."""
+    zh = row.get("zh") or {}
+    price = (row.get("listing") or {}).get("price")
+    median = zh.get("median_90d") if zh.get("status") == "ok" else None
+    if not price or median is None:
+        return None
+    return round((median - price) / price * 100, 1)
 
 
 # --- classificação --------------------------------------------------------------
@@ -570,15 +595,15 @@ class ZhPages:
         self.cache: dict[tuple, dict] = {}
 
     def lookup(self, base: str, suffix: str, number: str | None, hint: str | None) -> dict:
-        if not number:
-            return {"status": "sem-numero-no-titulo", "url": ""}
-        key = (base, suffix, number, hint or "")
+        if not number and not hint:
+            return {"status": "sem-numero-e-sem-pista-no-titulo", "url": ""}
+        key = (base, suffix, number or "", hint or "")
         if key in self.cache:
             return self.cache[key]
         out = {"status": "", "url": ""}
         try:
             self.stats["pc_fetch"] += 1
-            body = self.fetch(zh_search_url(base, suffix, number))
+            body = self.fetch(zh_search_url(base, suffix, number, hint))
             url, why = pick_zh_page(body, base, suffix, number, hint)
             if url is None:
                 out["status"] = why
@@ -682,6 +707,7 @@ def scan_card(card: WatchCard, ebay, params: dict, *, fetch=pc_sales.fetch_page,
             else:
                 r["zh"] = {"status": "teto-de-paginas-por-carta", "url": ""}
                 stats["zh_page_teto"] += 1
+        r["zh_margin_pct"] = zh_margin_pct(r)
         r["lt"] = longterm(card.name, card.rarity or r["listing"]["title"], r["zh"] if r["zh"] and r["zh"].get("status") == "ok" else None)
         r["bucket"], r["reasons"] = classify(r, params)
         stats["rows_" + r["bucket"]] += 1

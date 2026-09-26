@@ -140,6 +140,24 @@ def test_pick_zh_page_unique_hint_and_ambiguous():
     assert cs.pick_zh_page(body, "pikachu", "", "145", None)[0] is None
 
 
+def test_pick_zh_page_without_number_needs_unique_set_hint():
+    body = _search_html(["/game/pokemon-chinese-sv8a/umbreon-ex-217", "/game/pokemon-chinese-sv8a/umbreon-ex-60",
+                         "/game/pokemon-chinese-csv95c/umbreon-ex-239"])
+    assert cs.pick_zh_page(body, "umbreon", "ex", None, None) == (None, "sem-numero-e-sem-pista")
+    url, why = cs.pick_zh_page(body, "umbreon", "ex", None, "csv95c")
+    assert url.endswith("/pokemon-chinese-csv95c/umbreon-ex-239") and why == "unica"
+    assert cs.pick_zh_page(body, "umbreon", "ex", None, "sv8a")[1].startswith("ambigua")
+    assert cs.pick_zh_page(body, "umbreon", "ex", None, "cs4a") == (None, "sem-pagina")
+    assert "csv95c" in cs.zh_search_url("umbreon", "ex", None, "csv95c") and "csv95c" not in cs.zh_search_url("umbreon", "ex", "217")
+
+
+def test_zh_margin_pct():
+    assert cs.zh_margin_pct({"listing": {"price": 969.69}, "zh": {"status": "ok", "median_90d": 530.0}}) == pytest.approx(-45.3, abs=0.1)
+    assert cs.zh_margin_pct({"listing": {"price": 100.0}, "zh": {"status": "ok", "median_90d": 150.0}}) == 50.0
+    assert cs.zh_margin_pct({"listing": {"price": 100.0}, "zh": {"status": "ok", "median_90d": None}}) is None
+    assert cs.zh_margin_pct({"listing": {"price": 100.0}, "zh": {"status": "sem-pagina"}}) is None
+
+
 def test_pick_zh_page_redirect_canonical():
     body = ('<html><head><link rel="canonical" href="https://www.pricecharting.com/game/pokemon-chinese-csv5c/charizard-ex-145">'
             '</head><body><table id="price_data"></table></body></html>')
@@ -419,6 +437,11 @@ def test_render_all_rows_two_links_and_dispatch(quiet):
     # pares e exclusiva em tabelas diferentes
     pares, excl = md.split("## 2. Exclusivas")
     assert "itm/e" not in pares and "itm/e" in excl and "itm/c" in pares
+    # margem contra a revenda chinesa (mediana 100 vs pedido 300 = −67%) e coluna presente nas duas tabelas
+    assert "| -67% |" in pares and "Margem vs revenda ZH" in pares and "Margem vs revenda ZH" in excl
+    # razão < 2× vai compacta por carta (d: 1400/800 = 1.75×), com o link do mais barato
+    assert "agrupadas por carta EN" in pares and "| Charizard ex 199 (SV: Scarlet & Violet 151) | 1 | 1.8×–1.8× | US$800.00 |" in pares
+    assert "itm/d" in pares
 
 
 def test_render_empty_and_aborted():
