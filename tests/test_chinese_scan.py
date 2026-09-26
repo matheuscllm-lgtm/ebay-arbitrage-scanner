@@ -256,7 +256,7 @@ def test_longterm_bands_mirror_outlook_and_never_zero(monkeypatch):
     assert [cs.scarcity_points(x) for x in (10, 500, 501, 5000, 9999, 20000, None)] == [25, 22, 18, 12, 7, 3, None]
     assert [cs.demand_points(x) for x in (60, 30, 5, 2, 1.9, None)] == [25, 20, 14, 8, 3, None]
     monkeypatch.setattr(cs, "character_points", lambda name: 25)
-    lt = cs.longterm("Charizard ex", "Special Illustration Rare", {"pop_psa10": 223, "sales_per_month_site": 1.0})
+    lt = cs.longterm("Charizard ex", "Special Illustration Rare", {"pop_psa10": 223, "pop_total": 262, "sales_per_month_site": 1.0})
     assert lt["score"] == 25 + 25 + 22 + 3 and lt["coverage"] == "4/4" and lt["character_tier"] == "S"
     lt2 = cs.longterm("Charizard ex", "SR", None)
     assert lt2["score"] == 25 + 12 and lt2["coverage"] == "2/4" and lt2["scarcity"] is None

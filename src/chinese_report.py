@@ -173,11 +173,19 @@ def _pair_row(i: int, r: dict) -> str:
         report.escape_md(report.carta_label(r.get("card"), r.get("number"))),
         report.escape_md(r.get("set") or "—"), report.escape_md(r.get("rarity") or "—"),
         LANG_LABEL.get(r.get("language"), r.get("language") or "—"), r.get("match") or "—",
-        lst.get("country") or "—", _int(zh.get("pop_psa10") if zh.get("status") == "ok" else None),
+        lst.get("country") or "—", _pop_cell(zh, lt),
         _spm(lt.get("sales_per_month")), _lt_cell(lt),
         report.escape_md(", ".join(r.get("reasons") or []) or "—"), _links(r),
     ]
     return "| " + " | ".join(cells) + " |"
+
+
+def _pop_cell(zh: dict, lt: dict) -> str:
+    if zh.get("status") != "ok" or zh.get("pop_psa10") is None:
+        return "n/d"
+    if lt.get("pop_note"):
+        return f"{_int(zh.get('pop_psa10'))} (censo fino: {_int(zh.get('pop_total'))} no total — não conta)"
+    return f"{_int(zh.get('pop_psa10'))} / {_int(zh.get('pop_total'))}"
 
 
 def _excl_row(i: int, r: dict) -> str:
@@ -189,7 +197,7 @@ def _excl_row(i: int, r: dict) -> str:
         str(i), _lt_cell(lt), _usd(lst.get("price")), _shipping(lst.get("shipping")), _zh_cell(zh), _margin(r), _trend(zh),
         report.escape_md(report.carta_label((r.get("pokemon") or r.get("base_name") or r.get("card") or "").title(), r.get("zh_number") or "")),
         report.escape_md(title), LANG_LABEL.get(r.get("language"), r.get("language") or "—"),
-        lst.get("country") or "—", _int(zh.get("pop_psa10") if zh.get("status") == "ok" else None),
+        lst.get("country") or "—", _pop_cell(zh, lt),
         _spm(lt.get("sales_per_month")), report.escape_md(r.get("exclusive_marker") or "—"),
         report.escape_md(", ".join(r.get("reasons") or []) or "—"), _links(r),
     ]
@@ -197,6 +205,8 @@ def _excl_row(i: int, r: dict) -> str:
 
 
 def render(payload: dict) -> str:
+    from .chinese_scan import rescore
+    payload = rescore(payload)
     meta = payload.get("meta") or {}
     rows = payload.get("rows") or []
     params = meta.get("params") or {}

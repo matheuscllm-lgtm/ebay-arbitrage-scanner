@@ -564,6 +564,9 @@ def demand_points(spm: float | None) -> int | None:
     return 3
 
 
+POP_TOTAL_MIN_TRUST = 25  # espelho do outlook: censo com menos de 25 slabs no total é página fina, não escassez
+
+
 def longterm(card_name: str, rarity_text: str, zh: dict | None) -> dict:
     """Score 0-100 = soma dos componentes disponíveis; `coverage` = k/4. Componente
     sem dado fica None (nunca zero). Demanda: vendas PSA 10 observadas em 90 d ÷ 3
@@ -571,6 +574,13 @@ def longterm(card_name: str, rarity_text: str, zh: dict | None) -> dict:
     ch = character_points(card_name)
     ra = rarity_points(rarity_text)
     pop10 = zh.get("pop_psa10") if zh else None
+    pop_total = zh.get("pop_total") if zh else None
+    pop_note = None
+    if pop10 is not None and (pop_total or 0) < POP_TOTAL_MIN_TRUST:
+        # Censo fino (< 25 slabs no total) no PriceCharting = página pouco
+        # alimentada, não escassez real → Escassez n/d, com o motivo declarado.
+        pop_note = f"censo fino ({pop_total} no total) — escassez n/d"
+        pop10 = None
     spm = None
     if zh:
         # Demanda = vendas PSA 10 OBSERVADAS em 90 d na própria página (÷3). O
@@ -584,7 +594,20 @@ def longterm(card_name: str, rarity_text: str, zh: dict | None) -> dict:
     parts = {"character": ch, "rarity": ra, "scarcity": sc, "demand": de}
     have = [v for v in parts.values() if v is not None]
     return {**parts, "character_tier": character_tier(ch), "pop_psa10": pop10, "sales_per_month": spm,
-            "score": sum(have), "coverage": f"{len(have)}/4"}
+            "pop_note": pop_note, "score": sum(have), "coverage": f"{len(have)}/4"}
+
+
+def rescore(payload: dict) -> dict:
+    """Recalcula `lt`, `zh_margin_pct` e o bucket de cada linha a partir do que o
+    JSON já guarda (sem rede). Idempotente: a entrega sempre sai da régua atual,
+    mesmo para um JSON gravado antes de um ajuste de faixa/guarda."""
+    params = {**DEFAULT_PARAMS, **((payload.get("meta") or {}).get("params") or {})}
+    for r in payload.get("rows") or []:
+        zh = r.get("zh") if (r.get("zh") or {}).get("status") == "ok" else None
+        r["lt"] = longterm(r.get("card") or "", r.get("rarity") or (r.get("listing") or {}).get("title") or "", zh)
+        r["zh_margin_pct"] = zh_margin_pct(r)
+        r["bucket"], r["reasons"] = classify(r, params)
+    return payload
 
 
 def zh_margin_pct(row: dict) -> float | None:
