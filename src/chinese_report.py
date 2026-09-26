@@ -137,13 +137,22 @@ def _lt_cell(lt: dict | None) -> str:
     return f"{lt.get('score', 0)} ({lt.get('coverage', '0/4')}; {lt.get('character_tier', '—')})"
 
 
+def short_ebay_url(url: str | None) -> str:
+    """URL do anúncio SEM os parâmetros de rastreio (`?_skw=…&hash=…`): mesmo item,
+    mesma origem, um terço do tamanho — a tabela do chat tem milhares de links."""
+    u = str(url or "")
+    if "ebay." in u and "/itm/" in u:
+        return u.split("?")[0]
+    return u
+
+
 def _links(row: dict) -> str:
     lst = row.get("listing") or {}
     en = row.get("en_ref") or {}
     zh = row.get("zh") or {}
     parts = []
     if lst.get("url"):
-        parts.append(f"[oferta]({report.md_url(lst['url'])})")
+        parts.append(f"[oferta]({report.md_url(short_ebay_url(lst['url']))})")
     if en.get("url"):
         parts.append(f"[ref EN]({report.md_url(en['url'])})")
     if zh.get("url"):
@@ -253,6 +262,30 @@ def _grouped_pairs(rows: list[dict]) -> list[str]:
     return out
 
 
+_CARD_COUNT_HEADER = "| Carta EN | Set EN | Anúncios | Idiomas | Razão EN÷ZH máx. | Menor ZH US$ (link) | Motivos mais comuns |"
+_CARD_COUNT_SEP = "|---|---|---|---|---|---|---|"
+
+
+def _card_counts(rows: list[dict]) -> list[str]:
+    """Uma linha por carta EN: contagem, idiomas, melhor razão, menor anúncio (link) e
+    motivos — para os baldes grandes na versão de chat."""
+    groups: dict[tuple, list] = {}
+    for r in rows:
+        groups.setdefault((r.get("card"), r.get("number"), r.get("set")), []).append(r)
+    out = [_CARD_COUNT_HEADER, _CARD_COUNT_SEP]
+    for (card, number, set_name), rs in sorted(groups.items(), key=lambda kv: -max(x.get("ratio") or 0 for x in kv[1])):
+        rs.sort(key=lambda x: (x.get("listing") or {}).get("price") or 0)
+        cheap = rs[0]
+        langs = sorted({LANG_LABEL.get(x.get("language"), x.get("language") or "—") for x in rs})
+        why = [k for k, _ in __import__("collections").Counter(w for x in rs for w in (x.get("reasons") or [])).most_common(3)]
+        out.append("| " + " | ".join([
+            report.escape_md(report.carta_label(card, number)), report.escape_md(set_name or "—"), str(len(rs)), ", ".join(langs),
+            _ratio(max(x.get("ratio") or 0 for x in rs)),
+            f"[{_usd((cheap.get('listing') or {}).get('price'))}]({report.md_url(short_ebay_url((cheap.get('listing') or {}).get('url')))})",
+            report.escape_md(", ".join(why) or "—")]) + " |")
+    return out
+
+
 def _grouped_exclusives(rows: list[dict]) -> list[str]:
     groups: dict[tuple, list] = {}
     for r in rows:
@@ -334,10 +367,27 @@ def render(payload: dict, compact: bool = False) -> str:
         if bucket == "abaixo-do-corte":
             full = [r for r in sub if (r.get("ratio") or 0) >= near]
             compact_rows = [r for r in sub if (r.get("ratio") or 0) < near]
-        if compact and bucket in ("validar", "abaixo-do-corte") and len(full) > COMPACT_THRESHOLD:
-            lines.append(f"Versão para o chat: {len(full)} anúncios agrupados por carta chinesa (todas as linhas estão no `.md` completo e no JSON).")
+        if compact and bucket == "validar" and len(full) > COMPACT_THRESHOLD:
+            strong = [r for r in full if (r.get("zh") or {}).get("status") == "ok" and (r.get("zh") or {}).get("n_sales_90d", 0) >= min_sales]
+            rest = [r for r in full if r not in strong]
+            lines.append(f"Versão para o chat: {len(strong)} anúncios COM evidência chinesa (≥{min_sales} vendas PSA 10 em 90 d — só a identidade "
+                         f"ficou por confirmar) agrupados por carta chinesa; os outros {len(rest)} (sem evidência ou sem página) saem como "
+                         "contagem por carta EN. Todas as linhas estão no `.md` completo e no JSON.")
             lines.append("")
-            lines += _grouped_pairs(full)
+            if strong:
+                lines += _grouped_pairs(strong)
+                lines.append("")
+            if rest:
+                if len(rest) <= COMPACT_THRESHOLD:
+                    lines += _card_counts(rest)
+                else:
+                    lines.append(f"Sem evidência chinesa: {len(rest)} anúncios de "
+                                 f"{len({(x.get('card'), x.get('number'), x.get('set')) for x in rest})} cartas EN — só no `.md` completo e no JSON.")
+                lines.append("")
+            full = []
+        elif compact and bucket == "abaixo-do-corte" and len(full) > COMPACT_THRESHOLD:
+            lines.append(f"Quase ({near:g}×–{ratio:g}×): {len(full)} anúncios de {len({(x.get('card'), x.get('number'), x.get('set')) for x in full})} "
+                         "cartas EN — diagnóstico, só no `.md` completo e no JSON.")
             lines.append("")
             full = []
         if full:
@@ -375,11 +425,30 @@ def render(payload: dict, compact: bool = False) -> str:
     if not excl:
         lines += ["_nenhuma linha_", ""]
     elif compact and len(excl) > COMPACT_THRESHOLD:
-        lines.append(f"Versão para o chat: {len(excl)} anúncios agrupados por carta chinesa (número · código de set · idioma); "
-                     "todas as linhas estão no `.md` completo e no JSON.")
+        with_page = [r for r in excl if (r.get("zh") or {}).get("status") == "ok"]
+        without = [r for r in excl if (r.get("zh") or {}).get("status") != "ok"]
+        lines.append(f"Versão para o chat: {len(with_page)} anúncios COM página chinesa encontrada, agrupados por carta chinesa "
+                     f"(número · código de set · idioma); os {len(without)} sem página (sem evidência de revenda) saem só como contagem "
+                     "por Pokémon abaixo. Todas as linhas estão no `.md` completo e no JSON.")
         lines.append("")
-        lines += _grouped_exclusives(excl)
-        lines.append("")
+        if with_page:
+            lines += _grouped_exclusives(with_page)
+            lines.append("")
+        if without:
+            lines.append("| Pokémon (exclusivas sem página chinesa) | Anúncios | Idiomas | Menor US$ (link) | Motivos mais comuns |")
+            lines.append("|---|---|---|---|---|")
+            groups: dict[str, list] = {}
+            for r in without:
+                groups.setdefault((r.get("pokemon") or r.get("base_name") or r.get("card") or "").title(), []).append(r)
+            for name, rs in sorted(groups.items(), key=lambda kv: -len(kv[1])):
+                rs.sort(key=lambda x: (x.get("listing") or {}).get("price") or 0)
+                cheap = rs[0]
+                langs = sorted({LANG_LABEL.get(x.get("language"), x.get("language") or "—") for x in rs})
+                why = sorted({(x.get("zh") or {}).get("status") or "não consultada" for x in rs})
+                lines.append("| " + " | ".join([report.escape_md(name), str(len(rs)), ", ".join(langs),
+                                                f"[{_usd((cheap.get('listing') or {}).get('price'))}]({report.md_url(short_ebay_url((cheap.get('listing') or {}).get('url')))})",
+                                                report.escape_md(", ".join(why)[:120])]) + " |")
+            lines.append("")
     else:
         lines += [_EXCL_HEADER, _EXCL_SEP]
         for i, r in enumerate(sorted(excl, key=lambda r: (-(r.get("lt") or {}).get("score", 0), (r.get("listing") or {}).get("price") or 0)), 1):

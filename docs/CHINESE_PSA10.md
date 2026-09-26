@@ -87,12 +87,15 @@ tem correspondência → `validar` com `set-zh-sem-correspondencia` (a arte pode
 outro set EN).
 
 **Duas versões do markdown** (mesmo JSON, mesma régua): `<out>.md` completo (todas as
-linhas) e `<out>.chat.md` (`ebay_summary.py --compact`) para o chat — quando um balde
-⚠️ validar ou a tabela de exclusivas passa de 40 linhas, sai **agrupado por carta
-chinesa** (contagem, preço mínimo/mediano, evidência, margem no mínimo, LT, link do
-mais barato); 🟢 candidatas saem sempre inteiras. Um grupo SV gera milhares de
-anúncios (dezenas do mesmo promo em preços diferentes) e o chat não comporta a
-tabela completa — ela fica no `.md`/JSON local.
+linhas) e `<out>.chat.md` (`ebay_summary.py --compact`) para o chat. Acima de 40 linhas
+por balde, a versão de chat mostra: 🟢 candidatas sempre inteiras; ⚠️ validar **com**
+evidência chinesa (≥3 vendas em 90 d — só a identidade falta) agrupado por carta chinesa
+(contagem, preço mínimo/mediano, razão e margem no mínimo, LT, link do mais barato) e o
+restante como uma linha de contagem; 🔎 quase (2×–4×) como uma linha de contagem;
+exclusivas **com** página chinesa agrupadas por carta e as sem página como contagem por
+Pokémon. Um grupo SV gera milhares de anúncios (dezenas do mesmo promo em preços
+diferentes); a tabela completa fica no `.md`/JSON local. As eBay URLs saem sem os
+parâmetros de rastreio (`?_skw=…`), mesmo item.
 
 Toda linha tem `[oferta]` (eBay) e, quando existem, a referência EN **clicável** com
 n e janela, e `[ref ZH]` (página chinesa). URLs vêm do JSON, nunca inventadas.
