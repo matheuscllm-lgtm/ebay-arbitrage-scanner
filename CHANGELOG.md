@@ -13,8 +13,16 @@
   `src/chinese_report.py` (2 tabelas, todas as linhas, links `[oferta]` · referência EN
   clicável · `[ref ZH]`). Política vigente (`slab_strategy`) intocada: idiomas seguem
   identidades separadas; `slab_strategy.language('Chinese')` continua None.
-- 39 testes offline (`tests/test_chinese_scan.py`). Resultados ficam em `results/`;
-  nada de preço no repositório.
+- Identidade sem número igual: família de raridade (SIR↔SAR, IR↔AR…) + correspondência
+  de set curada (`ZH_SET_TO_EN`: 151 Collect ↔ SV 151, sv8a ↔ Prismatic…); tag team e
+  sufixo colado por hífen são outra carta. Localizador da página chinesa lê os links
+  absolutos da busca, o número colado das promos/Gem Pack e a variante de impressão.
+  `rescore()` re-pontua qualquer JSON com a régua vigente na entrega; censo fino (<25)
+  não vira escassez; margem bruta vs revenda chinesa por linha.
+- Versão de chat (`--compact`, `<out>.chat.md`): candidatas inteiras, validar com evidência
+  agrupado por carta chinesa, contagens para o resto; URLs eBay sem parâmetros de rastreio.
+- 49 testes offline (`tests/test_chinese_scan.py`, `test_chinese_rescore.py`,
+  `test_chinese_setmap.py`). Resultados ficam em `results/`; nada de preço no repositório.
 
 
 ## 2026-09-12 — pré-seleção dinâmica antes da curadoria/eBay
