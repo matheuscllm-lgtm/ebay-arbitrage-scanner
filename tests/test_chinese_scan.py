@@ -123,8 +123,10 @@ def test_zh_number_and_set_hint():
         cs.zh_set_hint("2024 POKEMON SIMPLIFIED CHINESE CS5.5 C-SHADOW OF GLORY RADIANT CHARIZARD PSA 10") == "cs55"
 
 
-def _search_html(paths):
-    return "<html>" + "".join(f'<a href="{p}">x</a>' for p in paths) + "</html>"
+def _search_html(paths, absolute=False, labels=None):
+    labels = labels or {}
+    pre = "https://www.pricecharting.com" if absolute else ""
+    return "<html>" + "".join(f'<a href="{pre}{p}" title="1">{labels.get(p, "x")}</a>' for p in paths) + "</html>"
 
 
 def test_pick_zh_page_unique_hint_and_ambiguous():
@@ -138,6 +140,30 @@ def test_pick_zh_page_unique_hint_and_ambiguous():
     assert url is None and why == "sem-pagina"
     # nome incompatível no slug nunca casa; página japonesa nunca entra
     assert cs.pick_zh_page(body, "pikachu", "", "145", None)[0] is None
+
+
+def test_pick_zh_page_absolute_links_variants_glued_numbers_and_labels():
+    body = _search_html(["/game/pokemon-chinese-151-collect/eevee-master-ball-133", "/game/pokemon-chinese-151-collect/eevee-133",
+                         "/game/pokemon-chinese-151-collect/eevee-reverse-133", "/game/pokemon-chinese-promo/bulbasaur-130th-p",
+                         "/game/pokemon-chinese-151-collect/bulbasaur-1", "/game/pokemon-chinese-gem-pack-4/eevee-407"],
+                        absolute=True, labels={"/game/pokemon-chinese-promo/bulbasaur-130th-p": "Bulbasaur #1/30th-P",
+                                               "/game/pokemon-chinese-gem-pack-4/eevee-407": "Eevee #407"})
+    # variante só quando o título pede; sem pedido, a página comum
+    assert cs.pick_zh_page(body, "eevee", "", "133", None, title="Eevee 133/165 Chinese PSA 10")[0].endswith("/eevee-133")
+    assert cs.pick_zh_page(body, "eevee", "", "133", None, title="REVERSE HOLO #133 EEVEE Chinese PSA 10")[0].endswith("/eevee-reverse-133")
+    assert cs.pick_zh_page(body, "eevee", "", "133", None, title="Eevee Master Ball 133 Chinese PSA 10")[0].endswith("/eevee-master-ball-133")
+    # promo com número colado ao código: o rótulo "#1/30th-P" decide, e a pista "30th" casa pelo rótulo
+    assert cs.pick_zh_page(body, "bulbasaur", "", "1", "30th", title="Bulbasaur 30th-P 001 Chinese PSA 10")[0].endswith("/bulbasaur-130th-p")
+    assert cs.pick_zh_page(body, "bulbasaur", "", "1", None, title="Bulbasaur Chinese PSA 10")[1].startswith("ambigua")
+    # Gem Pack: numerador+denominador colados no slug ("4/07" → 407), denominador como impresso
+    assert cs.zh_fraction_from_title("Eevee 4/07 Gem Pack Chinese PSA 10") == ("4", "07")
+    assert cs.pick_zh_page(body, "eevee", "", "4", "gem-pack", title="Eevee 4/07 Gem Pack Chinese PSA 10", denominator="07")[0].endswith("/eevee-407")
+    # busca que REDIRECIONA para uma promo com número colado: o <title> "#003" prova o número
+    redir = ('<html><head><title>Squirtle #003/30TH-P Prices | Pokemon Chinese Promo</title>'
+             '<link rel="canonical" href="https://www.pricecharting.com/game/pokemon-chinese-promo/squirtle-330th-p"></head>'
+             '<body><table id="price_data"></table></body></html>')
+    assert cs.pick_zh_page(redir, "squirtle", "", "3", "30th")[1] == "redirect-canonical"
+    assert cs.pick_zh_page(redir, "squirtle", "", "5", "30th")[0] is None
 
 
 def test_pick_zh_page_without_number_needs_unique_set_hint():
@@ -162,7 +188,8 @@ def test_pick_zh_page_redirect_canonical():
     body = ('<html><head><link rel="canonical" href="https://www.pricecharting.com/game/pokemon-chinese-csv5c/charizard-ex-145">'
             '</head><body><table id="price_data"></table></body></html>')
     url, why = cs.pick_zh_page(body, "charizard", "ex", "145", None)
-    assert url.endswith("/charizard-ex-145") and why == "redirect-canonical"
+    # o <link rel=canonical> absoluto também é lido como resultado: 'unica' ou 'redirect-canonical', nunca chute
+    assert url.endswith("/charizard-ex-145") and why in ("unica", "redirect-canonical")
     body_en = body.replace("pokemon-chinese-csv5c", "pokemon-scarlet-&-violet-151")
     assert cs.pick_zh_page(body_en, "charizard", "ex", "145", None)[0] is None
 
@@ -326,6 +353,9 @@ def test_scan_card_end_to_end(quiet):
                             "charizard-ex-145": ZH_PAGE, "chinese-151-collect/charizard-ex-199": ZH_PAGE})
     stats = Counter()
     rows = cs.scan_card(CARD, ebay, dict(cs.DEFAULT_PARAMS), fetch=fetch, today=TODAY, stats=stats, log=lambda *a: None)
+    # ordem de gasto do teto: pares ≥ corte antes das exclusivas (busca da 'e' vem por último)
+    zh_urls = [u for u in fetch.calls if "search-products" in u]
+    assert zh_urls and "166" in zh_urls[-1]
     assert stats["ebay_calls"] == 1 and stats["cards_scanned"] == 1 and stats["listings_fetched"] == 9
     assert stats["skip_not_psa10"] == 1 and stats["skip_name_mismatch"] == 1 and stats["skip_sem-marcador"] == 1 and stats["skip_below_floor"] == 1
     by_id = {r["listing"]["item_id"]: r for r in rows}
@@ -344,6 +374,7 @@ def test_scan_card_end_to_end(quiet):
 
 def test_scan_card_respects_zh_page_cap_and_pc_error(quiet):
     ls = [listing(f"Charizard ex Simplified Chinese {n}/129 PSA 10", price=100.0, item_id=str(n)) for n in (101, 102, 103)]
+    # 3 números distintos, teto 2: o terceiro (menos prioritário = maior preço/igual → ordem estável) fica sem página
     ebay = FakeEbay(ls)
     fetch = _fetch_factory({"violet-151/charizard-ex-199": EN_PAGE})   # busca chinesa sem fixture → PcError
     stats = Counter()

@@ -240,6 +240,18 @@ _SET_CODE_RE = re.compile(
     r"\b((?:csvl|csv|csm|cbb|cs|cll|ac|sv|sm|xy|s|m)\d{1,2}(?:\.\d)?[a-z]?[cf]?)\b", re.I)
 
 
+def zh_fraction_from_title(title: str | None) -> tuple[str | None, str | None]:
+    """(numerador, denominador) da fração do título ("145/129" → ("145", "129"));
+    número marcado ("#094") → ("94", None); nada → (None, None)."""
+    t = title_parser._GRADE_MENTION_STRIP.sub(" ", (title or "").lower())
+    t = title_parser._POP_CERT_QTY_RE.sub(" ", t)
+    m = _FRACTION_RE.search(t)
+    if m:
+        return str(int(m.group(1))), m.group(2)   # denominador como impresso ("07")
+    m = _MARKED_RE.search(t)
+    return (str(int(m.group(1))), None) if m else (None, None)
+
+
 def zh_number_from_title(title: str | None) -> str | None:
     """Número da carta CHINESA no título: fração ("145/129" → "145") ou marcado
     ("#094" → "94"). Nota do slab ("PSA 10") nunca é número."""
@@ -277,10 +289,22 @@ def zh_search_url(base: str, suffix: str, number: str | None, hint: str | None =
     return "https://www.pricecharting.com/search-products?type=prices&q=" + quote(" ".join(q))
 
 
-_ZH_LINK_RE = re.compile(r'href="(/game/pokemon-chinese-([a-z0-9.\-]+)/([a-z0-9.\-]+))"', re.I)
+# Resultado de busca do PriceCharting: href ABSOLUTO ("https://www.pricecharting.com/game/…")
+# com o texto do link ("Greninja Ex #242"); páginas antigas traziam href relativo.
+_ZH_LINK_RE = re.compile(
+    r'href="(?:https?://www\.pricecharting\.com)?(/game/pokemon-chinese-([a-z0-9.\-]+)/([a-z0-9.\-]+))"[^>]*>\s*([^<]*)', re.I)
 
 
-def pick_zh_page(body: str, base: str, suffix: str, number: str | None, hint: str | None) -> tuple[str | None, str]:
+_PRINT_VARIANTS = ("master-ball", "poke-ball", "reverse", "1st", "shadowless", "stamped", "cosmos", "error")
+
+
+def _title_variants(title: str) -> set[str]:
+    t = (title or "").lower()
+    return {v for v in _PRINT_VARIANTS if v.replace("-", " ") in t or v.replace("-", "") in t.replace(" ", "")}
+
+
+def pick_zh_page(body: str, base: str, suffix: str, number: str | None, hint: str | None,
+                 title: str = "", denominator: str | None = None) -> tuple[str | None, str]:
     """Escolhe a página chinesa a partir do HTML da busca (função pura).
 
     Regras: só `/game/pokemon-chinese-*/`; o slug da carta termina no número
@@ -293,25 +317,42 @@ def pick_zh_page(body: str, base: str, suffix: str, number: str | None, hint: st
     num = str(int(number)) if number and number.isdigit() else (number or "")
     if not num and not hint:
         return None, "sem-numero-e-sem-pista"
+    # Gem Pack e afins: o PriceCharting cola numerador+denominador no slug
+    # ("11/15" → "eevee-1115"); aceito como forma alternativa do número.
+    glued = f"{num}{denominator}" if num and denominator and denominator.isdigit() else ""  # "4"+"07" → "407"
+    wanted_variants = _title_variants(title)
 
-    def _ok(card_slug: str) -> bool:
+    def _ok(card_slug: str, label: str = "") -> bool:
+        """Nome inteiro no slug e, com número, o slug termina nele (ou na forma
+        colada) OU o texto do link/título traz "#<número>" (promos como
+        "squirtle-330th-p" colam o número ao código no slug)."""
         toks = [tok for tok in card_slug.lower().split("-") if tok]
         if not toks or not want.issubset(set(toks)):
             return False
-        return (not num) or (toks[-1].isdigit() and str(int(toks[-1])) == num)
+        if not num:
+            return True
+        if toks[-1].isdigit() and str(int(toks[-1])) in (num, glued):
+            return True
+        return re.search(r"#\s*0*" + re.escape(num) + r"(?![\d])", label or "") is not None
+
+    def _slug_variants(path: str) -> set[str]:
+        slug = path.rstrip("/").split("/")[-1].lower()
+        return {v for v in _PRINT_VARIANTS if v in slug}
 
     candidates: list[tuple[str, str]] = []
     seen = set()
-    for path, set_slug, card_slug in _ZH_LINK_RE.findall(body):
-        if path in seen or not _ok(card_slug):
+    for path, set_slug, card_slug, label in _ZH_LINK_RE.findall(body):
+        if path in seen or not _ok(card_slug, label):
             continue
         seen.add(path)
-        candidates.append((path, set_slug.lower()))
+        # o rótulo do link entra no "set" para a pista casar promos ("#1/30th-P")
+        candidates.append((path, set_slug.lower() + " " + label.lower()))
     if not candidates:
         canon = pricecharting.product_url_from_search(body)
         if canon and "/game/pokemon-chinese-" in canon:
             parts = canon.rstrip("/").split("?")[0].split("/")
-            if len(parts) >= 2 and _ok(parts[-1]) and (not hint or hint.replace(".", "") in parts[-2].replace(".", "")):
+            title = re.search(r"<title>([^<]*)</title>", body, re.I)
+            if len(parts) >= 2 and _ok(parts[-1], title.group(1) if title else ""):
                 return canon, "redirect-canonical"
         return None, "sem-pagina"
     if hint:
@@ -321,6 +362,12 @@ def pick_zh_page(body: str, base: str, suffix: str, number: str | None, hint: st
             candidates = narrowed
         elif not num:
             return None, "sem-pagina"   # sem número, a pista de set é obrigatória
+    if len(candidates) > 1:
+        # Variante de impressão: "[Master Ball]"/"[Reverse]" só quando o título pede;
+        # sem pedido, fica a página comum (sem variante no slug).
+        same = [c for c in candidates if _slug_variants(c[0]) == wanted_variants]
+        if len(same) >= 1:
+            candidates = same
     if len(candidates) == 1:
         return "https://www.pricecharting.com" + candidates[0][0], "unica"
     return None, f"ambigua({len(candidates)})"
@@ -594,17 +641,18 @@ class ZhPages:
         self.fetch, self.today, self.params, self.stats, self.log = fetch, today, params, stats, log
         self.cache: dict[tuple, dict] = {}
 
-    def lookup(self, base: str, suffix: str, number: str | None, hint: str | None) -> dict:
+    def lookup(self, base: str, suffix: str, number: str | None, hint: str | None,
+               title: str = "", denominator: str | None = None) -> dict:
         if not number and not hint:
             return {"status": "sem-numero-e-sem-pista-no-titulo", "url": ""}
-        key = (base, suffix, number or "", hint or "")
+        key = (base, suffix, number or "", hint or "", denominator or "", frozenset(_title_variants(title)))
         if key in self.cache:
             return self.cache[key]
         out = {"status": "", "url": ""}
         try:
             self.stats["pc_fetch"] += 1
             body = self.fetch(zh_search_url(base, suffix, number, hint))
-            url, why = pick_zh_page(body, base, suffix, number, hint)
+            url, why = pick_zh_page(body, base, suffix, number, hint, title=title, denominator=denominator)
             if url is None:
                 out["status"] = why
                 self.stats["zh_page_" + ("ambigua" if why.startswith("ambigua") else "ausente")] += 1
@@ -698,15 +746,21 @@ def scan_card(card: WatchCard, ebay, params: dict, *, fetch=pc_sales.fetch_page,
         price = r["listing"]["price"]
         if not r["exclusive"] and en["price"] and price:
             r["ratio"] = round(en["price"] / price, 2)
-        needs_zh = r["exclusive"] or (r["ratio"] is not None and r["ratio"] >= float(params["min_ratio"]))
-        if needs_zh:
-            key = (r["zh_number"], r["zh_set_hint"] or "")
-            if key in used or len(used) < budget:
-                used.add(key)
-                r["zh"] = zh_pages.lookup(base, suffix, r["zh_number"], r["zh_set_hint"])
-            else:
-                r["zh"] = {"status": "teto-de-paginas-por-carta", "url": ""}
-                stats["zh_page_teto"] += 1
+    # Páginas chinesas: pares ≥ corte primeiro (maior razão antes), depois as
+    # exclusivas (mais baratas antes) — o teto por carta não pode ser comido pelas
+    # dezenas de promos de um mesmo Pokémon.
+    needing = [r for r in rows if r["exclusive"] or (r["ratio"] is not None and r["ratio"] >= float(params["min_ratio"]))]
+    needing.sort(key=lambda r: (r["exclusive"], -(r["ratio"] or 0), r["listing"]["price"] or 0))
+    for r in needing:
+        num, den = zh_fraction_from_title(r["listing"]["title"])
+        key = (num, r["zh_set_hint"] or "", den or "", frozenset(_title_variants(r["listing"]["title"])))
+        if key in used or len(used) < budget:
+            used.add(key)
+            r["zh"] = zh_pages.lookup(base, suffix, num, r["zh_set_hint"], title=r["listing"]["title"], denominator=den)
+        else:
+            r["zh"] = {"status": "teto-de-paginas-por-carta", "url": ""}
+            stats["zh_page_teto"] += 1
+    for r in rows:
         r["zh_margin_pct"] = zh_margin_pct(r)
         r["lt"] = longterm(card.name, card.rarity or r["listing"]["title"], r["zh"] if r["zh"] and r["zh"].get("status") == "ok" else None)
         r["bucket"], r["reasons"] = classify(r, params)
