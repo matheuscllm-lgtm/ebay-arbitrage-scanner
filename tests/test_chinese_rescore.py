@@ -17,12 +17,13 @@ def test_rescore_is_idempotent_and_uses_current_rule(monkeypatch):
     row = {"card": "Charizard ex", "rarity": "Special Illustration Rare", "exclusive": False, "match": "nome+numero",
            "rarity_check": None, "language": "ZH-HANS", "ratio": 5.0,
            "en_ref": {"price": 500.0, "source": "vendas", "n": 4},
-           "listing": {"price": 100.0, "title": "x"},
+           "listing": {"price": 100.0, "title": "Charizard ex 199/165 Simplified Chinese PSA 10"},
            "zh": {"status": "ok", "n_sales_90d": 3, "median_90d": 150.0, "pop_psa10": 1, "pop_total": 2,
                   "sales_per_month_observed": 1.0},
            "lt": {"score": 999}, "bucket": "validar", "reasons": ["velho"]}
     out = cs.rescore({"meta": {"params": {}}, "rows": [row]})
     r = out["rows"][0]
+    assert r["match"] == "nome+numero"   # identidade recalculada do título
     assert r["bucket"] == "candidata" and r["reasons"] == [] and r["zh_margin_pct"] == 50.0
     assert r["lt"]["scarcity"] is None and r["lt"]["coverage"] == "3/4" and r["lt"]["score"] == 25 + 25 + 3
     assert cs.rescore(out)["rows"][0]["lt"] == r["lt"]
