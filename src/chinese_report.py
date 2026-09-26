@@ -344,6 +344,12 @@ def render(payload: dict, compact: bool = False) -> str:
             for i, r in enumerate(full, 1):
                 lines.append(_pair_row(i, r))
             lines.append("")
+        if compact_rows and compact:
+            lines.append(f"Razão < {near:g}× (anúncio chinês vale mais da metade do PSA 10 inglês): {len(compact_rows)} linhas em "
+                         f"{len({(r.get('card'), r.get('number'), r.get('set')) for r in compact_rows})} cartas EN — só no `.md` completo e no JSON "
+                         "(diagnóstico: não há desconto relevante).")
+            lines.append("")
+            compact_rows = []
         if compact_rows:
             lines.append(f"Razão < {near:g}× (anúncio chinês vale mais da metade do PSA 10 inglês): {len(compact_rows)} linhas, "
                          f"agrupadas por carta EN — cada linha continua no JSON; o link é o anúncio mais barato do grupo.")
