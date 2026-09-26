@@ -1,3 +1,21 @@
+## 2026-09-26 — modo CHINÊS: PSA 10 em chinês × PSA 10 em inglês (crivo ≥4×)
+
+- Novo `chinese_scan.py` + `src/chinese_scan.py`: para cada carta EN da watchlist,
+  busca no eBay a versão PSA 10 em chinês (qualquer país; sintaxe OR da Browse API
+  para os marcadores de idioma), idioma pelo título (simplificado × tradicional ×
+  não especificado), identidade por nome/dono/raridade (numeração chinesa difere da
+  EN), exclusivas em tabela à parte, referência EN só como crivo (razão EN÷ZH ≥ 4),
+  evidência de revenda pela página CHINESA do PriceCharting (≥3 vendas PSA 10 em
+  90 d) e régua de longo prazo informativa espelhando o outlook (personagem,
+  raridade, escassez pelo censo chinês, demanda por vendas/mês). Método em
+  `docs/CHINESE_PSA10.md`.
+- `ebay_summary.py` despacha por `meta.kind == "chinese-psa10"` para
+  `src/chinese_report.py` (2 tabelas, todas as linhas, links `[oferta]` · referência EN
+  clicável · `[ref ZH]`). Política vigente (`slab_strategy`) intocada: idiomas seguem
+  identidades separadas; `slab_strategy.language('Chinese')` continua None.
+- 39 testes offline (`tests/test_chinese_scan.py`). Resultados ficam em `results/`;
+  nada de preço no repositório.
+
 
 ## 2026-09-12 — pré-seleção dinâmica antes da curadoria/eBay
 

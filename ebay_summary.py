@@ -260,6 +260,11 @@ def build_markdown(payload, sensitivity=None):
     """JSON do scan -> markdown de entrega (todas as linhas, todos os buckets)."""
     meta = payload.get("meta") or {}
     rows = payload.get("rows") or []
+    if meta.get("kind") == "chinese-psa10":
+        # Modo CHINÊS (chinese_scan.py): JSON próprio, gerador próprio. Testado
+        # ANTES do teste da política: as linhas não têm `strategy`/custos.
+        from src.chinese_report import render as render_chinese
+        return render_chinese(payload)
     if meta.get("config", {}).get("slab_strategy") or any(r.get("strategy") for r in rows):
         from src.slab_report import render
         text = render(payload)
