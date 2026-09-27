@@ -105,7 +105,9 @@ python ebay_summary.py results/chinese-g1.json -o results/chinese-g1.md
 
 Crivo: slab chinês ≤ PSA 10 inglês ÷ 4, item > US$10, qualquer país; revenda só se
 prova com vendas em chinês (≥3 em 90 d). Simplificado e tradicional separados;
-exclusivas em tabela própria; coluna LT informativa. Método em
+exclusivas em tabela própria; coluna LT informativa. Identidade por impressão pelo
+catálogo `src/catalog/zh_identity.json` (`python zh_catalog.py`, fonte 52poke wiki):
+[docs/CHINESE_IDENTITY.md](docs/CHINESE_IDENTITY.md). Método em
 [docs/CHINESE_PSA10.md](docs/CHINESE_PSA10.md).
 
 `--check-config` não acessa a rede: código 0 sem pendências, 2 com pendências;

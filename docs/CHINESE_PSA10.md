@@ -94,11 +94,17 @@ abortado (credencial/orçamento); o parcial vai para `<out>.aborted.json`.
 Tabela 2 (exclusivas): todas as linhas com marcador, ordenadas pela régua LT, com
 evidência chinesa, tendência observada e o título do anúncio para o operador validar.
 
-Candidata sem número igual exige ainda que a página chinesa reimprima o **mesmo set
-EN** (tabela curada `ZH_SET_TO_EN`: 151 Collect ↔ SV 151, sv8a ↔ Prismatic Evolutions,
-s8a ↔ Celebrations…); compilação simplificada (CS/CSV/CSM/CBB), promo ou Gem Pack não
-tem correspondência → `validar` com `set-zh-sem-correspondencia` (a arte pode ser de
-outro set EN).
+Candidata sem número igual exige identidade por **impressão** ou por **set**. Impressão
+(2026-09-27, [CHINESE_IDENTITY.md](CHINESE_IDENTITY.md)): o catálogo
+`src/catalog/zh_identity.json` (gerado por `zh_catalog.py` a partir da 52poke wiki) diz,
+para cada código simplificado + número chinês (`CSV9C 245/208`, `151C 191`, Gem Pack
+`Vol.2 4/07`, ou a página chinesa do PriceCharting já achada), qual carta EN é aquela
+impressão — `mesma-carta` prova a identidade e dispensa número/set/raridade do título;
+`catalogo-outra-carta` e `catalogo-sem-par-en` derrubam para `validar` com o motivo
+explícito; `catalogo-ambiguo` mantém a regra por set. Set (retaguarda, `ZH_SET_TO_EN`):
+a página chinesa reimprime o **mesmo set EN** (151 Collect ↔ SV 151, sv8a ↔ Prismatic
+Evolutions, s8a ↔ Celebrations…); compilação simplificada, promo ou Gem Pack fora do
+catálogo não tem correspondência → `validar` com `set-zh-sem-correspondencia`.
 
 **Duas versões do markdown** (mesmo JSON, mesma régua): `<out>.md` completo (todas as
 linhas) e `<out>.chat.md` (`ebay_summary.py --compact`) para o chat. Acima de 40 linhas
@@ -159,9 +165,10 @@ Método fixado para a análise independente da tese (números só no chat/`resul
 
 ## Limites honestos
 
-- Numeração chinesa costuma diferir da EN: sem número igual, a identidade fica em
-  `nome`/`nome-base` e pede conferência da arte (link da oferta + páginas de
-  referência estão na linha).
+- Numeração chinesa costuma diferir da EN: sem número igual e fora do catálogo de
+  impressões, a identidade fica em `nome`/`nome-base` e pede conferência da arte (link
+  da oferta + páginas de referência estão na linha). O catálogo cobre o que a 52poke wiki
+  lista; `ambiguous` e `sem par` são os alvos da conferência por imagem, ainda não feita.
 - O censo do PriceCharting não existe em toda página chinesa e atrasa meses; GemRate
   (pop oficial da PSA) responde 403 fora do PC do operador.
 - 1 página por busca eBay (200 anúncios mais baratos): cartas com centenas de

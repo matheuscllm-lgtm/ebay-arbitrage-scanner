@@ -1,0 +1,58 @@
+{{ExpansionPrevNext|电|雷C|prev=璀璨诡幻|next=太晶盛聚|other=|other2=}}
+{{TCG版本信息框/ZH
+| setname = 星彩晶璃
+| title      = 星晶绽放，华光焕彩！
+| setsymbol  = yes
+| alt        = CSV9C
+| setlogo    = TCG 朱&紫 星彩晶璃 logo.png
+| packlogo   = TCG 朱&紫 星彩晶璃 常规版补充包.png
+| packlogobig   = TCG 朱&紫 星彩晶璃 补充包.png
+| packlogo2 = TCG 朱&紫 星彩晶璃 补充包 20张装 卡盒.png
+| poster = TCG 朱&紫 星彩晶璃 poster.png
+| 版本       = 朱&紫
+| cards   = 208+58
+| pack = 补充包
+| release = 2026年05月15日10时起
+| price = 5张装：10（人民币元）<br>20张装：50（人民币元）
+| packnumber = 5张装：15<br>20张装：6
+| cardnumber = 5张装：5<br>20张装：20
+| serices    = 随机
+| ja = {{TCG|超电突围}}等
+| zh =
+| official = https://www.pokemon.cn/tcg/product/21383.html
+|}}
+{{快捷方式|CSV9}}
+“'''星彩晶璃'''”是简体中文版{{TCG|朱&紫系列}}[[宝可梦集换式卡牌游戏|卡牌]]第九个发售的补充包。
+
+==概述==
+太晶属性为“星晶”的宝可梦ex即将登上战斗场，绽放出华丽光芒。
+
+*'''“星晶”绽放——全新的太晶属性！'''
+囊括了所有属性的力量的全新太晶属性“[[星晶]]”在此闪耀绽放。据说，传说的宝可梦[[太乐巴戈斯]]和“星晶”之间有着紧密的联系。出现在补充包“星彩晶璃”封面的，正是太晶属性为“星晶”的皮卡丘。它头顶的太晶宝石熠熠生辉、璀璨夺目，一看就是对战场上最夺人眼球的焦点。
+
+补充包“星彩晶璃”中收录了多种太晶属性为“星晶”的{{TCG|宝可梦ex}}！这些宝可梦ex都拥有需要三种不同属性的能量才能使用的招式。虽然这些招式对能量的需求很高，但它们的伤害或效果都极为强大！
+
+*'''全新的ACE SPEC卡牌重磅登场！'''
+补充包“星彩晶璃”中还收录了多张全新的{{TCG|ACE SPEC}}卡牌。
+
+*'''蓝莓学园[[四天王]]等训练家也将作为支援者卡登场'''
+
+<gallery mode="packed" heights="220px">
+CSV9C257.png|琉琪亚的展现
+</gallery>
+
+==卡牌列表==
+{{卡牌列表/header|电|雷C|rarity=yes|symbol=yes|image=SetSymbolCSV9C.png}}
+{{卡牌列表/entryjp|001/208|{{C|蛋蛋|SV7a}}|草||C}}
+{{卡牌列表/entryjp|026/208|{{C|爆焰龟兽|SV7}}|火||C}}
+{{卡牌列表/entryjp|054/208|{{C|皮卡丘ex|SV8}}|雷||RR|H}}
+{{卡牌列表/entryjp|090/208|{{C|仙子伊布ex|SVLN}}|超||RR|H}}
+{{卡牌列表/entryjp|153/208|{{C|伊布|SVLN}}|无色||C}}
+{{卡牌列表/entryjp|204/208|{{TCG|琉琪亚的展现}}|支援者卡||U|}}
+{{卡牌列表/entryjp|209/208|{{C|爆焰龟兽|SV7}}|火||AR|全}}
+{{卡牌列表/entryjp|221/208|{{C|皮卡丘ex|SV8}}|雷||SR|全}}
+{{卡牌列表/entryjp|233/208|{{TCG|赤松}}|支援者卡||SR|全}}
+{{卡牌列表/entryjp|245/208|{{C|皮卡丘ex|SV8}}|雷||SAR|全}}
+{{卡牌列表/entryjp|257/208|{{TCG|琉琪亚的展现}}|支援者卡||SAR|全}}
+{{卡牌列表/entryjp|260/208|{{C|皮卡丘ex|SV8}}|雷||UR|全}}
+{{卡牌列表/footer|cellcol=妖C}}

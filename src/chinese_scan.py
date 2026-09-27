@@ -45,7 +45,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
-from . import grading, pc_sales, pricecharting, report, scanner, title_parser
+from . import grading, pc_sales, pricecharting, report, scanner, title_parser, zh_identity
 from .ebay_api import EbayApiError, EbayAuthError, EbayBudgetExceeded, EbayClient
 from .models import Listing, WatchCard
 from .selection import select_batch, validate_batch_options
@@ -634,6 +634,7 @@ def rescore(payload: dict) -> dict:
         kept.append(r)
         zh = r.get("zh") if (r.get("zh") or {}).get("status") == "ok" else None
         r["lt"] = longterm(r.get("card") or "", r.get("rarity") or (r.get("listing") or {}).get("title") or "", zh)
+        r["zh_catalog"] = catalog_identity(r)   # catálogo VIGENTE, mesmo para JSON antigo
         r["zh_margin_pct"] = zh_margin_pct(r)
         r["bucket"], r["reasons"] = classify(r, params)
     payload["rows"] = kept
@@ -706,6 +707,20 @@ def set_corresponds(en_set: str | None, zh_url: str | None) -> bool | None:
     return (en_set or "") in ZH_SET_TO_EN[code]
 
 
+# --- identidade por impressão (catálogo simplificado → EN) ----------------------------
+def catalog_identity(row: dict, catalog: zh_identity.Catalog | None = None) -> dict | None:
+    """Veredito do catálogo de impressões (`src/zh_identity.py`, gerado por `zh_catalog.py`)
+    para a linha: a chave (código simplificado + número chinês) vem do título do anúncio
+    ("CSV9C 245/208", "151C", "Gem Pack Vol.2 4/07") ou, sem ela, da página chinesa do
+    PriceCharting já localizada. None = sem chave ou sem catálogo (vale a regra por set)."""
+    title = (row.get("listing") or {}).get("title") or ""
+    num, den = zh_fraction_from_title(title)
+    key = zh_identity.cn_key_from_title(title, num, den)
+    if key is None:
+        key = zh_identity.cn_key_from_pc_url(((row.get("zh") or {}).get("url")) or "")
+    return zh_identity.identity_for(row.get("set"), row.get("number"), key, catalog)
+
+
 # --- classificação --------------------------------------------------------------
 def classify(row: dict, params: dict) -> tuple[str, list[str]]:
     reasons: list[str] = []
@@ -719,20 +734,30 @@ def classify(row: dict, params: dict) -> tuple[str, list[str]]:
         return "abaixo-do-corte", [f"razao<{params['min_ratio']:g}"]
     rc, m = row.get("rarity_check"), row.get("match")
     zh0 = row.get("zh") or {}
-    if m == "nome+numero":
-        if rc is False:
-            reasons.append("raridade-divergente")
-    elif m == "nome" and rc is True:
-        # nome inteiro + mesma família de raridade: par forte SÓ se a página chinesa
-        # reimprime o mesmo set EN (numeração difere, mas a lista de cartas é a mesma)
-        corr = set_corresponds(row.get("set"), zh0.get("url")) if zh0.get("status") == "ok" else None
-        if corr is False:
-            reasons.append("set-zh-divergente")
-        elif corr is None:
-            reasons.append("set-zh-sem-correspondencia")
+    cat_status = (row.get("zh_catalog") or {}).get("status")
+    if cat_status == "mesma-carta":
+        pass   # identidade provada por IMPRESSÃO (catálogo): dispensa número/set/raridade do título
+    elif cat_status == "outra-carta":
+        reasons.append("catalogo-outra-carta")   # a impressão chinesa anunciada é outra carta EN
+    elif cat_status == "sem-par-en":
+        reasons.append("catalogo-sem-par-en")    # arte/impressão sem par EN identificável
     else:
-        reasons.append(f"match-{m}")
-        reasons.append("raridade-divergente" if rc is False else "raridade-nao-confirmada")
+        if cat_status == "ambigua":
+            reasons.append("catalogo-ambiguo")
+        if m == "nome+numero":
+            if rc is False:
+                reasons.append("raridade-divergente")
+        elif m == "nome" and rc is True:
+            # nome inteiro + mesma família de raridade: par forte SÓ se a página chinesa
+            # reimprime o mesmo set EN (numeração difere, mas a lista de cartas é a mesma)
+            corr = set_corresponds(row.get("set"), zh0.get("url")) if zh0.get("status") == "ok" else None
+            if corr is False:
+                reasons.append("set-zh-divergente")
+            elif corr is None:
+                reasons.append("set-zh-sem-correspondencia")
+        else:
+            reasons.append(f"match-{m}")
+            reasons.append("raridade-divergente" if rc is False else "raridade-nao-confirmada")
     if row.get("language") == "ZH":
         reasons.append("idioma-nao-especificado")
     zh = row.get("zh") or {}
@@ -874,6 +899,7 @@ def scan_card(card: WatchCard, ebay, params: dict, *, fetch=pc_sales.fetch_page,
             r["zh"] = {"status": "teto-de-paginas-por-carta", "url": ""}
             stats["zh_page_teto"] += 1
     for r in rows:
+        r["zh_catalog"] = catalog_identity(r)
         r["zh_margin_pct"] = zh_margin_pct(r)
         r["lt"] = longterm(card.name, card.rarity or r["listing"]["title"], r["zh"] if r["zh"] and r["zh"].get("status") == "ok" else None)
         r["bucket"], r["reasons"] = classify(r, params)

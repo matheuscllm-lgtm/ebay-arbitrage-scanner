@@ -1,0 +1,124 @@
+{{N|梦幻{{ex}}||ミュウex|Mew ex}}是一张{{TCG|超}}属性的{{TCG|基础宝可梦}}卡。
+
+==卡牌信息==
+{{卡牌信息/header
+|class=ex
+|name=梦幻
+|hp=180
+|type=超
+|evostage=基础
+|image=SVPC003.png
+}}
+{{卡牌信息/power
+|powertype=SV特性
+|type=超
+|ZHTname=重啟
+|ZHSname=再起动
+|jname=リスタート
+|ename=Restart
+|effectZHS=在自己的回合可以使用1次。从牌库上方抽取卡牌，直到自己的手牌变为3张为止。
+|effectZHT=在自己的回合時可使用1次。從牌庫抽卡直到自己的手牌滿3張為止。
+|jeffect=自分の番に1回使える。自分の手札が3枚になるように、山札を引く。
+|eeffect=Once during your turn, you may draw cards until you have 3 cards in your hand.
+}}
+{{卡牌信息/attack
+|type=超
+|ZHTname=基因駭入
+|ZHSname=基因侵入
+|jname=ゲノムハック
+|ename=Genome Hacking
+|cost=無|無|無
+|damage=　
+|effectZHS=选择对手战斗宝可梦所拥有的1个招式，作为这个招式使用。
+|effectZHT=選擇1個對手的戰鬥寶可夢持有的招式，作為這個招式使用。
+|jeffect=相手のバトルポケモンが持っているワザを1つ選び、このワザとして使う。
+|eeffect=Choose 1 of your opponent's Active Pokémon's attacks and use it as this attack.
+}}
+{{卡牌信息/svend
+|type=超
+|class=ex
+|weakness=恶
+|resistance=斗
+|retreat=0
+|ZHAlt=1
+}}
+
+{{ExpansionList/header/zh|超}}
+{{ExpansionList/main/zh|超|cnicon=151C|cnexpansion=收集啦151|cnseries=朱&紫|cntime=2025-01-17|cnrar=RR|cnno=151/151|cnimg=151C151.png|cnimgrow=3|zhicon=SV2aF|zhexpansion=宝可梦卡牌151|zhseries=朱&紫|zhtime=2023-06-30|zhrar=RR|zhno=151/165|zhimg=SV2aF151.png|zhimgrow=3
+|illus=aky CG Works|reg=G}}
+{{ExpansionList/main/zh|超|cnicon=CSVL2C|cnexpansion=游历专题包|cnseries=朱&紫|cntime=2025-11-07|cnrar=—|cnno=029/052|cnimg=n|cnimgrow=0|zhicon=SV4aF|zhexpansion=闪色宝藏ex|zhseries=朱&紫|zhtime=2023-12-22|zhrar=RR|zhno=076/190|zhimg=n|zhimgrow=0
+|illus=aky CG Works|reg=G}}
+{{ExpansionList/main/zh|超|cnicon=CSVE1C|cnexpansion=对战派对 共梦|cnseries=朱&紫|cntime=2025-02-28|cnrar=—|cnno=058/177|cnimg=n|cnimgrow=0|zhicon=SVKF|zhexpansion=牌组构筑BOX 乐园腾龙|zhseries=朱&紫|zhtime=2024-09-27|zhrar=—|zhno=001/042|zhimg=n|zhimgrow=0
+|illus=aky CG Works|reg=G}}
+{{ExpansionList/main/zh|超|cnicon=151C|cnexpansion=收集啦151|cnseries=朱&紫|cntime=2025-01-17|cnrar=SR|cnno=185/151|cnimg=151C185.png|zhicon=SV2aF|zhexpansion=宝可梦卡牌151|zhseries=朱&紫|zhtime=2023-06-30|zhrar=SR|zhno=195/165|zhimg=SV2aF195.png|zhimgrow=1
+|illus=aky CG Works|reg=G}}
+{{ExpansionList/main/zh|超|cnicon=CSVL2C|cnexpansion=游历专题包|cnseries=朱&紫|cntime=2025-11-07|cnrar=—|cnno=127/052|cnimg=CSVL2C127.png|zhicon=SV2aF|zhexpansion=宝可梦卡牌151|zhseries=朱&紫|zhtime=2023-06-30|zhrar=SAR|zhno=205/165|zhimg=SV2aF205.png|zhimgrow=1
+|illus=Natsumi Yoshida|reg=G}}
+{{ExpansionList/main/zh|超|cnicon=151C|cnexpansion=收集啦151|cnseries=朱&紫|cntime=2025-01-17|cnrar=UR|cnno=192/151|cnimg=151C192.png|zhicon=SV2aF|zhexpansion=宝可梦卡牌151|zhseries=朱&紫|zhtime=2023-06-30|zhrar=UR|zhno=208/165|zhimg=SV2aF208.png|zhimgrow=1
+|illus=aky CG Works|reg=G}}
+{{ExpansionList/main/zh|超|cnicon=151C|cnexpansion=收集啦151|cnseries=朱&紫|cntime=2025-01-17|cnrar=SSR|cnno=188/151|cnimg=151C188.png|zhicon=SV4aF|zhexpansion=闪色宝藏ex|zhseries=朱&紫|zhtime=2023-12-22|zhrar=SSR|zhno=327/190|zhimg=SV4aF327.png|zhimgrow=1
+|illus=aky CG Works|reg=G}}
+{{ExpansionList/main/zh|超|cnicon=151C|cnexpansion=收集啦151 惊|cnseries=朱&紫|cntime=2025-07-18|cnrar=SAR|cnno=191/151|cnimg=151C191.png|zhicon=SV4aF|zhexpansion=闪色宝藏ex|zhseries=朱&紫|zhtime=2023-12-22|zhrar=SAR|zhno=347/190|zhimg=SV4aF347.png|zhimgrow=1
+|illus=USGMEN|reg=G}}
+{{ExpansionList/main/zh|超|cnicon=SV-P|cnexpansion=SV-P简体中文版特典卡|cnseries=朱&紫|cntime=2025-03-15|cnrar=—|cnno=003/SV-P|cnimg=SVPC003.png|zhicon=|zhexpansion=|zhseries=|zhtime=|zhrar=|zhno=|zhimg=|zhimgrow=1
+|illus=satoma|reg=G}}
+{{ExpansionList/end/zh|超}}
+
+
+{{ExpansionList/header|超}}
+{{ExpansionList/main|超|enexpansion=151|enseries=朱紫|entime=2023-09-22|enrar=DR|enno=151/165|enimg=|enimgrow=1
+|jaicon=SV2a|jaexpansion=宝可梦卡牌151|jaseries=朱&紫|jatime=2023-06-16|jarar=RR|jano=151/165|jaimg=SV2a151.jpg|jaimgrow=5
+|illus=aky CG Works|illus2=|reg=G}}
+{{ExpansionList/main|超|enexpansion=|enseries=|entime=|enrar=|enno=|enimg=|enimgrow=1
+|jaicon=SV4a|jaexpansion=闪色宝藏ex|jaseries=朱&紫|jatime=2023-12-01|jarar=RR|jano=076/190|jaimg=n|jaimgrow=0
+|illus=aky CG Works|illus2=|reg=G}}
+{{ExpansionList/main|超|enexpansion=|enseries=|entime=|enrar=|enno=|enimg=|enimgrow=1
+|jaicon=SVK|jaexpansion=牌组构筑BOX 星晶奇迹|jaseries=朱&紫|jatime=2024-07-19|jarar=—|jano=006/044|jaimg=n|jaimgrow=0
+|illus=aky CG Works|illus2=|reg=G}}
+{{ExpansionList/main|超|enexpansion=|enseries=|entime=|enrar=|enno=|enimg=|enimgrow=1
+|jaicon=SVN|jaexpansion=牌组构筑BOX 对战搭档|jaseries=朱&紫|jatime=2025-01-24|jarar=—|jano=001/045|jaimg=n|jaimgrow=0
+|illus=aky CG Works|illus2=|reg=G}}
+{{ExpansionList/main|超|enexpansion=|enseries=|entime=|enrar=|enno=|enimg=|enimgrow=1
+|jaicon=MA|jaexpansion=顶级训练家收藏箱 超级进化|jaseries=超级进化|jatime=2025-08-01|jarar=—|jano=002/043|jaimg=n|jaimgrow=0
+|illus=aky CG Works|illus2=|reg=G}}
+{{ExpansionList/main|超|enexpansion=151|enseries=朱紫|entime=2023-09-22|enrar=UR|enno=193/165|enimg=|enimgrow=1
+|jaicon=SV2a|jaexpansion=宝可梦卡牌151|jaseries=朱&紫|jatime=2023-06-16|jarar=SR|jano=195/165|jaimg=SV2a195.jpg|jaimgrow=1
+|illus=aky CG Works|illus2=|reg=G}}
+{{ExpansionList/main|超|enexpansion=朱紫 黑色之星|enseries=朱紫|entime=2023-10-06|enrar=—|enno=SVP053|enimg=|enimgrow=1
+|jaicon=SV2a|jaexpansion=宝可梦卡牌151|jaseries=朱&紫|jatime=2023-06-16|jarar=SAR|jano=205/165|jaimg=SV2a205.jpg|jaimgrow=1
+|illus=Natsumi Yoshida|illus2=|reg=G}}
+{{ExpansionList/main|超|enexpansion=151|enseries=朱紫|entime=2023-09-22|enrar=HR|enno=205/165|enimg=|enimgrow=1
+|jaicon=SV2a|jaexpansion=宝可梦卡牌151|jaseries=朱&紫|jatime=2023-06-16|jarar=UR|jano=208/165|jaimg=SV2a208.jpg|jaimgrow=1
+|illus=aky CG Works|illus2=|reg=G}}
+{{ExpansionList/main|超|enexpansion=帕底亚天机|enseries=朱紫|entime=2024-01-26|enrar=SHUR|enno=216/091|enimg=|enimgrow=1
+|jaicon=SV4a|jaexpansion=闪色宝藏ex|jaseries=朱&紫|jatime=2023-12-01|jarar=SSR|jano=327/190|jaimg=SV4a327.jpg|jaimgrow=1
+|illus=aky CG Works|illus2=|reg=G}}
+{{ExpansionList/main|超|enexpansion=帕底亚天机|enseries=朱紫|entime=2024-01-26|enrar=SIR|enno=232/091|enimg=|enimgrow=1
+|jaicon=SV4a|jaexpansion=闪色宝藏ex|jaseries=朱&紫|jatime=2023-12-01|jarar=SAR|jano=347/190|jaimg=SV4a347.jpg|jaimgrow=1
+|illus=USGMEN|illus2=|reg=G}}
+
+{{ExpansionList/end|超}}
+
+==获得方式==
+===053/SV-P===
+购买{{N|151究极豪华收藏|暂||151 Ultra-Premium Collection}}附赠。
+
+===003/SV-P简中===
+2025年01月16日起至2025年12月15日，训练家需要在截至指定日期前的151个自然日内，通过“宝可梦卡牌会员”微信小程序在'''至少3家不同道馆或会场'''参与'''至少15次活动'''。
+
+训练家可以在“宝可梦卡牌会员”小程序中点击活动-选择活动分类“一决胜负”或”目标是冠军”- 选择活动报名并参与。
+
+2025年3月起，截至每月15日下午1时，满足上述条件的训练家将参与“梦幻ex”特别插画卡牌的抽选，每次抽取151名训练家。
+
+※“梦幻ex”特别插画卡牌限量1510张，先到先得，送完即止。
+
+==细节==
+
+{{PTCG/宝可梦ex|超|朱&紫}}
+{{神奇宝贝百科卡牌工程}}
+
+[[de:Mew-ex (151 151)]]
+[[en:Mew ex (151 151)]]
+[[es:Mew ex (151 TCG)]]
+[[fr:Mew-ex (Écarlate et Violet 151 151)]]
+[[ja:ミュウex (SV2a)]]

@@ -1,0 +1,72 @@
+{{关于|简体中文版卡牌|日文版特大卡牌[[船长皮卡丘（DPt-P）]]}}{{中文版卡牌}}
+'''船长皮卡丘'''是一张{{TCG|雷}}属性的{{TCG|基础宝可梦}}卡。
+
+==卡牌信息==
+{{卡牌信息/header
+|name=船长皮卡丘
+|names=<small>船长</small>皮卡丘
+|hp=70
+|type=雷
+|evostage=基础
+|image=CBB1C0709.png
+|ndex=0025
+|species=鼠
+|height=0.4
+|weight=6.0
+}}
+{{卡牌信息/attack
+|type=雷
+|name=伏特攻击
+|jname=
+|ename=
+|cost=雷|雷|雷
+|damage=100
+|ceffect=给这只宝可梦也造成30伤害。
+|jeffect=
+|eeffect=
+}}
+{{卡牌信息/svend
+|type=雷
+|weakness=斗
+|resistance=
+|retreat=1
+|dex=弗里德的搭档。<br>是飞艇的船长，因此爱称为“船长”。
+|jdex=|disableJA=1
+|edex=|disableEN=1
+}}
+
+{{ExpansionList/header/zh|雷}}
+{{ExpansionList/main/zh|雷|cnicon=CBB1C|cnexpansion=宝石包 第一弹|cnseries=朱&紫|cntime=2025-01-17|cnrar={{RarityCBB|C}}|cnno=07 01/09|cnimg=CBB1C0705.png|cnimgrow=6
+|zhicon=|zhexpansion=|zhseries=|zhtime=|zhrar=|zhno=|zhimg=|zhimgrow=1
+|illus=Ito Kyoko|illus2=|reg=G}}
+{{ExpansionList/main/zh|雷|cnicon=CBB1C|cnexpansion=宝石包 第一弹|cnseries=朱&紫|cntime=2025-01-17|cnrar={{RarityCBB|C}}|cnno=07 02/09|cnimg=n|cnimgrow=0
+|zhicon=|zhexpansion=|zhseries=|zhtime=|zhrar=|zhno=|zhimg=|zhimgrow=1
+|illus=Ito Kyoko|illus2=|reg=G}}
+{{ExpansionList/main/zh|雷|cnicon=CBB1C|cnexpansion=宝石包 第一弹|cnseries=朱&紫|cntime=2025-01-17|cnrar={{RarityCBB|U}}|cnno=07 03/09|cnimg=n|cnimgrow=0
+|zhicon=|zhexpansion=|zhseries=|zhtime=|zhrar=|zhno=|zhimg=|zhimgrow=1
+|illus=Ito Kyoko|illus2=|reg=G}}
+{{ExpansionList/main/zh|雷|cnicon=CBB1C|cnexpansion=宝石包 第一弹|cnseries=朱&紫|cntime=2025-01-17|cnrar={{RarityCBB|U}}|cnno=07 04/09|cnimg=n|cnimgrow=0
+|zhicon=|zhexpansion=|zhseries=|zhtime=|zhrar=|zhno=|zhimg=|zhimgrow=1
+|illus=Ito Kyoko|illus2=|reg=G}}
+{{ExpansionList/main/zh|雷|cnicon=CBB1C|cnexpansion=宝石包 第一弹|cnseries=朱&紫|cntime=2025-01-17|cnrar={{RarityCBB|R}}|cnno=07 05/09|cnimg=n|cnimgrow=0
+|zhicon=|zhexpansion=|zhseries=|zhtime=|zhrar=|zhno=|zhimg=|zhimgrow=1
+|illus=Ito Kyoko|illus2=|reg=G}}
+{{ExpansionList/main/zh|雷|cnicon=CBB1C|cnexpansion=宝石包 第一弹|cnseries=朱&紫|cntime=2025-01-17|cnrar={{RarityCBB|R}}|cnno=07 07/09|cnimg=n|cnimgrow=0
+|zhicon=|zhexpansion=|zhseries=|zhtime=|zhrar=|zhno=|zhimg=|zhimgrow=1
+|illus=Ito Kyoko|illus2=|reg=G}}
+{{ExpansionList/main/zh|雷|cnicon=CBB1C|cnexpansion=宝石包 第一弹|cnseries=朱&紫|cntime=2025-01-17|cnrar={{RarityCBB|UR}}|cnno=07 09/09|cnimg=CBB1C0709.png|cnimgrow=1
+|zhicon=|zhexpansion=|zhseries=|zhtime=|zhrar=|zhno=|zhimg=|zhimgrow=1
+|illus=Yamazaki Rei|illus2=|reg=G}}
+{{ExpansionList/main/zh|雷|cnicon=CBB1C|cnexpansion=宝石包 第五弹|cnseries=朱&紫|cntime=2026-04-24|cnrar={{RarityCBB|UR}}|cnno=01 07/07|cnimg=CBB5C0107.png|cnimgrow=1
+|zhicon=|zhexpansion=|zhseries=|zhtime=|zhrar=|zhno=|zhimg=|zhimgrow=1
+|illus=Keita Hagiwara|illus2=|reg=H}}
+{{ExpansionList/end/zh|雷}}
+
+==参见==
+
+{{reflist}}
+
+{{神奇宝贝百科卡牌工程}}
+
+[[de:Flugkapitän Pikachu (Bǎoshí Bāo VOL.1 07)]]
+[[en:Captain Pikachu (Gem Pack Vol. 1 7)]]

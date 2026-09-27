@@ -65,7 +65,8 @@ def test_ratio_funnel_explains_why_ratio_alone_is_not_a_candidate(tmp_path, monk
     merged = ct.merge(ct.load_payloads([str(tmp_path / "chinese-g*.json")]))
     steps = dict((label, (n_in, n_out)) for label, n_in, n_out in ct.ratio_funnel(merged["rows"], "ZH-HANS", 4.0))
     # 3 anúncios simplificados passam o crivo (itens 1, 2, 3); o de razão 1.5 e o exclusivo não entram
-    assert steps["identidade: nome sem número EN e set chinês sem correspondência curada"] == (3, 1)
+    assert steps["catálogo de impressões: a carta chinesa é OUTRA carta EN ou não tem par EN"] == (3, 0)
+    assert steps["identidade: nome sem número EN e set chinês sem correspondência curada nem catálogo"] == (3, 1)
     assert steps["menos vendas PSA 10 em chinês que o mínimo (90 d)"] == (2, 1)
     assert steps["candidatas"] == (1, 0)
     zh = dict((label, (n_in, n_out)) for label, n_in, n_out in ct.ratio_funnel(merged["rows"], "ZH", 4.0))

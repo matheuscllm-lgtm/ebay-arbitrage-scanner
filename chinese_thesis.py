@@ -28,8 +28,10 @@ LANGS = ("ZH-HANS", "ZH-HANT", "ZH")
 # Etapas do funil de um anúncio que passou o crivo de razão, na ordem em que `classify`
 # derruba: cada linha cai na PRIMEIRA etapa cujo motivo aparece em `reasons`.
 FUNNEL_STEPS = (
-    ("identidade: nome sem número EN e set chinês sem correspondência curada",
-     ("match-nome", "match-nome-base", "set-zh-sem-correspondencia")),
+    ("catálogo de impressões: a carta chinesa é OUTRA carta EN ou não tem par EN",
+     ("catalogo-outra-carta", "catalogo-sem-par-en")),
+    ("identidade: nome sem número EN e set chinês sem correspondência curada nem catálogo",
+     ("match-nome", "match-nome-base", "set-zh-sem-correspondencia", "catalogo-ambiguo")),
     ("raridade não confirmada ou divergente", ("raridade-nao-confirmada", "raridade-divergente")),
     ("idioma não especificado no título", ("idioma-nao-especificado",)),
     ("página chinesa não encontrada / ambígua / teto", ("zh-",)),
