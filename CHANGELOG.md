@@ -1,3 +1,68 @@
+## 2026-09-27 — modo chinês: identidade por IMPRESSÃO (catálogo simplificado → EN)
+
+- Diagnóstico do funil do scan de 2026-09-26: a perda dominante depois da razão ≥ 4× era
+  `set-zh-sem-correspondencia` — o crivo só provava par forte por número EN no título ou por
+  set inteiro em `ZH_SET_TO_EN`, e as compilações simplificadas (CS/CSV/CSM/CBB, Gem Pack,
+  promos, caixas 151) misturam sets japoneses e renumeram tudo. Identidade, não preço.
+- Novo `src/zh_identity.py` + `zh_catalog.py`: catálogo `src/catalog/zh_identity.json`
+  (versionado, gerado da 52poke wiki via API) com uma linha por impressão simplificada —
+  código + número + raridade chinesa, nome, ilustrador, impressão tradicional/japonesa que
+  espelha e a carta EN correspondente (set da watchlist, número, raridade) com o `how`:
+  `tc-jp` (mesma impressão japonesa), `set+illus+rar` (set JP→EN aprendido do corpus +
+  ilustrador + família de raridade), `illus+rar` (mais fraco, marcado); ambíguo nunca vira
+  par (`ambiguous`). Bases prontas (TCGdex, PTCG-database) não servem: devolvem o tradicional
+  como se fosse simplificado. Método e limites em `docs/CHINESE_IDENTITY.md`.
+- `chinese_scan.catalog_identity()` grava `row["zh_catalog"]` (chave pelo título —
+  `CSV9C 245/208`, `151C`, `Gem Pack Vol.2 4/07` — ou pela página chinesa do PriceCharting);
+  `classify`: `mesma-carta` prova a identidade e dispensa número/set/raridade do título;
+  `catalogo-outra-carta` e `catalogo-sem-par-en` derrubam para `validar` com motivo explícito;
+  `catalogo-ambiguo` mantém a regra por set; fora do catálogo vale `ZH_SET_TO_EN` como antes.
+  `rescore()` recalcula com o catálogo vigente; funil do `chinese_thesis.py` mostra os motivos
+  novos como primeira etapa; texto do bucket "validar" atualizado.
+- Geração real de 2026-09-27: 91 produtos simplificados, 5679 páginas de carta lidas (164 ausentes na wiki), 10707 impressões catalogadas (470 entradas sem código/número ficaram fora). Ligação: `tc-jp` 4811, `set+illus+rar` 496, `set+rar` 652, `illus+rar` 683, ambíguas 187, sem par EN 3878. Nas raridades altas (AR/SR/SAR/UR/HR/SSR/CHR/CSR): 1670 impressões, `tc-jp` 1007, sem par 374, ambíguas 31. 611 das 1669 cartas EN da watchlist têm ao menos uma impressão simplificada identificada. Sets EN sem nome na watchlist ficam com o nome Bulbapedia (promos Black Star, 30th Celebration, Champion's Path, decks). Arquivo: 2,9 MB.
+- 17 testes offline novos (`tests/test_zh_identity.py`, fixtures = wikitext real recortado) +
+  `tests/conftest.py` isolando o catálogo real da suíte. Sem preço em lugar nenhum; nenhuma
+  recomendação de compra.
+
+## 2026-09-27 — modo chinês: consolidação, funil do crivo e handoff
+
+- Novo `chinese_thesis.py`: consolida os JSONs por grupo/lote num payload só (meta com
+  funil somado, grupos listados, adiado = agendado − concluído), re-pontua com
+  `rescore()` e imprime a análise independente da tese em markdown — razão EN÷ZH por
+  idioma, evidência chinesa, **funil do crivo** (etapa a etapa, por que um anúncio que
+  passa a razão ≥4× não vira candidata: identidade, raridade, página, evidência, set
+  divergente) e páginas chinesas mais líquidas. `--merge-out` alimenta o `ebay_summary.py`.
+  Substitui os scripts que viviam em `results/` (efêmeros).
+- `SESSION-HANDOFF.md`: seção do modo chinês (estado, decisões fechadas com o operador,
+  leitura qualitativa do scan, contexto de mercado com fontes, armadilhas e retomada).
+- 4 testes offline (`tests/test_chinese_thesis.py`).
+
+## 2026-09-26 — modo CHINÊS: PSA 10 em chinês × PSA 10 em inglês (crivo ≥4×)
+
+- Novo `chinese_scan.py` + `src/chinese_scan.py`: para cada carta EN da watchlist,
+  busca no eBay a versão PSA 10 em chinês (qualquer país; sintaxe OR da Browse API
+  para os marcadores de idioma), idioma pelo título (simplificado × tradicional ×
+  não especificado), identidade por nome/dono/raridade (numeração chinesa difere da
+  EN), exclusivas em tabela à parte, referência EN só como crivo (razão EN÷ZH ≥ 4),
+  evidência de revenda pela página CHINESA do PriceCharting (≥3 vendas PSA 10 em
+  90 d) e régua de longo prazo informativa espelhando o outlook (personagem,
+  raridade, escassez pelo censo chinês, demanda por vendas/mês). Método em
+  `docs/CHINESE_PSA10.md`.
+- `ebay_summary.py` despacha por `meta.kind == "chinese-psa10"` para
+  `src/chinese_report.py` (2 tabelas, todas as linhas, links `[oferta]` · referência EN
+  clicável · `[ref ZH]`). Política vigente (`slab_strategy`) intocada: idiomas seguem
+  identidades separadas; `slab_strategy.language('Chinese')` continua None.
+- Identidade sem número igual: família de raridade (SIR↔SAR, IR↔AR…) + correspondência
+  de set curada (`ZH_SET_TO_EN`: 151 Collect ↔ SV 151, sv8a ↔ Prismatic…); tag team e
+  sufixo colado por hífen são outra carta. Localizador da página chinesa lê os links
+  absolutos da busca, o número colado das promos/Gem Pack e a variante de impressão.
+  `rescore()` re-pontua qualquer JSON com a régua vigente na entrega; censo fino (<25)
+  não vira escassez; margem bruta vs revenda chinesa por linha.
+- Versão de chat (`--compact`, `<out>.chat.md`): candidatas inteiras, validar com evidência
+  agrupado por carta chinesa, contagens para o resto; URLs eBay sem parâmetros de rastreio.
+- 49 testes offline (`tests/test_chinese_scan.py`, `test_chinese_rescore.py`,
+  `test_chinese_setmap.py`). Resultados ficam em `results/`; nada de preço no repositório.
+
 
 ## 2026-09-12 — pré-seleção dinâmica antes da curadoria/eBay
 

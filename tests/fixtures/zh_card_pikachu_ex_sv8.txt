@@ -1,0 +1,102 @@
+{{N|皮卡丘{{ex|ex-t=1}}||ピカチュウex|Pikachu ex}}是一张{{TCG|雷}}属性的{{TCG|基礎宝可梦}}卡。
+
+==卡牌信息==
+{{卡牌信息/header/太晶
+|class=ex
+|name=皮卡丘
+|hp=200
+|type=雷
+|evostage=基礎
+|ndex=0025
+|species=鼠
+|height=
+|weight=
+|image=M2aF234.png
+}}
+{{卡牌信息/power
+|powertype=SV特性
+|type=雷
+|ZHSname=顽强之心
+|ZHTname=勤奮之心
+|jname=がんばりハート
+|ename=Resolute Heart
+|effectZHS=当这只宝可梦的HP为全满的状态下，这只宝可梦受到招式的伤害而'''{{TCG|昏厥}}'''时，这只宝可梦不会'''{{TCG|昏厥}}'''，而是以剩余HP为「10」的状态留在场上。
+|effectZHT=這隻寶可夢的HP是全滿的狀態下，這隻寶可夢受到招式的傷害而'''{{TCG|昏厥}}'''時，這隻寶可夢不會'''{{TCG|昏厥}}'''，而是以剩餘HP為「10」的狀態留在場上。
+|jeffect=このポケモンのHPがまんたんの状態で、このポケモンがワザのダメージを受けて'''きぜつ'''するとき、'''きぜつ'''せず、残りHPが「10 」の状態で場に残る。
+|eeffect=If this Pokémon has full HP and would be Knocked Out by damage from an attack, it is not Knocked Out, and its remaining HP becomes 10.
+}}
+
+{{卡牌信息/attack
+|type=雷
+|ZHSname=黄晶伏特
+|ZHTname=黃玉伏特
+|jname=トパーズボルト
+|ename=Topaz Bolt
+|cost=草|雷|鋼
+|damage=300
+|effectZHS=选择这只宝可梦身上附着的3个能量，放于奔牌区。
+|effectZHT=選擇3個這隻寶可夢身上附加的能量，將其丟棄。
+|jeffect=このポケモンについているエネルギーを3個選び、トラッシュする。
+|eeffect=Discard 3 Energy from this Pokémon.
+}}
+{{卡牌信息/svend
+|type=雷
+|class=ex
+|weakness=鬥
+|resistance=
+|retreat=1
+|ZHAlt=1
+}}
+{{ExpansionList/header/zh|雷}}
+{{ExpansionList/main/zh|雷|cnicon=CSV9C|cnexpansion=星彩晶璃|cnseries=朱&紫|cntime=2026-05-15|cnrar=RR|cnno=054/208|cnimg=CSV9C054.png|zhicon=SV8F|zhexpansion=超電突圍|zhseries=朱&紫|zhtime=2024-10-25|zhrar=RR|zhno=033/106|zhimg=SV8F033.png|zhimgrow=2
+|illus=aky CG Works|reg=H}}
+{{ExpansionList/main/zh|雷|cnicon=|cnexpansion=|cnseries=|cntime=|cnrar=|cnno=|cnimg=|zhicon=M2aF|zhexpansion=超級進化夢想ex|zhseries=超級進化|zhtime=2025-12-05|zhrar=RR|zhno=044/193|zhimg=n
+|illus=aky CG Works|reg=H}}
+{{ExpansionList/main/zh|雷|cnicon=CSV9C|cnexpansion=星彩晶璃|cnseries=朱&紫|cntime=2026-05-15|cnrar=SR|cnno=221/208|cnimg=|zhicon=SV8F|zhexpansion=超電突圍|zhseries=朱&紫|zhtime=2024-10-25|zhrar=SR|zhno=122/106|zhimg=SV8F122.png|zhimgrow=1
+|illus=aky CG Works|reg=H}}
+{{ExpansionList/main/zh|雷|cnicon=CSV9C|cnexpansion=星彩晶璃|cnseries=朱&紫|cntime=2026-05-15|cnrar=SAR|cnno=245/208|cnimg=CSV9C245.png|zhicon=SV8F|zhexpansion=超電突圍|zhseries=朱&紫|zhtime=2024-10-25|zhrar=SAR|zhno=132/106|zhimg=SV8F132.png|zhimgrow=1
+|illus=GIDORA|reg=H}}
+{{ExpansionList/main/zh|雷|cnicon=CSV9C|cnexpansion=星彩晶璃|cnseries=朱&紫|cntime=2026-05-15|cnrar=UR|cnno=260/208|cnimg=
+|zhicon=SV8F|zhexpansion=超電突圍|zhseries=朱&紫|zhtime=2024-10-25|zhrar=UR|zhno=136/106|zhimg=SV8F136.png|zhimgrow=1
+|illus=aky CG Works|reg=H}}
+{{ExpansionList/main/zh|雷|cnicon=CSV9.5C|cnexpansion=太晶盛聚|cnseries=朱&紫|cntime=2026-06-12|cnrar=UR|cnno=258/208|cnimg=|zhicon=SV8aF|zhexpansion=太晶慶典ex|zhseries=朱&紫|zhtime=2024-12-20|zhrar=UR|zhno=236/187|zhimg=SV8aF236.png|zhimgrow=1
+|illus=aky CG Works|reg=H}}
+{{ExpansionList/main/zh|雷|cnicon=|cnexpansion=|cnseries=|cntime=|cnrar=|cnno=|cnimg=|zhicon=M2aF|zhexpansion=超級進化夢想ex|zhseries=超級進化|zhtime=2025-12-05|zhrar=SAR|zhno=234/193|zhimg=M2aF234.png|zhimgrow=1
+|illus=James Turner|reg=H}}
+{{ExpansionList/end/zh|雷}}
+
+{{ExpansionList/header|雷}}
+{{ExpansionList/main|雷|enexpansion=浪湧電光|enseries=朱紫|entime=2024-11-08|enrar=DR|enno=057/191|enimg=|enimgrow=1
+|jaicon=SV8|jaexpansion=超电突围|jaseries=朱&紫|jatime=2024-10-18|jarar=RR|jano=033/106|jaimg=SV8F033.png|jaimgrow=2
+|illus=aky CG Works|reg=H}}
+{{ExpansionList/main|雷|enexpansion=群雄昇騰|enseries=超级 进化|entime=2026-01-30|enrar=DR|enno=057/217|enimg=|enimgrow=1
+|jaicon=M2a|jaexpansion=超级进化梦想ex|jaseries=超级进化|jatime=2025-11-28|jarar=RR|jano=044/193|jaimg=n
+|illus=aky CG Works|reg=H}}
+{{ExpansionList/main|雷|enexpansion=浪湧電光|enseries=朱紫|entime=2024-11-08|enrar=UR|enno=219/191|enimg=|enimgrow=1
+|jaicon=SV8|jaexpansion=超电突围|jaseries=朱&紫|jatime=2024-10-18|jarar=SR|jano=122/106|jaimg=SV8F122.png|jaimgrow=1
+|illus=aky CG Works|reg=H}}
+{{ExpansionList/main|雷|enexpansion=浪湧電光|enseries=朱紫|entime=2024-11-08|enrar=SIR|enno=238/191|enimg=|enimgrow=1
+|jaicon=SV8|jaexpansion=超电突围|jaseries=朱&紫|jatime=2024-10-18|jarar=SAR|jano=132/106|jaimg=SV8-132.jpg|jaimgrow=1
+|illus=GIDORA|reg=H}}
+{{ExpansionList/main|雷|enexpansion=浪湧電光|enseries=朱紫|entime=2024-11-08|enrar=HR|enno=247/191|enimg=|enimgrow=1
+|jaicon=SV8|jaexpansion=超电突围|jaseries=朱&紫|jatime=2024-10-18|jarar=UR|jano=136/106|jaimg=SV8-136.jpg|jaimgrow=1
+|illus=aky CG Works|reg=H}}
+{{ExpansionList/main|雷|enexpansion=棱镜进化|enseries=朱紫|entime=2025-01-17|enrar=HR|enno=179/131|enimg=|enimgrow=1
+|jaicon=SV8a|jaexpansion=太晶慶典ex|jaseries=朱&紫|jatime=2024-12-06|jarar=UR|jano=236/187|jaimg=SV8a236.jpg|jaimgrow=1
+|illus=aky CG Works|reg=H}}
+{{ExpansionList/main|雷|enexpansion=群雄昇騰|enseries=超级 进化|entime=2026-01-30|enrar=SIR|enno=277/217|enimg=|enimgrow=1
+|jaicon=M2a|jaexpansion=超級進化夢想ex|jaseries=超级进化|jatime=2025-11-28|jarar=SAR|jano=234/193|jaimg=M2a234.jpg|jaimgrow=1
+|illus=James Turner|reg=H}}
+{{ExpansionList/end|雷}}
+
+==细节==
+
+{{PTCG/宝可梦ex|雷|朱&紫}}
+{{神奇宝贝百科卡牌工程}}
+
+[[de:Pikachu-ex (Stürmische Funken 057)]]
+[[en:Pikachu ex (Surging Sparks 57)]]
+[[es:Pikachu ex (Chispas Fulgurantes TCG)]]
+[[fr:Pikachu-ex (Écarlate et Violet Étincelles Déferlantes 247)]]
+[[it:Pikachu-ex (Scintille Folgoranti 57)]]
+[[ja:ピカチュウex (SV8)]]

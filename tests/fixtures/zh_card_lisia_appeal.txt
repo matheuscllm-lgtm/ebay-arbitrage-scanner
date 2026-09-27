@@ -1,0 +1,74 @@
+{{N|琉琪亞的展示||ルチアのアピール|Lisia's Appeal}}是一张{{TCG|支援者卡}}。
+
+==卡牌信息==
+{{训练家卡信息/header
+|type=支援者卡
+|name=琉琪亞的展示
+|image=SV7aF063.png
+}}
+{{训练家卡信息/main
+|type=支援者卡
+|effectZHT=選擇1隻對手的備戰區的'''基礎'''寶可夢，與戰鬥寶可夢互換。然後，將新上場的寶可夢'''{{TCG|混亂}}'''。
+|effectZHS=选择对手备战区中的1只'''基础'''宝可梦，将其与战斗宝可梦互换。然后，令新出场的宝可梦陷入'''{{TCG|混乱}}'''状态。
+|jeffect=相手のベンチの'''たね'''ポケモンを1匹選び、バトルポケモンと入れ替える。その後、新しく出てきたポケモンを'''こんらん'''にする。
+|eeffect=Switch in 1 of your opponent's Benched Basic Pokémon to the Active Spot. If you do, the new Active Pokémon is now Confused.
+}}
+{{训练家卡信息/end
+|type=支援者卡
+|ZHAlt=1
+}}
+{{ExpansionList/header/zh|支援者卡}}
+{{ExpansionList/main/zh|支援者卡|cnicon=CSV9C|cnexpansion=星彩晶璃|cnseries=朱&紫|cntime=2026-05-15|cnrar=U|cnno=204/208|cnimg=CSV9C204.png|cnimgrow=2
+|zhicon=SV7aF|zhexpansion=乐园腾龙|zhseries=朱&紫|zhtime=2024-09-27|zhrar=U|zhno=063/064|zhimg=SV7aF063.png|zhimgrow=2
+|illus=En Morikura|reg=H}}
+{{ExpansionList/main/zh|支援者卡|cnicon=|cnexpansion=|cnseries=|cntime=|cnrar=|cnno=|cnimg=n|zhicon=MCF|zhexpansion=初阶牌组100对战收藏|zhseries=超级进化|zhtime=2026-01-16|zhrar=—|zhno=730/742|zhimg=n
+|illus=En Morikura|reg=H}}
+{{ExpansionList/main/zh|支援者卡|cnicon=CSV9C|cnexpansion=星彩晶璃|cnseries=朱&紫|cntime=2026-05-15|cnrar=SR|cnno=241/208|cnimg=|zhicon=SV7aF|zhexpansion=樂園騰龍|zhseries=朱&紫|zhtime=2024-09-27|zhrar=SR|zhno=086/064|zhimg=SV7aF086.png|zhimgrow=1
+|illus=En Morikura|reg=H}}
+{{ExpansionList/main/zh|支援者卡|cnicon=SV-P|cnexpansion=SV-P简体中文版特典卡|cnseries=朱&紫|cntime=2026-08-07|cnrar=—|cnno=352/SV-P|cnimg=SVPC352.png
+|zhicon=SV7aF|zhexpansion=樂園騰龍|zhseries=朱&紫|zhtime=2024-09-27|zhrar=SAR|zhno=091/064|zhimg=SV7aF091.png|zhimgrow=1
+|illus=Nobusawa|illus2=Mochipuyo|reg=H}}
+{{ExpansionList/main/zh|支援者卡|cnicon=CSV9C|cnexpansion=星彩晶璃|cnseries=朱&紫|cntime=2026-05-15|cnrar=SAR|cnno=257/208|cnimg=CSV9C257.png|cnimgrow=1
+|zhicon=|zhexpansion=|zhseries=|zhtime=|zhrar=|zhno=|zhimg=|zhimgrow=1
+|illus=En Morikura|reg=H}}
+{{ExpansionList/end/zh|支援者卡|direct=1}}
+
+{{ExpansionList/header|支援者卡}}
+{{ExpansionList/main|支援者卡|enexpansion=浪湧電光|enseries=朱紫|entime=2024-11-08|enrar=U|enno=179/191|enimg=|enimgrow=1
+|jaicon=SV7a|jaexpansion=乐园腾龙|jaseries=朱&紫|jatime=2024-09-13|jarar=U|jano=063/064|jaimg=SV7a063.jpg|jaimgrow=2
+|illus=En Morikura|reg=H}}
+{{ExpansionList/main|支援者卡|enexpansion=|enseries=|entime=|enrar=|enno=|enimg=|enimgrow=1
+|jaicon=MC|jaexpansion=初阶牌组100对战收藏|jaseries=超级进化|jatime=2025-12-19|jarar=—|jano=730/742|jaimg=n
+|illus=En Morikura|reg=H}}
+{{ExpansionList/main|支援者卡|enexpansion=浪湧電光|enseries=朱紫|entime=2024-11-08|enrar=UR|enno=234/191|enimg=|enimgrow=1
+|jaicon=SV7a|jaexpansion=樂園騰龍|jaseries=朱&紫|jatime=2024-09-13|jarar=SR|jano=086/064|jaimg=SV7a086.jpg|jaimgrow=1
+|illus=En Morikura|reg=H}}
+{{ExpansionList/main|支援者卡|enexpansion=浪湧電光|enseries=朱紫|entime=2024-11-08|enrar=SIR|enno=234/191|enimg=|enimgrow=1
+|jaicon=SV7a|jaexpansion=樂園騰龍|jaseries=朱&紫|jatime=2024-09-13|jarar=SAR|jano=091/064|jaimg=SV7a091.jpg|jaimgrow=1
+|illus=Nobusawa|illus2=Mochipuyo|reg=H}}
+{{ExpansionList/end|支援者卡}}
+
+== 名字 ==
+{{名字/header|支援者卡C}}
+{{名字/entry|ja|ルチアのアピール}}
+{{名字/entry|cn|琉琪亚的展现|row_lang=3}}
+{{名字/entry|tw|琉琪亞的展示|row_lang=0}}
+{{名字/entry|hk|琉琪亞的展示|row_lang=0}}
+{{名字/entry|en|Lisia's Appeal}}
+{{名字/entry|es|Atracción de Ariana}}
+{{名字/entry|fr|Charme d'Atalante}}
+{{名字/entry|de|Xenias Aufruf}}
+{{名字/entry|it|Fascino di Orthilla}}
+{{名字/entry|ko|루티아의 어필|more=yes}}
+{{名字/entry|id|Daya Tarik Lisia}}
+{{名字/entry|th|เสน่ห์ดึงดูดของลูเทีย}}
+{{名字/entry|pt_br|Apelo da Elisia|end=yes}}
+
+==细节==
+{{神奇宝贝百科卡牌工程}}
+
+[[de:Xenias Aufruf (TCG)]]
+[[en:Lisia's Appeal (Surging Sparks 179)]]
+[[es:Atracción de Ariana (TCG)]]
+[[fr:Charme d'Atalante (Écarlate et Violet Étincelles Déferlantes 179)]]
+[[ja:ルチアのアピール]]
