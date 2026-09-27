@@ -1,3 +1,16 @@
+## 2026-09-27 — modo chinês: consolidação, funil do crivo e handoff
+
+- Novo `chinese_thesis.py`: consolida os JSONs por grupo/lote num payload só (meta com
+  funil somado, grupos listados, adiado = agendado − concluído), re-pontua com
+  `rescore()` e imprime a análise independente da tese em markdown — razão EN÷ZH por
+  idioma, evidência chinesa, **funil do crivo** (etapa a etapa, por que um anúncio que
+  passa a razão ≥4× não vira candidata: identidade, raridade, página, evidência, set
+  divergente) e páginas chinesas mais líquidas. `--merge-out` alimenta o `ebay_summary.py`.
+  Substitui os scripts que viviam em `results/` (efêmeros).
+- `SESSION-HANDOFF.md`: seção do modo chinês (estado, decisões fechadas com o operador,
+  leitura qualitativa do scan, contexto de mercado com fontes, armadilhas e retomada).
+- 4 testes offline (`tests/test_chinese_thesis.py`).
+
 ## 2026-09-26 — modo CHINÊS: PSA 10 em chinês × PSA 10 em inglês (crivo ≥4×)
 
 - Novo `chinese_scan.py` + `src/chinese_scan.py`: para cada carta EN da watchlist,

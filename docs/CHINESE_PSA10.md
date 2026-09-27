@@ -16,7 +16,21 @@ Este documento fixa o método. Resultado (linhas, preços) nunca entra no reposi
 python chinese_scan.py --group 1 --out results/chinese-g1.json        # 1 chamada eBay por carta
 python chinese_scan.py --group 11 --max-cards 100 --card-offset 0 --out results/chinese-g11a.json
 python ebay_summary.py results/chinese-g1.json -o results/chinese-g1.md   # entrega (o JSON leva meta.kind)
+
+# watchlist inteira = um grupo por execução (orçamento de 500 chamadas eBay é por run);
+# grupo grande (10, 311 cartas em 2026-09) em 2 lotes com --max-cards/--card-offset:
+for g in 1 2 3 11 12; do python chinese_scan.py --group $g --out results/chinese-g$g.json; done
+python chinese_scan.py --group 10 --max-cards 160 --card-offset 0   --out results/chinese-g10a.json
+python chinese_scan.py --group 10 --max-cards 160 --card-offset 160 --out results/chinese-g10b.json
+
+# consolidado + análise independente da tese (agregados por idioma, funil do crivo):
+python chinese_thesis.py results/chinese-g*.json --merge-out results/chinese-all.json -o results/analise_tese.md
+python ebay_summary.py results/chinese-all.json -o results/chinese-all.md --compact   # .chat.md = versão de chat
 ```
+
+Retomada de sessão: `SESSION-HANDOFF.md` (seção "modo CHINÊS") — estado, decisões fechadas,
+armadilhas já pagas e próximos passos. `results/` é local e efêmero: toda entrega exige
+coleta nova.
 
 Flags: `--group`, `--max-cards`/`--card-offset` (lote, como no `main.py`), `--min-ratio`
 (default **4**), `--min-price` (default **10**, preço do item), `--min-zh-sales` (default
