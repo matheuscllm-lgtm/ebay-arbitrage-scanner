@@ -55,6 +55,7 @@ Da mais forte para a mais fraca; **nunca chuta**: com mais de um candidato a lin
 |---|---|---|
 | `tc-jp` | a impressão tradicional da linha simplificada (`SV8F 132` → JP `sv8 132`) é a mesma impressão japonesa da linha EN (`jaicon/jano`) | exata: mesma impressão, mesma arte |
 | `set+illus+rar` | set JP de origem ↔ set EN (mapa JP→EN **aprendido do corpus** — toda linha EN com `jaicon` ensina — semeado por `ZH_SET_TO_EN`) **e** mesmo ilustrador **e** família de raridade compatível (SAR↔SIR, AR↔IR, SR↔UR, UR↔HR, SSR↔SHUR, RR↔DR…) | fingerprint sem imagem: quem desenhou + tipo de impressão + de onde veio |
+| `set+rar` | a linha chinesa da wiki não traz ilustrador: set JP→EN + família de raridade únicos na página | mais fraco; fica marcado |
 | `illus+rar` | sem set JP no mapa: ilustrador + família de raridade únicos na página | mais fraco; fica marcado |
 | `None` | sem par EN identificável (`note`: `sem-par-en-identificavel`, `pagina-da-carta-nao-encontrada`, `sem-impressao-en-na-pagina`) | arte/impressão exclusiva do chinês, promo, ou dado ausente |
 
@@ -111,4 +112,12 @@ Exemplos reais (fixtures de teste, `tests/fixtures/zh_*.txt`):
 
 ## Resultado da geração
 
-Preenchido na primeira geração real (ver `_meta` do arquivo e o changelog).
+Geração de 2026-09-27 (`_meta` do arquivo; `python zh_catalog.py --report results/zh_identity_report.md` reproduz):
+
+- 91 produtos simplificados (navegações SM/SWSH/SV/ME), 5679 páginas de carta lidas, 164 ausentes na wiki; ~240 chamadas à API na primeira leitura (regeração a partir do cache local não chama a wiki).
+- 10707 impressões catalogadas; 470 entradas sem código ou número (decks/promos sem lista numerada) ficaram fora — não há como consultá-las.
+- Ligação: `tc-jp` 4811 · `set+illus+rar` 496 · `set+rar` 652 · `illus+rar` 683 · ambíguas 187 · sem par EN 3878.
+- Raridades altas (AR/SR/SAR/UR/HR/SSR/CHR/CSR): 1670 impressões — `tc-jp` 1007, `set+illus+rar` 34, `set+rar` 81, `illus+rar` 143, ambíguas 31, sem par 374.
+- 611 das 1669 cartas EN da watchlist têm ao menos uma impressão simplificada identificada (o resto é carta de era/set sem edição simplificada, ou impressão que a wiki ainda não liga).
+- Sem par EN nas raridades altas é, em grande parte, impressão que só existe em simplificado (UR douradas de compilação, SAR de arte própria, Gem Pack, energias) — exatamente o que o crivo precisa saber para não tratar como a carta EN.
+- Validação em scan ao vivo ainda não feita: o próximo scan do modo chinês mede quanto do funil `set-zh-sem-correspondencia` vira `mesma-carta`/`catalogo-*`.

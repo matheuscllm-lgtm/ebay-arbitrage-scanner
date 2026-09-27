@@ -1,3 +1,29 @@
+## 2026-09-27 — modo chinês: identidade por IMPRESSÃO (catálogo simplificado → EN)
+
+- Diagnóstico do funil do scan de 2026-09-26: a perda dominante depois da razão ≥ 4× era
+  `set-zh-sem-correspondencia` — o crivo só provava par forte por número EN no título ou por
+  set inteiro em `ZH_SET_TO_EN`, e as compilações simplificadas (CS/CSV/CSM/CBB, Gem Pack,
+  promos, caixas 151) misturam sets japoneses e renumeram tudo. Identidade, não preço.
+- Novo `src/zh_identity.py` + `zh_catalog.py`: catálogo `src/catalog/zh_identity.json`
+  (versionado, gerado da 52poke wiki via API) com uma linha por impressão simplificada —
+  código + número + raridade chinesa, nome, ilustrador, impressão tradicional/japonesa que
+  espelha e a carta EN correspondente (set da watchlist, número, raridade) com o `how`:
+  `tc-jp` (mesma impressão japonesa), `set+illus+rar` (set JP→EN aprendido do corpus +
+  ilustrador + família de raridade), `illus+rar` (mais fraco, marcado); ambíguo nunca vira
+  par (`ambiguous`). Bases prontas (TCGdex, PTCG-database) não servem: devolvem o tradicional
+  como se fosse simplificado. Método e limites em `docs/CHINESE_IDENTITY.md`.
+- `chinese_scan.catalog_identity()` grava `row["zh_catalog"]` (chave pelo título —
+  `CSV9C 245/208`, `151C`, `Gem Pack Vol.2 4/07` — ou pela página chinesa do PriceCharting);
+  `classify`: `mesma-carta` prova a identidade e dispensa número/set/raridade do título;
+  `catalogo-outra-carta` e `catalogo-sem-par-en` derrubam para `validar` com motivo explícito;
+  `catalogo-ambiguo` mantém a regra por set; fora do catálogo vale `ZH_SET_TO_EN` como antes.
+  `rescore()` recalcula com o catálogo vigente; funil do `chinese_thesis.py` mostra os motivos
+  novos como primeira etapa; texto do bucket "validar" atualizado.
+- Geração real de 2026-09-27: 91 produtos simplificados, 5679 páginas de carta lidas (164 ausentes na wiki), 10707 impressões catalogadas (470 entradas sem código/número ficaram fora). Ligação: `tc-jp` 4811, `set+illus+rar` 496, `set+rar` 652, `illus+rar` 683, ambíguas 187, sem par EN 3878. Nas raridades altas (AR/SR/SAR/UR/HR/SSR/CHR/CSR): 1670 impressões, `tc-jp` 1007, sem par 374, ambíguas 31. 611 das 1669 cartas EN da watchlist têm ao menos uma impressão simplificada identificada. Sets EN sem nome na watchlist ficam com o nome Bulbapedia (promos Black Star, 30th Celebration, Champion's Path, decks). Arquivo: 2,9 MB.
+- 17 testes offline novos (`tests/test_zh_identity.py`, fixtures = wikitext real recortado) +
+  `tests/conftest.py` isolando o catálogo real da suíte. Sem preço em lugar nenhum; nenhuma
+  recomendação de compra.
+
 ## 2026-09-27 — modo chinês: consolidação, funil do crivo e handoff
 
 - Novo `chinese_thesis.py`: consolida os JSONs por grupo/lote num payload só (meta com

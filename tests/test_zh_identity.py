@@ -136,6 +136,12 @@ def test_link_mew_ex_151_collect_rows_and_fallback_without_jp_columns():
     # sem set JP conhecido no mapa: só ilustrador + família (marcado como mais fraco)
     got3 = zi.link_entry(e, "151C", cp2, _resolve, {}, set_name="收集啦151 惊")
     assert (got3.en_no, got3.how) == ("232", "illus+rar")
+    # linha chinesa sem ilustrador na wiki: set JP→EN + família únicos (SAR ↔ SIR 232, não SHUR 216)
+    cp3 = copy.deepcopy(cp2)
+    for r in cp3.sc_rows:
+        r.pop("illus", None)
+    got4 = zi.link_entry(e, "151C", cp3, _resolve, JP_TO_EN, set_name="收集啦151 惊")
+    assert (got4.en_set, got4.en_no, got4.how) == ("SV: Paldean Fates", "232", "set+rar")
     promo = zi.link_entry(zi.SetEntry("3", "SV-P", "梦幻ex", "C", "SV2a", None, None), "SV-P", cp, _resolve, JP_TO_EN, set_name="SV-P简体中文版特典卡")
     assert promo.how is None and promo.en_set is None   # promo simplificada (satoma): sem par EN
 
@@ -155,6 +161,12 @@ def test_rarity_families_and_watchlist_set_names():
     assert zi.rarity_compatible("SR", "UR") is True and zi.rarity_compatible("AR", "IR") is True
     assert zi.rarity_compatible("SSR", "SHUR") is True and zi.rarity_compatible("RR", "DR") is True
     assert zi.rarity_compatible("SAR", "UR") is False and zi.rarity_compatible("XYZ", "C") is None
+    # eras SM/SWSH: GX/V holo ↔ RR, RU (full art) ↔ SR, RS (arco-íris) ↔ HR
+    assert zi.rarity_compatible("RR", "GX") is True and zi.rarity_compatible("SR", "RU") is True
+    assert zi.rarity_compatible("HR", "RS") is True and zi.rarity_compatible("RRR", "VMAX") is True
+    # Shiny Vault: o número EN (SV49) decide; qualquer família brilhante japonesa serve
+    assert zi.rarity_compatible("SSR", "RU", "SV49") is True and zi.rarity_compatible("S", "SH", "SV3") is True
+    assert zi.rarity_compatible("SR", "RU", "SV49") is False and zi.rarity_compatible("SR", "RU", "49") is True
     assert zi.to_watchlist_set("Surging Sparks (TCG)") == ("SV08: Surging Sparks", True)
     assert zi.to_watchlist_set("151 (TCG)") == ("SV: Scarlet & Violet 151", True)
     assert zi.to_watchlist_set("Pokémon GO (TCG)") == ("Pokemon GO", True)

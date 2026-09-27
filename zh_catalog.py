@@ -109,7 +109,10 @@ def build(client: zi.WikiClient, only: list[str] | None = None, log=print) -> tu
                         code = r["cnicon"]
                         break
             if not code:
-                code = e.cn_total if e.cn_total and not e.cn_total.isdigit() else "?"
+                code = e.cn_total if e.cn_total and not e.cn_total.isdigit() else None
+            if not code or not e.cn_no:
+                stats["sem-chave"] += 1   # sem código ou sem número: não dá para consultar; fica fora
+                continue
             linked = zi.link_entry(e, code, cp, resolve, jp_to_en, set_name=sp.name)
             key = (zi.norm_code(linked.cn_code), linked.cn_no, linked.cn_rar, linked.page, linked.en_no)
             if key in seen:
@@ -145,9 +148,9 @@ def render_report(rows: list[dict], meta: dict, report: dict) -> str:
     by_code = collections.defaultdict(collections.Counter)
     for r in rows:
         by_code[r["cn_code"]][r.get("how") or ("ambigua" if r.get("ambiguous") else "sem-par")] += 1
-    out += ["", "## Por produto (código simplificado)", "", "| código | linhas | tc-jp | set+illus+rar | illus+rar | ambígua | sem par |", "|---|---:|---:|---:|---:|---:|---:|"]
+    out += ["", "## Por produto (código simplificado)", "", "| código | linhas | tc-jp | set+illus+rar | set+rar | illus+rar | ambígua | sem par |", "|---|---:|---:|---:|---:|---:|---:|---:|"]
     for code, c in sorted(by_code.items()):
-        out.append(f"| {code} | {sum(c.values())} | {c['tc-jp']} | {c['set+illus+rar']} | {c['illus+rar']} | {c['ambigua']} | {c['sem-par']} |")
+        out.append(f"| {code} | {sum(c.values())} | {c['tc-jp']} | {c['set+illus+rar']} | {c['set+rar']} | {c['illus+rar']} | {c['ambigua']} | {c['sem-par']} |")
     out += ["", "## Sets EN sem nome na watchlist (ficam com o nome Bulbapedia)", ""]
     out += [f"- {k}: {v} linhas" for k, v in sorted(meta["en_sets_unresolved"].items())] or ["- nenhum"]
     out += ["", "## Sets EN citados sem langlink EN", ""]

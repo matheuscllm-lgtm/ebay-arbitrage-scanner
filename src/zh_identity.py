@@ -27,8 +27,9 @@ Junção, da mais forte para a mais fraca (campo ``how`` de cada linha):
    próprio corpus, semeado por ``ZH_SET_TO_EN``) **e** mesmo ilustrador **e** família de
    raridade compatível (SAR↔SIR, AR↔IR, SR↔UR, UR↔HR, SSR↔SHUR, RR↔DR…). É o "fingerprint"
    possível sem imagem: quem desenhou + que tipo de impressão + de onde veio.
-3. ``illus+rar`` — sem set JP conhecido: ilustrador + família de raridade únicos na página.
-   Mais fraco; fica marcado.
+3. ``set+rar`` — a linha chinesa da wiki não traz ilustrador: set JP→EN + família de raridade
+   únicos na página. ``illus+rar`` — sem set JP conhecido: ilustrador + família de raridade
+   únicos na página. Ambos mais fracos; ficam marcados.
 4. ``None`` — a impressão chinesa não tem par EN identificável (arte exclusiva, promo, ou
    dado ausente). Nunca chuta: com mais de um candidato a linha sai ``ambiguous``.
 
@@ -200,12 +201,15 @@ JP_RARITY_FAMILY = {
     "SR": "sr", "SSR": "ssr", "SAR": "sar", "UR": "ur", "HR": "hr", "CSR": "csr", "K": "k",
     "ACE": "ace", "PR": "pr", "S": "s", "A": "a", "MA": "ma",
 }
-# Lado EN (códigos como a 52poke escreve nas linhas EN).
+# Lado EN (códigos como a 52poke escreve nas linhas EN). Eras SM/SWSH: GX/V = holo rara
+# (↔ RR), RU = Rare Ultra/full art (↔ SR), RS = Rare Secret/arco-íris (↔ HR).
 EN_RARITY_FAMILY = {
     "C": "c", "U": "u", "R": "r", "RH": "r", "H": "r", "DR": "rr", "TR": "rrr", "IR": "ar",
-    "CHR": "chr", "UR": "sr", "SIR": "sar", "HR": "ur", "RR": "hr", "SHR": "s", "SHUR": "ssr",
+    "CHR": "chr", "UR": "sr", "SIR": "sar", "HR": "ur", "RR": "hr", "SHR": "s", "SH": "s", "SHUR": "ssr",
     "CSR": "csr", "K": "k", "ACE": "ace", "PR": "pr", "A": "a", "MA": "ma", "SR": "sr",
+    "GX": "rr", "V": "rr", "VMAX": "rrr", "VSTAR": "rrr", "RU": "sr", "RS": "hr",
 }
+_SHINY_VAULT_NO_RE = re.compile(r"SV\d+", re.I)   # Hidden Fates / Shining Fates: SV1…SV122
 
 
 def rarity_family(code: str | None, side: str) -> str | None:
@@ -216,10 +220,13 @@ def rarity_family(code: str | None, side: str) -> str | None:
     return table.get(c.upper(), None)
 
 
-def rarity_compatible(cn_rar: str | None, en_rar: str | None) -> bool | None:
+def rarity_compatible(cn_rar: str | None, en_rar: str | None, en_no: str | None = None) -> bool | None:
     """True/False quando as duas famílias são conhecidas; None quando alguma é desconhecida
-    (não bloqueia, fica registrado)."""
+    (não bloqueia, fica registrado). Número EN de Shiny Vault (`SV49`) diz o que o código de
+    raridade EN não diz: aceita qualquer família brilhante do lado japonês (S/SSR)."""
     a, b = rarity_family(cn_rar, "jp"), rarity_family(en_rar, "en")
+    if en_no and _SHINY_VAULT_NO_RE.fullmatch(str(en_no)):
+        return True if a in ("s", "ssr") else (None if a is None else False)
     if a is None or b is None:
         return None
     return a == b
@@ -497,15 +504,25 @@ def link_entry(entry: SetEntry, cn_code: str, page: CardPage | None, resolve, jp
     if jp_code and illus:
         en_sets = jp_to_en.get(jp_code) or set()
         pool = [r for r in cands if r["_en_set"] in en_sets and (r["_illus"] & illus)]
-        rar_ok = [r for r in pool if rarity_compatible(cn_rar, r.get("enrar")) is not False]
+        rar_ok = [r for r in pool if rarity_compatible(cn_rar, r.get("enrar"), r["_en_no"]) is not False]
         if rar_ok:
             got = _pick(rar_ok, "set+illus+rar")
             if got:
                 return got
             return Linked(**base, ambiguous=sorted({f"{r['_en_set']} {r['_en_no']}" for r in rar_ok}), note="varias-en-no-mesmo-set")
+    # 2b) linha chinesa SEM ilustrador na wiki: set JP → set(s) EN + família de raridade
+    #     únicos (uma carta raramente tem duas impressões da mesma família no mesmo set EN)
+    if jp_code and not illus:
+        en_sets = jp_to_en.get(jp_code) or set()
+        pool = [r for r in cands if r["_en_set"] in en_sets and rarity_compatible(cn_rar, r.get("enrar"), r["_en_no"]) is True]
+        if pool:
+            got = _pick(pool, "set+rar")
+            if got:
+                return got
+            return Linked(**base, ambiguous=sorted({f"{r['_en_set']} {r['_en_no']}" for r in pool}), note="varias-en-no-mesmo-set")
     # 3) ilustrador + família de raridade únicos na página
     if illus:
-        pool = [r for r in cands if (r["_illus"] & illus) and rarity_compatible(cn_rar, r.get("enrar")) is True]
+        pool = [r for r in cands if (r["_illus"] & illus) and rarity_compatible(cn_rar, r.get("enrar"), r["_en_no"]) is True]
         if pool:
             got = _pick(pool, "illus+rar")
             if got:
@@ -599,6 +616,7 @@ class WikiClient:
                       "rvprop": "content|ids", "rvslots": "main", "titles": "|".join(chunk)}
             if langlinks:
                 params["lllang"] = "en"
+                params["lllimit"] = "max"   # o padrão (10) vale para o LOTE inteiro, não por página
             d = self._get(params)
             q = d.get("query") or {}
             alias: dict[str, str] = {}
