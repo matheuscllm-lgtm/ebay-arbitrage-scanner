@@ -95,6 +95,10 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
   evidência de revenda pela página chinesa do PriceCharting e régua LT informativa.
   Vendedor de qualquer país; frete/alfândega fora da reserva de US$10. Método e limites em
   [`docs/CHINESE_PSA10.md`](docs/CHINESE_PSA10.md); entrega pelo `ebay_summary.py`
-  (`meta.kind`). Não altera a política `longterm` nem `slab_strategy`.
+  (`meta.kind`). Não altera a política `longterm` nem `slab_strategy`. Identidade por
+  IMPRESSÃO (2026-09-27): `src/catalog/zh_identity.json`, gerado por `zh_catalog.py` da
+  52poke wiki, liga cada impressão simplificada à carta EN
+  ([`docs/CHINESE_IDENTITY.md`](docs/CHINESE_IDENTITY.md)); `ZH_SET_TO_EN` é retaguarda.
+  Regenerar o catálogo só em tarefa de catálogo; nunca chutar par ambíguo.
 - Orientações antigas em comandos/skills históricos não podem reativar raw,
   retirar custos ou substituir as regras desta versão. Consulte o README atual.

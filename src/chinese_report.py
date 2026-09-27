@@ -75,7 +75,7 @@ def funnel_lines(counts: dict) -> list[str]:
 
 BUCKET_TITLES = (
     ("candidata", "🟢 Candidatas — razão ≥ corte, nome+número, idioma definido e ≥{n} vendas PSA 10 em chinês (90 d)"),
-    ("validar", "⚠️ Validar manualmente — razão ≥ corte, mas match só por nome, idioma não especificado, evidência chinesa insuficiente ou referência EN pela coluna"),
+    ("validar", "⚠️ Validar manualmente — razão ≥ corte, mas match só por nome, catálogo diz outra carta/sem par EN, idioma não especificado, evidência chinesa insuficiente ou referência EN pela coluna"),
     ("abaixo-do-corte", "🔎 Abaixo do corte (razão < {ratio:g}×) — diagnóstico, não candidata"),
     ("sem-referencia-en", "❌ Sem referência PSA 10 em inglês — razão não calculável"),
 )

@@ -28,3 +28,6 @@ thesis*.yaml
 !src/catalog/set_catalog.json
 !src/catalog/iconic_pokemon.csv
 !src/catalog/celebrations_classic_identity.json
+# Catálogo gerado (zh_catalog.py): impressão em chinês simplificado → carta EN. Metadado
+# público de impressão (52poke wiki), sem preço.
+!src/catalog/zh_identity.json

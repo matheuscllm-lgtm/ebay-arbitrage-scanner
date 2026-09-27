@@ -127,6 +127,12 @@ coleta no GitHub. Os artefatos ficam **locais**, em `results/`.
   "Cynthia's"); tag team ("&"/"and") e sufixo colado por hífen (`-GX`) são outra carta;
   famílias de raridade (SIR↔SAR, IR↔AR, HR↔UR…) valem, raridade fora da família não.
   `rescore()` reaplica tudo isso na entrega, então JSON antigo sai com a régua de hoje.
+  **Desde 2026-09-27 a identidade é por IMPRESSÃO** (`src/zh_identity.py`,
+  `src/catalog/zh_identity.json`, `docs/CHINESE_IDENTITY.md`): a 52poke wiki dá, por
+  carta simplificada, o set japonês de origem, a raridade, o ilustrador e a impressão
+  EN correspondente; `catalog_identity()` grava `row["zh_catalog"]` e o `classify`
+  usa. TCGdex/PTCG-database NÃO servem para simplificado (devolvem o tradicional).
+  Ambíguas e "sem par" são o alvo da conferência por imagem (não feita).
 - **Volume**: entrega completa da watchlist inteira passa de 1 MB; no chat vai o
   `.chat.md` (`--compact`: candidatas inteiras, validar com evidência agrupado, contagens
   para o resto; URLs eBay sem rastreio).
