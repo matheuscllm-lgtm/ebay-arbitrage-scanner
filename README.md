@@ -150,6 +150,9 @@ parcial; 1 indica bloqueio/falha. Sucesso técnico não equivale a aprovação d
 
 Só fazer validação real quando o operador solicitar coleta; alterações de código
 usam testes offline. Workflows históricos não autorizam scans no GitHub Actions.
+Exceção restrita: `validate-ebay-auth` (`ebay_auth_check.py`, disparo manual) testa só
+token + 1 busca `limit=1` com os secrets do repositório e loga apenas booleanos;
+não publica preço, artifact nem job summary.
 O JSON distingue `execution_status` e `evidence_status`; ausência de comparáveis
 não é rotulada como erro de credencial. A correção dos nomes de coleção foi
 validada com 188 anúncios reais e 83 linhas com amostra PSA suficiente;
