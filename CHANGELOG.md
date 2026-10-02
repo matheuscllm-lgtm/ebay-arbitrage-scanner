@@ -1,3 +1,13 @@
+## 2026-10-02 — validação de credenciais no Actions sem publicar resultado
+
+- `validate-ebay.yml` deixa de ser só aviso e vira `validate-ebay-auth` (manual): roda
+  `ebay_auth_check.py` com `EBAY_CLIENT_ID/SECRET` dos secrets — 1 token OAuth + 1 busca
+  `limit=1`, 1 página, teto de 1 chamada. Log = uma linha JSON de booleanos, contagem e tipo
+  do erro; sem preço, título, itemId, URL, mensagem de erro, artifact ou job summary.
+  Códigos: 0 OK, 1 credencial ausente/recusada, 2 busca falhou.
+- `scan.yml` não foi alterado (segue publicando artifact; não disparar — ver DELIVERY_CHAT.md).
+- 4 testes offline (`tests/test_ebay_auth_check.py`).
+
 ## 2026-09-27 — modo chinês: identidade por IMPRESSÃO (catálogo simplificado → EN)
 
 - Diagnóstico do funil do scan de 2026-09-26: a perda dominante depois da razão ≥ 4× era

@@ -1,11 +1,36 @@
-name: Scan delivery moved to chat
+name: validate-ebay-auth
+
+# Verificação mínima das credenciais (1 token + 1 busca limit=1), disparo manual.
+# Não é scan: o log mostra só booleanos e tipo de erro; nenhum preço, título,
+# artifact ou job summary é publicado (DELIVERY_CHAT.md). Scans seguem no chat.
+
 on:
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
-  instructions:
+  auth-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Local collection and chat delivery
-        run: echo "Request a fresh local scan in the conversation. Follow DELIVERY_CHAT.md. This workflow does not collect or publish market results."
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verificar autenticacao e consulta minima
+        env:
+          EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
+          EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
+        run: python ebay_auth_check.py

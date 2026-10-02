@@ -58,11 +58,18 @@ def test_workflow_never_collects_or_uploads_market_results():
     workflow=yaml.safe_load(Path('.github/workflows/validate-ebay.yml').read_text())
     trigger=workflow.get('on', workflow.get(True))
     assert set(trigger) == {'workflow_dispatch'}
-    steps=workflow['jobs']['instructions']['steps']
-    assert len(steps) == 1
-    assert 'env' not in steps[0] and 'uses' not in steps[0]
-    assert steps[0]['run'].startswith('echo ')
-    assert 'DELIVERY_CHAT.md' in steps[0]['run']
+    assert 'schedule' not in trigger
+    text=Path('.github/workflows/validate-ebay.yml').read_text()
+    # Só a verificação mínima de credenciais (booleanos no log); nunca scan, relatório,
+    # artifact ou job summary (DELIVERY_CHAT.md).
+    for banned in ('upload-artifact', 'GITHUB_STEP_SUMMARY', 'main.py', 'ebay_summary',
+                   'validate_live', 'results/'):
+        assert banned not in text
+    steps=workflow['jobs']['auth-check']['steps']
+    with_env=[s for s in steps if 'env' in s]
+    assert len(with_env) == 1
+    assert with_env[0]['run'].strip() == 'python ebay_auth_check.py'
+    assert set(with_env[0]['env']) == {'EBAY_CLIENT_ID', 'EBAY_CLIENT_SECRET'}
 
 
 @pytest.mark.parametrize('grade', [8, 9, 10])
