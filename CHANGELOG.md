@@ -1,3 +1,13 @@
+## 2026-10-02 — remove `scan.yml` (scan no Actions com artifact público)
+
+- `.github/workflows/scan.yml` apagado: rodava `main.py` + `ebay_summary.py` com os secrets e
+  publicava `results/` como artifact num repositório público, contra DELIVERY_CHAT.md (scan no
+  Actions e resultados em artifacts proibidos). Tinha 0 execuções — nenhum artifact a limpar.
+  Sem o upload ele só gastaria cota (saída suprimida), por isso saiu inteiro.
+- Validação de credenciais segue no `validate-ebay-auth` (#49); coleta completa segue local,
+  entrega no chat. O secret opcional `THESES_YAML` deixa de ter uso no repositório.
+- Teste novo: nenhum workflow publica artifact nem roda `main.py`/`ebay_summary.py`.
+
 ## 2026-10-02 — validação de credenciais no Actions sem publicar resultado
 
 - `validate-ebay.yml` deixa de ser só aviso e vira `validate-ebay-auth` (manual): roda
