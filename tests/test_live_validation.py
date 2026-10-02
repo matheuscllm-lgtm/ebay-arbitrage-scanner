@@ -87,3 +87,11 @@ def test_catalog_year_narrows_discovery_without_altering_card(monkeypatch, tmp_p
     assert live.validate(out_dir=tmp_path, psa_grade=grade) == 2
     summary = json.loads((tmp_path/'validation.json').read_text())
     assert summary['queries'][0].endswith(f'1999 English PSA {grade}')
+
+
+def test_no_workflow_runs_market_scan_or_uploads_artifacts():
+    # DELIVERY_CHAT.md: scan no Actions e resultados em artifacts sao proibidos (repo publico).
+    for path in Path('.github/workflows').glob('*.y*ml'):
+        text = path.read_text()
+        for banned in ('upload-artifact', 'GITHUB_STEP_SUMMARY', 'main.py', 'ebay_summary'):
+            assert banned not in text, f'{path.name} contem {banned}'
