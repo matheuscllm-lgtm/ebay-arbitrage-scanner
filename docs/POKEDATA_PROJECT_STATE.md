@@ -10,7 +10,7 @@ Reaproveite src/zh_identity.py, zh_catalog.py e src/catalog/zh_identity.json som
 ## Entrada e acesso
 Arquivo de entrada: PokeData_correspondencias_JP_CHS_CHT_parcial.xlsx, fornecido pelo operador na conversa.
 SHA-256: c3bf41a5b20f09d4546ed0bcc309783ba078b84b99513645fc300bb753f8d513.
-A planilha não está neste PR: contém preços e a política do repositório mantém esses dados fora do GitHub. O operador deve anexá-la à sessão Claude. Não presumir acesso ao ChatGPT Library ou a caminhos de outra sessão.
+A pedido explícito do operador em 2026-10-04, a planilha foi incluída neste PR em [research/pokedata/PokeData_correspondencias_JP_CHS_CHT_parcial.xlsx](../research/pokedata/PokeData_correspondencias_JP_CHS_CHT_parcial.xlsx). Esta autorização é específica para este snapshot de pesquisa; não autoriza publicar novos scans ou preços operacionais. Claude pode ler o arquivo pelo checkout da branch docs/pokedata-claude-handoff, sem depender de anexos de outra sessão.
 O arquivo separado PokeData_EN_raw_acima_40_USD.xlsx foi citado no histórico, mas não fornecido nem lido nesta rodada. A aba Cobertura EN do anexo contém as referências necessárias para continuar; não reconstruir campos ausentes (por exemplo, era) por suposição.
 
 ## O que foi feito e grau de verificação
