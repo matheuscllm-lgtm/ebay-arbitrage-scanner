@@ -16,7 +16,7 @@ from pathlib import Path
 
 BASE = "https://tcgcsv.com/tcgplayer/3"
 ZH = Path(__file__).resolve().parents[2] / "src" / "catalog" / "zh_identity.json"
-MIN_USD = float(sys.argv[1]) if len(sys.argv) > 1 else 10.0
+MIN_USD = float(sys.argv[1]) if __name__ == "__main__" and len(sys.argv) > 1 else 10.0
 EXCLUDE = re.compile(r"Promo|McDonald|Trick or Trade|Battle Academy|Prize Pack|Southeast Asia|"
                      r"My First Battle|Classic|Energies", re.I)
 STRENGTH = {"tc-jp": "✅ tc-jp", "set+illus+rar": "🟡 set+ilus+rar",
@@ -57,7 +57,7 @@ def main():
             and not EXCLUDE.search(g["name"])]
     sets.sort(key=lambda g: g["publishedOn"])
 
-    zh = json.load(open(ZH))
+    zh = json.load(open(ZH, encoding="utf-8"))
     by_en = {}
     for r in zh["rows"]:
         if r.get("en_set") and r.get("en_no"):

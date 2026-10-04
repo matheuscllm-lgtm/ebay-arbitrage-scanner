@@ -9,7 +9,7 @@ coleta no GitHub. Os artefatos ficam **locais**, em `results/`.
 > **Em uma frase:** o operador quer clicar e cair no **anúncio ativo mais barato** do eBay
 > da carta em **inglês** e no **anúncio ativo mais barato da mesma impressão em chinês
 > simplificado**, só quando **EN ÷ ZH ≥ 4×** — os dois links abertos à venda, nunca item
-> vendido/encerrado. Protótipo existe e rodou ao vivo; falta aplicar as decisões abaixo.
+> vendido/encerrado. Implementado em `tools/zh_ebay_pairs/` com as decisões abaixo aplicadas.
 
 ### Decisões fechadas pelo operador (não re-perguntar)
 
@@ -21,41 +21,39 @@ coleta no GitHub. Os artefatos ficam **locais**, em `results/`.
 - Universo: cartas EN de sets 2022–2025 com market > US$10 e par ZH-S no
   `src/catalog/zh_identity.json`. Entrega = tabela no chat (`DELIVERY_CHAT.md`).
 
-### O que já existe (protótipo, sem testes, não integrado)
+### O que existe (implementado e testado offline; validado em coleta real 2026-10-04)
 
-- `tools/zh_ebay_pairs/pair_table.py` — catálogo tcgcsv (sets 2022–2025, market > US$10)
-  × `zh_identity.json`; tabela de conferência do pareamento (links eBay/52poke).
-- `tools/zh_ebay_pairs/ebay_pair.py N` — top-N cartas (por market TCGPlayer, só para
-  ordenar) com par ZH-S + nº JP; 1 busca Browse API por idioma (ordem por relevância,
-  limit 200, preço fixo, vendedor de qualquer país); guards: nome + nº no título, idioma
-  no título, sem graded/acessório/proxy/"30th"/lote óbvio, EN sem marcador de outro idioma,
-  lixo < 50% da mediana dos plausíveis. Grava `results/zh_ebay_pairs.json` (local) e
-  imprime a tabela de pares; `--render` re-renderiza sem coletar.
-  Ainda tem KR/ID e mostra todos os pares — **remover KR/ID e filtrar ≥ 4×**.
+- `tools/zh_ebay_pairs/guards.py` — guards puros, sem rede, reaproveitando o modo chinês
+  PSA 10 (`src/chinese_scan.py`: idioma do título, nome-base + sufixo, lote/réplica):
+  variante EN excluída (Master Ball/Poke Ball/stamp…), escolha da impressão ZH (sem Gem
+  Pack `CBB*C`; raridade compatível com a EN, depois `tc-jp`; empate = flag), nome com o
+  MESMO sufixo (`ex|V|VMAX|VSTAR|GX`), lote (vários "nº/total"), número **e total** da
+  fração no título, "à venda" pelo getItem.
+- `tools/zh_ebay_pairs/ebay_pair.py N` — top-N cartas (market TCGPlayer só ordena), 1 busca
+  Browse API por idioma (EN e ZH-S; 2 chamadas por carta), depois `verify()`: getItem em
+  cada link dos pares ≥ 4× (à venda agora + preço renovado; o que caiu é declarado fora da
+  tabela). Saída: só pares ≥ 4×, ordenados pela razão, com o funil na 1ª linha. Grava
+  `results/zh_ebay_pairs.json` (local); `--render` re-renderiza sem coletar.
+- `tools/zh_ebay_pairs/pair_table.py` — tabela de conferência do pareamento (sem eBay).
+- Testes: `tests/test_zh_ebay_pairs.py` (offline, entram no `python -m pytest -q`).
 
-### Próximos passos (em ordem)
+### Limites conhecidos (declarar na entrega)
 
-1. **Só EN × ZH-S**: 2 chamadas por carta → cabem ~200 cartas no teto de 500 chamadas,
-   deixando folga para o passo 3.
-2. **Corrigir os falsos pares vistos ao vivo** (repetem):
-   - Gem Pack `CBB*C` (nº "pacote nº") casa carta comum do pacote → descartar linhas CBB
-     ou exigir os dois números; preferir outra impressão ZH.
-   - Escolha da impressão ZH quando o catálogo tem várias (ex.: GG56 Zoroark tem
-     CS5.5C-58 RRR e CS5.5C-77 SAR) → preferir `tc-jp` + raridade compatível com a EN
-     (SIR↔SAR, IR↔AR, HR↔UR…), não a primeira linha.
-   - Sufixo do nome: "Pikachu" não pode casar "Pikachu ex" (e vice-versa) — exigir/proibir
-     `ex|V|VMAX|VSTAR` conforme o nome EN.
-   - Lote (vários "nº/total" no título) → descartar.
-   - Variante EN: produto TCGPlayer > US$10 pode ser variante (Master Ball etc.) cujo
-     anúncio mais barato é a holo comum (Umbreon 059 PRE) → exigir o qualificador da
-     variante no título ou excluir esses produtos.
-3. **Verificar "à venda" na entrega**: `EbayClient.get_item` em cada link dos pares ≥ 4×
-   (status disponível); descartar e declarar os que caíram.
-4. Saída: só pares ≥ 4×, ordenados por razão, com contagem de cartas consultadas /
-   pares com dois anúncios / ≥ 4× / descartados na verificação.
-5. Decidir se vira modo do repo (testes offline de cada guard) ou fica em `tools/`.
-   Avaliar reaproveitar o crivo/identidade do modo chinês PSA 10 (`chinese_scan.py`) em vez
-   de duplicar.
+- Título não prova idioma (visto: "S-Chinese" com foto de carta japonesa) → todo par pede
+  conferir a FOTO do anúncio ZH-S; a tabela diz isso no cabeçalho.
+- Frete desconhecido na busca (frete calculado) conta 0 e a linha leva a flag.
+- Guard "abaixo de 50% da mediana dos plausíveis = lixo" vale só no lado ZH (conservador);
+  no EN tiraria o mais barato de verdade e inflaria a razão. Pode esconder ZH barato legítimo.
+- Impressão ZH de outra família de raridade (EN SIR × ZH SR) = sem par; empate entre
+  impressões fica com flag.
+- N=200 gasta ~400 chamadas + 2 por par ≥ 4× (teto 500 por execução).
+
+### Próximos passos
+
+1. Decidir se vira modo do repo (entrada no `ebay_summary.py`, doc em `docs/`) ou fica
+   em `tools/`.
+2. Universo além das top-200 exige mais de uma execução (teto de 500 chamadas cada).
+3. Catálogo `zh_identity.json`: problemas abaixo (tarefa de catálogo, não desta frente).
 
 ### Problemas do catálogo `zh_identity.json` vistos nesta sessão (para outra tarefa)
 
@@ -71,9 +69,10 @@ coleta no GitHub. Os artefatos ficam **locais**, em `results/`.
 
 ```bash
 cd tools/zh_ebay_pairs
-python3 pair_table.py 10 > /tmp/pairs_audit.md     # conferência do pareamento (sem eBay)
-python3 ebay_pair.py 3                             # teste curto (12 chamadas eBay)
-python3 ebay_pair.py 120 --render                  # re-render do último JSON local
+python pair_table.py 10 > pairs_audit.md           # conferência do pareamento (sem eBay)
+python ebay_pair.py 3                              # teste curto (6 buscas + verificação)
+python ebay_pair.py 200                            # coleta completa (~450 chamadas eBay)
+python ebay_pair.py 200 --render                   # re-render do último JSON local
 ```
 
 Credenciais: `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` no ambiente. tcgcsv exige
