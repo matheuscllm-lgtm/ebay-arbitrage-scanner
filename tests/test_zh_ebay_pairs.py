@@ -339,7 +339,7 @@ def test_verify_walks_past_played_listing_to_the_cheapest_nm():
 
 def test_verify_skips_pair_that_cannot_reach_ratio_even_by_median():
     d = gengar()
-    d["rows"][0]["res"]["en"]["median"] = 150.0          # 150 / 50 = 3× — não gasta chamada
+    d["rows"][0]["res"]["en"].update(items=[it("HP1", 120.0), it("X", 150.0)], median=150.0)  # teto 150 / 50 = 3×
     client = FakeClient()
     ebay_pair.verify(d, client, now=NOW)
     assert client.asked == [] and "verified" not in d["rows"][0]
