@@ -102,3 +102,12 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
   Regenerar o catálogo só em tarefa de catálogo; nunca chutar par ambíguo.
 - Orientações antigas em comandos/skills históricos não podem reativar raw,
   retirar custos ou substituir as regras desta versão. Consulte o README atual.
+
+## Frente de correspondências PokeData (2026-10-04)
+
+Para continuar a base EN / JP / CHS / CHT, leia primeiro
+[`docs/POKEDATA_PROJECT_STATE.md`](docs/POKEDATA_PROJECT_STATE.md).
+Use o anexo indicado nesse documento; ele não está versionado. O corte raw > US$40
+seleciona referências de pesquisa e não altera a política de compra do scanner.
+Preserve status herdados com rastreabilidade e distinga contagens conferidas de
+correspondências efetivamente revalidadas. Não inferir exclusividade de uma busca vazia.
