@@ -90,9 +90,31 @@ def test_rarity_fit(en, cn, expected):
     ("Mew ex", "Mewtwo ex 151", False),
     ("Team Rocket's Mewtwo ex", "Mewtwo ex SAR CSV10C", True),
     ("Charizard ex", "Charizard & Braixen GX and Charizard ex", False),
+    ("Gengar & Mimikyu GX", "CSM2bC-033 RR Gengar & Mimikyu-GX Holo", True),
+    ("Gengar & Mimikyu GX", "CSM2bC-033 RR Gengar Mimikyu-GX Holo NM", True),     # vendedor omite o "&"
+    ("Gengar & Mimikyu GX", "Gengar GX 033", False),
+    ("Gengar & Mimikyu GX", "Mimikyu GX 033", False),
 ])
 def test_name_ok(name, title, expected):
     assert guards.name_ok(name, title) is expected
+
+
+# --- caso real 2026-10-04: Gengar & Mimikyu GX (Team Up 2019) não aparecia ---------
+def test_team_up_2019_is_inside_default_universe():
+    assert ebay_pair.in_years({"publishedOn": "2019-02-01T00:00:00"}, ebay_pair.YEARS)
+    assert not ebay_pair.in_years({"publishedOn": "2016-11-02T00:00:00"}, ebay_pair.YEARS)
+    assert ebay_pair.parse_years("2022-2025") == (2022, 2025)
+
+
+def test_tag_team_and_ace_spec_are_not_grading_companies():
+    gm = zrow("CSM2bC", "33", "RR", how="illus+rar", total="150")
+    assert guards.en_title_ok("Gengar & Mimikyu GX TAG TEAM 53/181 SM-Team Up Holo 240 HP English 2019",
+                              "Gengar & Mimikyu GX", "53/181")
+    assert guards.zh_title_ok("Pokemon S-Chinese Card Sun&Moon CSM2bC-033 RR Gengar & Mimikyu-GX Holo Mint New",
+                              "Gengar & Mimikyu GX", gm)
+    assert guards.en_title_ok("Prime Catcher ACE SPEC 157/162 Temporal Forces", "Prime Catcher", "157/162")
+    assert not guards.en_title_ok("Gengar & Mimikyu GX 53/181 TAG 10 Pristine", "Gengar & Mimikyu GX", "53/181")
+    assert not guards.en_title_ok("Gengar & Mimikyu GX 53/181 ACE 10", "Gengar & Mimikyu GX", "53/181")
 
 
 # --- lote -------------------------------------------------------------------------
@@ -194,9 +216,9 @@ def dump():
 
 
 class FakeClient:
-    def __init__(self, gone=(), prices=None, budget_at=None, shipping=None, errors=None):
+    def __init__(self, gone=(), prices=None, budget_at=None, shipping=None, errors=None, conds=None):
         self.gone, self.prices, self.budget_at, self.asked = set(gone), prices or {}, budget_at, []
-        self.shipping, self.errors = shipping or {}, errors or {}
+        self.shipping, self.errors, self.conds = shipping or {}, errors or {}, conds or {}
 
     def get_item(self, item_id):
         if self.budget_at is not None and len(self.asked) >= self.budget_at:
@@ -207,6 +229,8 @@ class FakeClient:
         if item_id in self.gone:
             raise ebay_pair.EbayApiError("eBay Browse API HTTP 404 Not Found (nao repetivel)")
         p = item_payload(itemId=item_id)
+        if item_id in self.conds:
+            p["conditionDescriptors"] = [{"name": "Card Condition", "values": [{"content": self.conds[item_id]}]}]
         if item_id in self.shipping:
             p["shippingOptions"] = [{"shippingCost": {"value": str(self.shipping[item_id]), "currency": "USD"}}]
         if item_id in self.prices:
@@ -229,7 +253,7 @@ def test_verify_drops_ended_listing_and_refreshed_price_below_ratio():
     d = dump()
     ebay_pair.verify(d, FakeClient(gone={"B"}, prices={"D": 30.0}), now=NOW)
     assert d["rows"][0]["verified"].startswith("caiu: ZH")
-    assert d["rows"][1]["verified"] == "caiu: razão abaixo do crivo com o preço atual"
+    assert d["rows"][1]["verified"] == ebay_pair.BELOW
 
 
 def test_verify_refreshes_price_and_shipping_from_get_item():
@@ -258,6 +282,91 @@ def test_verify_transient_error_is_not_reported_as_ended():
                                            "D": ValueError("payload ilegível")}), now=NOW)
     assert d["rows"][0]["verified"].startswith("não verificado: ZH")
     assert d["rows"][1]["verified"].startswith("não verificado: ZH")
+
+
+# --- condição: NM × NM (caso real: EN mais barato era "Heavily played") -------------
+@pytest.mark.parametrize("payload,expected", [
+    ({"conditionId": "4000", "conditionDescriptors": [
+        {"name": "Card Condition", "values": [{"content": "Near mint or better"}]}]}, "NM"),
+    ({"conditionId": "4000", "conditionDescriptors": [
+        {"name": "Card Condition", "values": [{"content": "Heavily played (Poor)"}]}]}, "OUTRA"),
+    ({"conditionId": "4000", "conditionDescriptors": [
+        {"name": "Card Condition", "values": [{"content": "Lightly played (Excellent)"}]}]}, "OUTRA"),
+    ({"conditionId": "2750", "conditionDescriptors": [{"name": "Grade", "values": [{"content": "10"}]}]}, "OUTRA"),
+    ({"conditionId": "4000"}, None),
+    ({}, None),
+])
+def test_card_condition(payload, expected):
+    assert guards.card_condition(payload) == expected
+
+
+@pytest.mark.parametrize("title,expected", [
+    ("Gengar & Mimikyu GX TAG TEAM 53/181 English - Damaged", False),
+    ("Gengar & Mimikyu GX 53/181 Team Up - HP", False),
+    ("Gengar & Mimikyu GX 53/181 Team Up Heavily Played", False),
+    ("Gengar & Mimikyu GX 53/181 Team Up Holo EN LP", False),
+    ("Gengar & Mimikyu GX 53/181 Team Up Ultra Rare Holo 240HP English 2019", True),
+    ("Gengar & Mimikyu GX 53/181 Team Up Holo 240 HP English", True),
+    ("Gengar & Mimikyu GX 53/181 NM Unplayed 240-HP", True),
+    ("Gengar & Mimikyu GX 53/181 Never Played Mint HP: 240", True),
+    ("Gengar & Mimikyu GX 53/181 Holo 240  HP", True),
+    ("Gengar & Mimikyu GX 53/181 small crease", False),
+])
+def test_played_titles_are_out(title, expected):
+    assert guards.en_title_ok(title, "Gengar & Mimikyu GX", "53/181") is expected
+
+
+def gengar():
+    d = dump()
+    row = d["rows"][2]                       # mais barato EN ÷ ZH = 2,4× — mas o EN barato é jogado
+    row["res"]["en"].update(items=[it("HP1", 120.0), it("NM1", 300.0), it("NM2", 330.0)], median=300.0,
+                            item=it("HP1", 120.0))
+    row["res"]["zh"].update(items=[it("Z1", 50.0), it("Z2", 59.0)], item=it("Z1", 50.0))
+    d["rows"] = [row]
+    return d
+
+
+def test_verify_walks_past_played_listing_to_the_cheapest_nm():
+    d = gengar()
+    client = FakeClient(conds={"HP1": "Heavily played (Poor)", "NM1": "Near mint or better",
+                               "Z1": "Near mint or better"})
+    ebay_pair.verify(d, client, now=NOW)
+    row = d["rows"][0]
+    assert client.asked == ["HP1", "NM1", "Z1"]
+    assert (row["res"]["en"]["item"]["item_id"], row["res"]["zh"]["item"]["item_id"]) == ("NM1", "Z1")
+    assert row["verified"] == "a-venda" and row["res"]["en"]["item"]["cond"] == "NM"
+
+
+def test_verify_skips_pair_that_cannot_reach_ratio_even_by_median():
+    d = gengar()
+    d["rows"][0]["res"]["en"]["median"] = 150.0          # 150 / 50 = 3× — não gasta chamada
+    client = FakeClient()
+    ebay_pair.verify(d, client, now=NOW)
+    assert client.asked == [] and "verified" not in d["rows"][0]
+
+
+def test_candidate_looks_at_every_listing_the_walk_can_reach():
+    # 3 EN plausíveis, os 2 baratos jogados: a mediana (150) dá 3×, mas o 3º (400) dá 8×
+    en = [it("a", 100.0), it("b", 150.0), it("c", 400.0)]
+    assert ebay_pair._candidate(en, [it("z", 50.0)], 150.0)
+    assert not ebay_pair._candidate(en[:2], [it("z", 50.0)], 150.0)
+
+
+def test_verify_all_listings_played_is_declared():
+    d = gengar()
+    ebay_pair.verify(d, FakeClient(conds={k: "Moderately played (Very good)" for k in ("HP1", "NM1", "NM2")}), now=NOW)
+    assert d["rows"][0]["verified"].startswith("caiu: EN sem anúncio NM à venda")
+
+
+def test_render_flags_unknown_condition_and_counts_below(capsys):
+    d = dump()
+    ebay_pair.verify(d, FakeClient(prices={"D": 30.0}, conds={"A": "Near mint or better", "B": "Near mint or better"}),
+                     now=NOW)
+    ebay_pair.render(d)
+    out = capsys.readouterr().out
+    assert "1 pares ≥ 4×" in out and "1 abaixo do crivo após conferir" in out
+    assert "condição não informada" not in out             # Charizard: os dois NM
+    assert "Mew ex" not in out                              # abaixo do crivo: não é listado
 
 
 def test_verify_budget_exhausted_is_declared_not_assumed():
@@ -308,15 +417,29 @@ class SearchClient:
             for i, t in enumerate(totals)]}
 
     def _request_search_json(self, url):
+        self.url = url
         return self.payload
 
 
-def test_cheapest_en_keeps_true_cheapest_and_zh_drops_low_outlier():
-    # tirar o EN mais barato INFLARIA a razão; no ZH, tirar o barato suspeito é conservador
-    client = SearchClient([20, 45, 50, 52])
-    en, _, _ = ebay_pair.cheapest(client, "q", lambda t: True, drop_low_outliers=False)
-    zh, _, _ = ebay_pair.cheapest(client, "q", lambda t: True, drop_low_outliers=True)
-    assert (en.price, zh.price) == (20.0, 45.0)
+def test_plausible_drops_low_outliers_and_keeps_order_and_median():
+    # caso real: "Gengar & Mimikyu-GX (Alternate Art) 165/181" a US$10 numa carta de ~US$800
+    client = SearchClient([10, 420, 800, 850, 900])
+    items, median, err, n = ebay_pair.plausible(client, "q", lambda t: True)
+    assert [i["price"] for i in items] == [420.0, 800.0, 850.0, 900.0]   # 10 < 50% da mediana
+    assert (median, err, n) == (800.0, None, 5)
+
+
+def test_plausible_asks_ebay_for_near_mint_ungraded_only():
+    import urllib.parse
+    client = SearchClient([100])
+    ebay_pair.plausible(client, "q", lambda t: True)
+    query = urllib.parse.parse_qs(urllib.parse.urlsplit(client.url).query)
+    assert query["aspect_filter"] == ["categoryId:183454,Card Condition:{Near Mint or Better},Graded:{No}"]
+
+
+def test_plausible_keeps_at_most_ten():
+    items, _, _, _ = ebay_pair.plausible(SearchClient(list(range(100, 130))), "q", lambda t: True)
+    assert len(items) == ebay_pair.KEEP
 
 
 def test_render_without_verification_says_so(capsys):

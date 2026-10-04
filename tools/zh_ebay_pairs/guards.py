@@ -18,7 +18,8 @@ from src import chinese_scan as cs  # noqa: E402
 
 MIN_RATIO = 4.0   # decisão do operador: mostrar só EN ÷ ZH ≥ 4×
 
-GRADED = re.compile(r"\b(psa|bgs|cgc|sgc|tag|ace|graded|gem mint|slab)\b", re.I)
+# "TAG TEAM" (mecânica da era SM) e "ACE SPEC" são da carta, não certificadoras TAG/ACE.
+GRADED = re.compile(r"\b(psa|bgs|cgc|sgc|tag(?!\s*team)|ace(?!\s*spec)|graded|gem mint|slab)\b", re.I)
 JUNK = re.compile(r"\bcase\b|skin|metal|insert|custom|display|binder|you pick|pick your|choose|"
                   r"proxy|orica|fan ?art|sticker|playmat|sleeve|toploader|\blots?\b|bundle|poster|"
                   r"acrylic|keychain|\bcoin\b|digital|code card|replica|minimum|extended art|"
@@ -103,7 +104,9 @@ def name_ok(en_name: str, title: str | None) -> bool:
     if not base:
         return False
     tag_team = "&" in en_name
-    for m in re.finditer(r"(?<![a-z])" + re.escape(base) + r"(?![a-z])", t):
+    # TAG TEAM: os dois nomes na ordem, com ou sem o "&" ("Gengar Mimikyu-GX")
+    core = r"\s*(?:&|and\b|,)?\s*".join(re.escape(p.strip()) for p in base.split("&"))
+    for m in re.finditer(r"(?<![a-z])" + core + r"(?![a-z])", t):
         if not tag_team and (_TAG_AFTER.match(t[m.end():]) or _TAG_BEFORE.search(t[:m.start()])):
             continue   # "Charizard & Braixen GX": outra carta com o mesmo nome dentro
         got = _SUFFIX_AFTER.match(t[m.end():])
@@ -148,8 +151,28 @@ def code_in(title: str, code: str) -> bool:
 
 
 # --- título EN / ZH ---------------------------------------------------------------
+# Carta jogada/danificada declarada no título. "HP" só conta quando não é ponto de vida
+# ("240HP", "240 HP", "HP140" são da carta).
+PLAYED = re.compile(
+    r"(?<!un)(?<!never )\bplayed\b|\bdamaged\b|\bcreas(?:e|ed|es)\b|\bpoor\b|\b(?:mp|lp|dmg)\b|"
+    r"(?<!\d)(?<!\d\s)(?<!\d\s\s)(?<!\d-)\bhp\b(?![\s:/-]*\d)", re.I)
+
+
 def _raw_single(title: str) -> bool:
-    return not GRADED.search(title) and not is_lot(title)
+    return not GRADED.search(title) and not PLAYED.search(title) and not is_lot(title)
+
+
+def card_condition(payload: dict) -> str | None:
+    """Condição pelo getItem: "NM" (Near mint or better) · "OUTRA" (jogada, danificada ou
+    graded) · None = o vendedor não informou (não dá para afirmar nem negar)."""
+    if str(payload.get("conditionId") or "") == "2750":
+        return "OUTRA"
+    for desc in payload.get("conditionDescriptors") or []:
+        if desc.get("name") == "Card Condition":
+            values = [str(v.get("content") or "") for v in desc.get("values") or []]
+            if values:
+                return "NM" if values[0].lower().startswith("near mint") else "OUTRA"
+    return None
 
 
 def en_title_ok(title: str, en_name: str, num: str) -> bool:
