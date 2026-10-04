@@ -65,6 +65,13 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
 
 ## Repositório e operação
 
+- Justificativa entre agentes (operador, 2026-10-04): toda alteração deve registrar
+  no PR ou documento de revisão o motivo, a evidência do problema, os arquivos
+  afetados, o comportamento anterior e novo, a validação executada e as pendências.
+  Indicar explicitamente ao Claude o que foi apenas proposto, implementado ou
+  efetivamente testado. Preservar as decisões anteriores e explicar divergências
+  para evitar que outro agente desfaça uma mudança por falta de contexto.
+
 - Fluxo padrão: branch + PR, nunca push direto em main.
 - Repositório independente dos scanners irmãos; não mudar seus parâmetros aqui.
 - Não versionar credenciais ou dados de scans. `data/` e `results/` são locais.
@@ -104,6 +111,11 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
   retirar custos ou substituir as regras desta versão. Consulte o README atual.
 
 ## Frente de correspondências PokeData (2026-10-04)
+
+Novos anexos e revisão conjunta: leia também
+[`docs/POKEDATA_REVIEW.md`](docs/POKEDATA_REVIEW.md). Ele registra os cinco arquivos,
+os achados bloqueadores de integração, os testes offline e a tarefa independente
+para Claude. Não confundir confirmação de arte com confirmação de impressão.
 
 Para continuar a base EN / JP / CHS / CHT, leia primeiro
 [`docs/POKEDATA_PROJECT_STATE.md`](docs/POKEDATA_PROJECT_STATE.md).

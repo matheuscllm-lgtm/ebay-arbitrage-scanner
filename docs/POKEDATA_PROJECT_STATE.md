@@ -1,5 +1,15 @@
 # PokeData — continuidade EN / JP / CHS / CHT
 
+## Atualização: novos anexos para revisão conjunta
+
+O operador forneceu cinco anexos e autorizou incluí-los no repositório. Leia
+[`POKEDATA_REVIEW.md`](POKEDATA_REVIEW.md) para inventário, contagens recontadas,
+achados e tarefa do Claude. O PR #53 foi ampliado para reunir as duas frentes.
+Os registros abaixo preservam o estado da primeira entrega. O catálogo completo
+novo não substitui a base parcial: tem critérios diferentes e 1.705 IDs desta
+base não aparecem nele por igualdade exata. As fontes originais permanecem
+intactas; não considerar os rótulos herdados como revalidados nesta revisão.
+
 Atualizado em 2026-10-04. Pedido do operador: registrar contexto para Claude continuar a base de correspondências. Esta frente é pesquisa de identidade, não uma alteração econômica do scanner.
 
 ## Leitura inicial
