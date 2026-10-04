@@ -48,12 +48,13 @@ coleta no GitHub. Os artefatos ficam **locais**, em `results/`.
   impressões fica com flag.
 - N=200 gasta ~400 chamadas + 2 por par ≥ 4× (teto 500 por execução).
 
-### Próximos passos
+### Decisão e observações
 
-1. Decidir se vira modo do repo (entrada no `ebay_summary.py`, doc em `docs/`) ou fica
-   em `tools/`.
-2. Universo além das top-200 exige mais de uma execução (teto de 500 chamadas cada).
-3. Catálogo `zh_identity.json`: problemas abaixo (tarefa de catálogo, não desta frente).
+Decisão do operador (2026-10-04): **fica em `tools/`**, rodada sob pedido — não vira modo
+do repo nem entra no `ebay_summary.py`. Nada pendente nesta frente.
+
+- Universo além das top-200 exige mais de uma execução (teto de 500 chamadas cada).
+- Catálogo `zh_identity.json`: problemas abaixo (tarefa de catálogo, não desta frente).
 
 ### Problemas do catálogo `zh_identity.json` vistos nesta sessão (para outra tarefa)
 
