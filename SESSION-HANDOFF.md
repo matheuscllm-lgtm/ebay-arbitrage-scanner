@@ -4,6 +4,81 @@ Estado para quem retomar. Sem resultado de coleta aqui: nenhum preço, nenhuma c
 tabela e nenhum número de funil — `DELIVERY_CHAT.md` proíbe publicar resultado, preço ou log de
 coleta no GitHub. Os artefatos ficam **locais**, em `results/`.
 
+## ▶️ Frente ativa — par EN × ZH-S raw no eBay, crivo ≥ 4× (handoff 2026-10-04)
+
+> **Em uma frase:** o operador quer clicar e cair no **anúncio ativo mais barato** do eBay
+> da carta em **inglês** e no **anúncio ativo mais barato da mesma impressão em chinês
+> simplificado**, só quando **EN ÷ ZH ≥ 4×** — os dois links abertos à venda, nunca item
+> vendido/encerrado. Protótipo existe e rodou ao vivo; falta aplicar as decisões abaixo.
+
+### Decisões fechadas pelo operador (não re-perguntar)
+
+- Comparação **dentro do eBay** (EN × ZH-S), dois anúncios com link clicável. TCGPlayer
+  não é referência de preço aqui (serviu só para ordenar a seleção).
+- **Só anúncios ativos**, preço fixo; o link tem que estar à venda quando a tabela é
+  entregue. **Raw** (sem slab). Preço comparado = item + frete quando conhecido.
+- Mostrar **só pares com EN ÷ ZH ≥ 4×** (só chinês; KR/ID saíram do escopo).
+- Universo: cartas EN de sets 2022–2025 com market > US$10 e par ZH-S no
+  `src/catalog/zh_identity.json`. Entrega = tabela no chat (`DELIVERY_CHAT.md`).
+
+### O que já existe (protótipo, sem testes, não integrado)
+
+- `tools/zh_ebay_pairs/pair_table.py` — catálogo tcgcsv (sets 2022–2025, market > US$10)
+  × `zh_identity.json`; tabela de conferência do pareamento (links eBay/52poke).
+- `tools/zh_ebay_pairs/ebay_pair.py N` — top-N cartas (por market TCGPlayer, só para
+  ordenar) com par ZH-S + nº JP; 1 busca Browse API por idioma (ordem por relevância,
+  limit 200, preço fixo, vendedor de qualquer país); guards: nome + nº no título, idioma
+  no título, sem graded/acessório/proxy/"30th"/lote óbvio, EN sem marcador de outro idioma,
+  lixo < 50% da mediana dos plausíveis. Grava `results/zh_ebay_pairs.json` (local) e
+  imprime a tabela de pares; `--render` re-renderiza sem coletar.
+  Ainda tem KR/ID e mostra todos os pares — **remover KR/ID e filtrar ≥ 4×**.
+
+### Próximos passos (em ordem)
+
+1. **Só EN × ZH-S**: 2 chamadas por carta → cabem ~200 cartas no teto de 500 chamadas,
+   deixando folga para o passo 3.
+2. **Corrigir os falsos pares vistos ao vivo** (repetem):
+   - Gem Pack `CBB*C` (nº "pacote nº") casa carta comum do pacote → descartar linhas CBB
+     ou exigir os dois números; preferir outra impressão ZH.
+   - Escolha da impressão ZH quando o catálogo tem várias (ex.: GG56 Zoroark tem
+     CS5.5C-58 RRR e CS5.5C-77 SAR) → preferir `tc-jp` + raridade compatível com a EN
+     (SIR↔SAR, IR↔AR, HR↔UR…), não a primeira linha.
+   - Sufixo do nome: "Pikachu" não pode casar "Pikachu ex" (e vice-versa) — exigir/proibir
+     `ex|V|VMAX|VSTAR` conforme o nome EN.
+   - Lote (vários "nº/total" no título) → descartar.
+   - Variante EN: produto TCGPlayer > US$10 pode ser variante (Master Ball etc.) cujo
+     anúncio mais barato é a holo comum (Umbreon 059 PRE) → exigir o qualificador da
+     variante no título ou excluir esses produtos.
+3. **Verificar "à venda" na entrega**: `EbayClient.get_item` em cada link dos pares ≥ 4×
+   (status disponível); descartar e declarar os que caíram.
+4. Saída: só pares ≥ 4×, ordenados por razão, com contagem de cartas consultadas /
+   pares com dois anúncios / ≥ 4× / descartados na verificação.
+5. Decidir se vira modo do repo (testes offline de cada guard) ou fica em `tools/`.
+   Avaliar reaproveitar o crivo/identidade do modo chinês PSA 10 (`chinese_scan.py`) em vez
+   de duplicar.
+
+### Problemas do catálogo `zh_identity.json` vistos nesta sessão (para outra tarefa)
+
+- `CS4.1C` repete o mesmo número para cartas EN diferentes (ex.: TG13 de 3 sets).
+- Linhas com página 52poke de outro Pokémon (Turtwig GG31 → página Pikachu; Drapion GG49
+  → Zoroark; Palkia GG67 → Giratina; Umbreon V TG22 → 亚洛).
+- `zh_name`/`en_rar` incoerentes (喷火龙V para VSTAR; 174/172 rainbow marcado "RR").
+- `jp` malformado em algumas linhas (ex.: Snom TEF 168 → "sv5k sv5k").
+- Achado de anúncio: título "S-Chinese" com foto de carta japonesa — título sozinho não
+  prova idioma; preço ZH muito abaixo do EN pede conferência de foto.
+
+### Como retomar
+
+```bash
+cd tools/zh_ebay_pairs
+python3 pair_table.py 10 > /tmp/pairs_audit.md     # conferência do pareamento (sem eBay)
+python3 ebay_pair.py 3                             # teste curto (12 chamadas eBay)
+python3 ebay_pair.py 120 --render                  # re-render do último JSON local
+```
+
+Credenciais: `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` no ambiente. tcgcsv exige
+`User-Agent` (sem ele responde 401).
+
 ## ▶️ Frente ativa — modo CHINÊS (handoff 2026-09-27, PR #47)
 
 > **Em uma frase:** o operador pediu "PSA 10 em chinês pelo menos 4× mais barato que a
