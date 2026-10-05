@@ -1,4 +1,4 @@
-# PokeData — revisão dos anexos para GPT e Claude
+# Catálogo de cartas — revisão dos anexos para GPT e Claude
 
 Data: 2026-10-04. Continuação do PR #53, base de revisão `8ad89932e14f1d62a97258ef6efc9ef6042e32c2` (base main `c1a761769fc331e0a6f1f13cd8881fe4a99bd568`).
 
@@ -234,3 +234,10 @@ python research/pokedata/bridge_partial_ids.py -o /tmp/ponte.csv
 4. `research/pokedata/test_*.py` não roda no CI (`pytest.ini` → `testpaths = tests`). Mover para `tests/` exigiria `openpyxl` só se o teste ler planilhas; os atuais não leem.
 5. Nada disto integra ao scanner nem autoriza merge.
 
+## Alteração editorial dos títulos — 2026-10-04
+
+Pedido do operador: retirar o nome do provedor dos títulos de apresentação e manter as sources para preservar a origem. Antes: títulos começavam com PokeData. Depois: títulos descritivos de catálogo de cartas e correspondências entre idiomas, inclusive o título do PR #53.
+
+Motivo para Claude: apresentar o projeto pelo seu objetivo, distinguindo seu nome das fontes consultadas. Escopo: títulos em CLAUDE.md, nos dois documentos de continuidade/revisão e nos dois READMEs de pesquisa. Fontes, URLs, créditos, IDs, nomes de arquivos, ZIP, planilhas originais e documentação histórica recebida foram preservados. Mudança apenas editorial; nenhuma correção de matching ou regra econômica foi implementada nesta rodada.
+
+Validação: comparação textual dos cinco documentos, com preservação dos links e das referências fora dos títulos. Não se aplicam testes de execução para esta mudança de documentação.

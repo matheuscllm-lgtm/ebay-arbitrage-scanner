@@ -110,7 +110,11 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
 - Orientações antigas em comandos/skills históricos não podem reativar raw,
   retirar custos ou substituir as regras desta versão. Consulte o README atual.
 
-## Frente de correspondências PokeData (2026-10-04)
+## Catálogo de cartas e correspondências entre idiomas (2026-10-04)
+
+- Apresentação (operador, 2026-10-04): usar títulos descritivos do nosso catálogo,
+  sem nome de provedor como marca do projeto. Preservar fontes, URLs, créditos,
+  IDs e proveniência; esta decisão não autoriza apagar atribuições técnicas.
 
 Novos anexos e revisão conjunta: leia também
 [`docs/POKEDATA_REVIEW.md`](docs/POKEDATA_REVIEW.md). Ele registra os cinco arquivos,
