@@ -1,0 +1,157 @@
+[
+  {
+    "path": "common.py",
+    "bytes": 3567,
+    "sha256": "9757ea6ad0d2ad7127f96bf14ad1c47f19dee9848605b41b9bac8a937b642d5d"
+  },
+  {
+    "path": "limitless_todo.py",
+    "bytes": 1523,
+    "sha256": "1e6efa3458affec6a19162744c797fde72d0cefcb9165c54f144574e1f1ef6d3"
+  },
+  {
+    "path": "dl_images.py",
+    "bytes": 1906,
+    "sha256": "9805ea2767f5ef8e06f06f061743727893a1ee94b435169fb327ef2e30f67b5b"
+  },
+  {
+    "path": "run_pipeline.sh",
+    "bytes": 2145,
+    "sha256": "04d544f3e6235a91d995bc2ca4c08d93ab327b2dfce7c8ec8f6206c158fcaa2b"
+  },
+  {
+    "path": "extract.py",
+    "bytes": 1153,
+    "sha256": "f660f3d5e4d25f06acd0f4d392e565ebd66697a85ff01ea9b5a0c740b5f65aaa"
+  },
+  {
+    "path": "requirements.txt",
+    "bytes": 54,
+    "sha256": "0c28d83660be3fd43d4d844b224ff339ba2f16310853f4735ebf911e208ec445"
+  },
+  {
+    "path": "build_xlsx.py",
+    "bytes": 35456,
+    "sha256": "bccb8a10e6e3c6f5ffe9fe66cd323064d0e7a2e5d46c1dd800dc1933a2cb78df"
+  },
+  {
+    "path": "assemble.py",
+    "bytes": 13065,
+    "sha256": "6eaa5862f9e57f93e088d50e8c4af8d96e9e3a0d2fcf2e1f15c87f9afa76fe67"
+  },
+  {
+    "path": "coarse.py",
+    "bytes": 1983,
+    "sha256": "09d2a44184ccc4d86050487061a27620c8eec459a09a0ba299664c26b1ad1c7b"
+  },
+  {
+    "path": "match.py",
+    "bytes": 3577,
+    "sha256": "c288a19768be7852d19a23e6388c3a6d831a072bc6cde61e3a62b015a97f9021"
+  },
+  {
+    "path": "lim_jp.py",
+    "bytes": 3295,
+    "sha256": "ee1802030c360f5569da9de5b64a60d0775499c01756e016ea03a5836a1934f3"
+  },
+  {
+    "path": "fetch_tcgdex.py",
+    "bytes": 1380,
+    "sha256": "724f3ccfa20686a2ef1f5cbbe994b141ddd14754ce00e4473422ddc1338a1581"
+  },
+  {
+    "path": "README.md",
+    "bytes": 6985,
+    "sha256": "e54ac499bd0949d5e887159291fe6fcefc662ab9422e63a8eaddd11604eba188"
+  },
+  {
+    "path": "rules.py",
+    "bytes": 4144,
+    "sha256": "8d69fbb8243e2b76c5319295f8b1a3df7f5c6d9b38eaa78c649e0c0cb9357d76"
+  },
+  {
+    "path": "compare_pr53.py",
+    "bytes": 5710,
+    "sha256": "29b3705d7eaf434d6af4278b842773245af6d9eb435781ba93eac3245e47e611"
+  },
+  {
+    "path": "limitless_pairs.py",
+    "bytes": 1784,
+    "sha256": "306c3f525815bdc199ccb8a3581206119a33b5908cfbddbbd7f2c44beb6db623"
+  },
+  {
+    "path": ".gitignore",
+    "bytes": 443,
+    "sha256": "3f9acaddeda26c1ee0693e38e0730b11c53bf8da8f3801e4f71de73f8a8b9e28"
+  },
+  {
+    "path": "fetch_external.py",
+    "bytes": 2344,
+    "sha256": "4c1cfb609b641b4d44f27e724e3c69f77d90d55cc789668fe771ff2eb95064fa"
+  },
+  {
+    "path": "fetch_cards.py",
+    "bytes": 1716,
+    "sha256": "3a44d45db22cbba3b21af941eb5e93f7a0928f27318960bb9ec736738c3f0539"
+  },
+  {
+    "path": "sheet.py",
+    "bytes": 880,
+    "sha256": "d36cc44cafaf57302e898f59c24bfce575c3c323d62791316e511d95a3b4a3a4"
+  },
+  {
+    "path": "stage2_run.py",
+    "bytes": 1115,
+    "sha256": "b3f4dcaab31de10c116e30f3a8d95228b1b18c05a495cd334f492ce037d34b32"
+  },
+  {
+    "path": "limitless_classify.py",
+    "bytes": 1105,
+    "sha256": "fc38e74d7e445b268ec200e8561484f62aa5af494b9904deb18ce268a433e7b3"
+  },
+  {
+    "path": "fetch_limitless.py",
+    "bytes": 2767,
+    "sha256": "e887808f209d557c902276efca8c7c37f6dacbc129df09f69d1ad14abe82b196"
+  },
+  {
+    "path": "detect_placeholders.py",
+    "bytes": 1103,
+    "sha256": "3b61254a4d6b1d67c51f40bd04590a71cf994e1c6d6e45bd136a5cafc72928c3"
+  },
+  {
+    "path": "feats.py",
+    "bytes": 3468,
+    "sha256": "9bf895b97752c41693c04136085a69845f89e53dd47381776188e2936f317c5d"
+  },
+  {
+    "path": "catalog.py",
+    "bytes": 15210,
+    "sha256": "32fc10b428cae071815ce3e7ee43fa78d2d59e264783fb64babba997d2f49fb4"
+  },
+  {
+    "path": "stage2.py",
+    "bytes": 2295,
+    "sha256": "da220f3b48858fabf1ada1fb6e5242b4806054f6146dccb0471e05dcb8ebab6d"
+  },
+  {
+    "path": "docs/ENTREGA.md",
+    "bytes": 22286,
+    "sha256": "00324d7492172dedd4497b8db43d48400993a7f79e85a04e7b4fb67b53883a2f"
+  },
+  {
+    "path": "docs/ESTADO_DO_PROJETO.md",
+    "bytes": 11376,
+    "sha256": "2983f28a011132196154b406f9b54799b705f7bc059f14f01ee4592fef40ee2b"
+  },
+  {
+    "path": "stage2_pairs.py",
+    "bytes": 959,
+    "sha256": "2fa17e1eba418cf993348e7dcdca70ba8bf0a888750a60ac303ecd4968d7806c"
+  },
+  {
+    "path": "validate_lim.py",
+    "bytes": 3482,
+    "sha256": "efc584225c1b023120e6d1406ce94b1f905dfa3c38c8b7896ec8cd54b2088596"
+  }
+]

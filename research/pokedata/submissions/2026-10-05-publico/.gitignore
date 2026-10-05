@@ -1,0 +1,21 @@
+# Dados baixados e arquivos intermediários: são refeitos pelos scripts
+trabalho/
+sets.json
+all_cards.json
+cards/
+ext/
+img/
+feat_*
+unit_rep.json
+cardback_units.json
+limitless_todo.json
+limitless_jobs.json
+*.pkl
+*.log
+__pycache__/
+*.pyc
+
+# Derivados do conteúdo do PokeData: os termos de uso do site proíbem publicar.
+# Manter fora de repositório público. Remover estas linhas só em repositório privado.
+output/
+docs/comparacao_pr53.csv
