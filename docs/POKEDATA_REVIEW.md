@@ -1,4 +1,4 @@
-# PokeData — revisão dos anexos para GPT e Claude
+# Catálogo de cartas — revisão dos anexos para GPT e Claude
 
 Data: 2026-10-04. Continuação do PR #53, base de revisão `8ad89932e14f1d62a97258ef6efc9ef6042e32c2` (base main `c1a761769fc331e0a6f1f13cd8881fe4a99bd568`).
 
@@ -133,3 +133,11 @@ Hashes dos cinco anexos conferidos; 24 scripts recebidos passaram em análise si
 6. Registrar o que foi implementado, testado offline e validado em execução real. Não integrar ao scanner nem fazer merge como consequência automática deste recebimento.
 
 Não foi localizada configuração de execução automática do Claude em `.github/workflows` nesta base. A tarefa está preparada no repositório para uma sessão do Claude; a revisão dele não foi executada por este agente.
+
+## Alteração editorial dos títulos — 2026-10-04
+
+Pedido do operador: retirar o nome do provedor dos títulos de apresentação e manter as sources para preservar a origem. Antes: títulos começavam com PokeData. Depois: títulos descritivos de catálogo de cartas e correspondências entre idiomas, inclusive o título do PR #53.
+
+Motivo para Claude: apresentar o projeto pelo seu objetivo, distinguindo seu nome das fontes consultadas. Escopo: títulos em CLAUDE.md, nos dois documentos de continuidade/revisão e nos dois READMEs de pesquisa. Fontes, URLs, créditos, IDs, nomes de arquivos, ZIP, planilhas originais e documentação histórica recebida foram preservados. Mudança apenas editorial; nenhuma correção de matching ou regra econômica foi implementada nesta rodada.
+
+Validação: comparação textual dos cinco documentos, com preservação dos links e das referências fora dos títulos. Não se aplicam testes de execução para esta mudança de documentação.
