@@ -27,14 +27,28 @@ FIELDS = ["id_en_parcial", "carta_parcial", "codigo_parcial", "set_parcial",
           "metodo", "status", "ids_pokedata", "numeros_impressos_catalogo", "nomes_catalogo"]
 
 
+_GENDER = (("\u2640", " female "), ("\u2642", " male "))
+_NIDORAN_ALIAS = re.compile(r"\bnidoran\s*([fm])\b")
+
+
 def text_key(value):
-    value = unicodedata.normalize("NFKD", str(value or "")).encode("ascii", "ignore").decode()
+    """Chave de nome. ♀/♂ viram palavras antes do corte ASCII (antes, Nidoran♀ == Nidoran♂);
+    o alias do catálogo 'Nidoran F'/'Nidoran M' é tratado explicitamente."""
+    value = str(value or "")
+    for symbol, word in _GENDER:
+        value = value.replace(symbol, word)
+    value = _NIDORAN_ALIAS.sub(lambda m: "nidoran " + ("female" if m.group(1) == "f" else "male"), value.lower())
+    value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
     return re.sub(r"[^a-z0-9]", "", value.lower())
 
 
 def number_key(value):
-    """Número antes do denominador, sem zeros à esquerda; preserva prefixo/sufixo (TG01, 50a)."""
-    head = str(value or "").split("/")[0].strip().upper()
+    """Número sem zeros à esquerda; preserva prefixo/sufixo (TG01, 50a).
+
+    Nenhum dos dois snapshots tem '/' nesses campos; se aparecer, o texto fica
+    inteiro (sem casar) em vez de cortar um sufixo de coleção como denominador.
+    """
+    head = str(value or "").strip().upper()
     match = re.fullmatch(r"([A-Z-]*)0*(\d+)([A-Z]*)", head)
     if match:
         return f"{match.group(1)}{int(match.group(2))}{match.group(3)}"

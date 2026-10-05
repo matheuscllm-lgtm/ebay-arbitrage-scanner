@@ -45,9 +45,17 @@ class BridgeTests(unittest.TestCase):
         out = build_bridge([ref(5, "Charizard", "4", "Base Set")], CATALOG)
         self.assertEqual((len(out), out[0]["status"], out[0]["ids_pokedata"]), (1, "sem_match", ""))
 
+    def test_gender_symbols_are_identity(self):
+        catalog = [cat(29, "Base Set", "29", "29/102", "Nidoran\u2642")]
+        out = build_bridge([ref(6, "Nidoran\u2640", "29", "Base Set")], catalog)
+        self.assertEqual(out[0]["status"], "sem_match")
+        alias = build_bridge([ref(7, "Nidoran M", "29", "Base Set")], catalog)
+        self.assertEqual(alias[0]["ids_pokedata"], "29")
+
     def test_number_key(self):
-        self.assertEqual(number_key("089/064"), "89")
-        self.assertEqual(number_key("TG01/TG30"), "TG1")
+        self.assertEqual(number_key("089"), "89")
+        self.assertEqual(number_key("089/064"), "089/064")  # nunca corta '/' às cegas
+        self.assertEqual(number_key("TG01"), "TG1")
         self.assertEqual(number_key("50a"), "50A")
         self.assertNotEqual(number_key("H3"), number_key("3"))
 

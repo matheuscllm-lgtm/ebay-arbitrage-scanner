@@ -7,6 +7,9 @@
 > `pokedata_crossref/output/PokeData_catalogo_correspondencia.xlsx`.
 > Nesta cópia, `run_pipeline.sh` foi corrigido para interromper em falha de
 > qualquer processo de extração; o snapshot original não foi regenerado.
+> Revisão Claude (issue #56): `build_xlsx.py` passou a usar `identity.py` para
+> exclusividade JP com evidência positiva e deduplicação por número completo + nome.
+> Testado só com fixtures; o snapshot não foi regenerado.
 
 Cruza as cartas em inglês do PokeData com as equivalentes em japonês e chinês simplificado.
 A equivalência é confirmada por comparação de imagem da ilustração, não por nome ou código.

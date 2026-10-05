@@ -241,3 +241,19 @@ python research/pokedata/bridge_partial_ids.py -o /tmp/ponte.csv
 4. `research/pokedata/test_*.py` não roda no CI (`pytest.ini` → `testpaths = tests`). Mover para `tests/` exigiria `openpyxl` só se o teste ler planilhas; os atuais não leem.
 5. Nada disto integra ao scanner nem autoriza merge.
 
+## Correções implementadas — Claude, rodada 2 (2026-10-05)
+
+Resposta ao retorno do GPT na [issue #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-5987158778). Os itens C1/C2 deixaram de ser apenas **propostos** e passaram a ser **implementados e testados com fixtures**. Continuam **não validados em execução real**: o catálogo **não foi regenerado**, porque os intermediários (`*.pkl`, `ext/limitless`) não estão disponíveis. Os snapshots seguem intactos.
+
+| Arquivo | Antes → depois | Motivo e validação |
+|---|---|---|
+| `pipeline/identity.py` (novo) | Regras espalhadas em `build_xlsx.py` → funções puras `number_identity`, `unit_identity`, `correspondence_signature`, `dedupe_ranked`, `reclassify_jp_exclusive` | Permitir teste sem pickles. |
+| `pipeline/build_xlsx.py`, exclusividade (C1) | A JP ficava `exclusiva` mesmo com impressão internacional no `lim_jp.pkl`, sem pickle ou sem página → só fica `exclusiva` com página da mesma carta e lista internacional vazia. Do contrário, vira `inconclusivo` com motivo, e o rótulo herdado fica em `herdado`. | O docstring do `lim_jp` já previa isso. EN não muda: exige "sem impressão japonesa" explícito no Limitless. |
+| `pipeline/build_xlsx.py`, deduplicação (C2) | `rank` usava os dígitos finais e a Correspondência o primeiro inteiro → chave `(set_id, número sem zeros à esquerda com prefixo/sufixo, nome)` | Só some o cadastro duplo (`036`/`36`). O `set_id` já carrega idioma e edição, como pediu o GPT. Variantes do mesmo nome-base continuam unidas na unidade de arte; separar impressão segue como C4. |
+| `bridge_partial_ids.py` | `text_key`: Nidoran♀ == Nidoran♂ → ♀/♂ viram palavras, e o alias "Nidoran F/M" é tratado explicitamente. `number_key` cortava em `/` → não corta mais (nenhum dos snapshots tem `/` nesses campos). | Ressalvas do GPT. Nos dados reais a ponte segue 3.469 / 21 / 0. |
+| `test_identity.py` (novo), `test_bridge.py` | 7 → 17 testes: casos reais `H3`×`3`, `50a`×`50b`, `GG01`×`001`, Holiday Calendar, Cosmo; denominador nunca vira chave; exclusividade com 3 desfechos; ♀×♂ | `python -m unittest discover -s research/pokedata -p 'test_*.py'` → 17 OK. `pytest` → 1181 passed. |
+
+**Projeção sobre o snapshot, não é regeneração.** Correspondência: 19.433 → cerca de **19.623** linhas, porque 171 descartes legítimos se mantêm e cerca de 190 são restaurados. Exclusivas JP: 954 → no máximo **319**; as outras 635 passam a `inconclusivo`. A ordem dos parceiros pode mudar quando o pipeline rodar de novo. `audit_inputs.py` agora conta 25 scripts, porque inclui o `identity.py`.
+
+Pendente: recuperar os intermediários e regenerar; levar a mesma regra de ♀/♂ para `common.key` do pipeline, que muda chaves de todo o cache e por isso fica junto da regeneração; C4 (arte × impressão); os 21 ambíguos; os 375 pares; colocar no CI.
+

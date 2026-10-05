@@ -10,12 +10,19 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from common import *
+from identity import correspondence_signature, dedupe_ranked, reclassify_jp_exclusive
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'PokeData_catalogo_correspondencia.xlsx'
 rows, uinfo = pickle.load(open('catalog.pkl', 'rb'))
 R = pickle.load(open('result.pkl', 'rb')); CONF, GRAY, VIA, STATUS, LIM = R['CONF'], R['GRAY'], R['VIA'], R['STATUS'], R['LIM']
 sets, cards = load(); units = art_units(cards)
 LANG = {k: sets[k[0]]['language'] for k in units}
+# Exclusividade JP exige evidência positiva do Limitless (lim_jp.pkl); sem pickle,
+# sem página ou com impressão internacional listada, a carta vira inconclusiva.
+LJP = pickle.load(open('lim_jp.pkl', 'rb')) if os.path.exists('lim_jp.pkl') else {}
+for k in list(STATUS):
+    if LANG.get(k) == 'JAPANESE' and STATUS[k]['geral'] == 'exclusiva':
+        STATUS[k] = reclassify_jp_exclusive(STATUS[k], k in LJP, LJP.get(k, []))
 def sdate(k): return datetime.strptime(sets[k[0]]['release_date'][5:16], '%d %b %Y')
 REV = {t: defaultdict(dict) for t in CONF}; REVG = {t: defaultdict(dict) for t in GRAY}
 for t in CONF:
@@ -31,12 +38,8 @@ def rank(a, cands):
         nc = v[1] if isinstance(v, tuple) else 1; ni = v[0].get('n_in', 0) if isinstance(v, tuple) else 0
         dd = (da - sdate(b)).days
         return (0 if nc >= 1 else 1, abs(dd) if dd >= -60 else abs(dd) + 400, -ni)
-    out = []; seen = set()
-    for b, _ in sorted(cands.items(), key=sc):
-        m = re.search(r'(\d+)$', b[1]); sig = (b[0], int(m.group(1)) if m else b[1])
-        if sig in seen: continue           # PokeData lists some cards twice (036 and 36)
-        seen.add(sig); out.append(b)
-    return out
+    # PokeData lists some cards twice (036 and 36): drop only same set + number + name
+    return dedupe_ranked([b for b, _ in sorted(cands.items(), key=sc)])
 def partners(k, T):
     L = LANG[k]
     if L == 'ENGLISH':
@@ -122,7 +125,7 @@ cor = []; seen = set()
 for k in sorted([k for k in units if LANG[k] == 'ENGLISH'], key=ukey):
     e = EQ[k]
     if not e['JAPANESE'] and not e['CHINESE']: continue
-    sig = (k[0], numsort(k[1])[0], tuple(e['JAPANESE'][:1]), tuple(e['CHINESE'][:1]))
+    sig = correspondence_signature(k, tuple(e['JAPANESE'][:1]), tuple(e['CHINESE'][:1]))
     if sig in seen: continue
     seen.add(sig)
     u = main_row[k]; obs = []
@@ -166,7 +169,6 @@ rep = json.load(open('unit_rep.json'))
 BYNAME = defaultdict(lambda: defaultdict(int))
 for k in units:
     if rep.get(f"{k[0]}|{k[1]}|{k[2]}") in HASIMG and k not in BAD: BYNAME[LANG[k]][k[2]] += 1
-LJP = pickle.load(open('lim_jp.pkl', 'rb')) if os.path.exists('lim_jp.pkl') else {}
 inc = []; exc = []
 for k in sorted(units, key=ukey):
     u = main_row[k]; stt = STATUS[k]
@@ -183,7 +185,7 @@ for k in sorted(units, key=ukey):
         if lim and lim['kind'] == 'impressão japonesa': limtxt = '; '.join((lim['outside'] + lim['inside'])[:6])
         inc.append([PT[LANG[k]], u['era'], u['set_nome'], u['set_codigo'], u['numero_impresso'], nm(k), st(k, 'ENGLISH'), st(k, 'JAPANESE'), st(k, 'CHINESE'), cand, pts, sim, limtxt, busca(k)])
     elif stt['geral'] == 'exclusiva':
-        crit = 'Sem impressão japonesa segundo o Limitless e sem equivalente chinês no PokeData' if LANG[k] == 'ENGLISH' else ('Arte sem equivalente em inglês nem em chinês simplificado no PokeData' + ('; Limitless também não lista impressão internacional' if (k in LJP and not LJP[k]) else ''))
+        crit = 'Sem impressão japonesa segundo o Limitless e sem equivalente chinês no PokeData' if LANG[k] == 'ENGLISH' else 'Arte sem equivalente em inglês nem em chinês simplificado no PokeData; Limitless também não lista impressão internacional'
         exc.append([PT[LANG[k]], u['era'], u['set_nome'], u['set_codigo'], u['set_data'], u['numero_impresso'], nm(k), u['nome_nativo'], u['raridade'], variants(k), crit] + [(BYNAME[T][k[2]] if LANG[k] != T else '—') for T in LANGS] + [busca(k)])
 
 # ---------------- sets and traditional chinese reference

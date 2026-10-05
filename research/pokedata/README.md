@@ -10,8 +10,7 @@ O XLSX completo é disponibilizado pelo ZIP porque seu envio avulso em base64 ex
 
 ```bash
 python research/pokedata/audit_inputs.py
-python research/pokedata/test_pipeline.py
-python research/pokedata/test_bridge.py
+python -m unittest discover -s research/pokedata -p 'test_*.py'   # pipeline, ponte, identidade
 python research/pokedata/bridge_partial_ids.py   # ponte parcial -> catálogo; -o arquivo.csv (gitignored)
 ```
 
