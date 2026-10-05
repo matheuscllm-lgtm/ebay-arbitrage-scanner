@@ -1,6 +1,4 @@
-"""Offline checks of inherited classification and two documented blockers.
-
-Expected failures reproduce known defects; they do not validate those behaviors.
+"""Offline regression checks of classification and repaired identity defects.
 AST extraction runs the actual pure code without loading private pickle caches.
 """
 import ast
@@ -64,19 +62,17 @@ class RevisionTests(unittest.TestCase):
                 if old is None: sys.modules.pop('common', None)
                 else: sys.modules['common'] = old
 
-    @unittest.expectedFailure
     def test_bridge_must_not_override_gray_direct_pair(self):
-        tree = ast.parse((ROOT / 'assemble.py').read_text())
-        loop = next(n for n in tree.body if isinstance(n, ast.For)
-                    and ast.unparse(n.iter) == "CONF['EN_JA'].items()")
-        scope = dict(CONF={'EN_JA': {'en': {'jp': {}}}, 'EN_CH': {}},
-                     REV={'CH_JA': {'jp': {'cn': {}}}}, PROV={'EN_CH': {}},
-                     GRAY={'EN_CH': {'en': {'cn': ({}, 2, 'weak')}}},
-                     VIA=defaultdict(dict), name_compat=lambda a, b: 2, M_VIA='via')
-        exec(compile(ast.Module(body=[loop], type_ignores=[]), 'assemble.py', 'exec'), scope)
-        self.assertNotIn('cn', scope['VIA'].get('en', {}))
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from identity_policy import add_bridge_candidates
+        conf = {'EN_JA': {'en': {'jp': {}}}, 'EN_CH': {}}
+        probable = {'EN_CH': {}}
+        gray = {'EN_CH': {'en': {'cn': ({}, 2, 'weak')}}}
+        add_bridge_candidates(conf, {'CH_JA': {'jp': {'cn': {}}}}, probable, gray, set())
+        self.assertEqual(probable['EN_CH'], {})
+        self.assertEqual(conf['EN_CH'], {})
 
-    @unittest.expectedFailure
     def test_full_card_numbers_must_not_collapse_to_denominator(self):
         import re
         from datetime import datetime

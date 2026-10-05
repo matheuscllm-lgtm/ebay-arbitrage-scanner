@@ -1,12 +1,13 @@
 """Etapa 11 — procura no Limitless as cartas japonesas (2010 em diante) sem equivalente encontrado.
 
-Só vira "exclusiva" a carta cuja página japonesa existe e não lista nenhuma impressão internacional.
+Lista vazia não comprova exclusividade; seção ausente ou ilegível não é lista vazia.
 Sem página, ou com página de outra carta, ela continua como "não encontrada".
 Entrada: result.pkl   Saída: lim_jp.pkl (depois disso, rodar assemble.py de novo)
 """
 import json, re, os, time, html, requests, pickle
 from collections import Counter
 from common import *
+from limitless_parse import parse_prints
 sets, cards = load(); units = art_units(cards)
 R = pickle.load(open('result.pkl', 'rb')); ST = R['STATUS']
 rows_, uinfo = pickle.load(open('catalog.pkl', 'rb'))
@@ -22,29 +23,29 @@ s_ = requests.Session(); out = {}; c = Counter()
 for k in todo:
     lc = lcode(sets[k[0]]['code']); num = str(int(re.search(r'(\d+)$', k[1]).group(1)))
     f = f"ext/limitless/jp_{lc.replace('/', '_')}_{num}.json"
-    if os.path.exists(f): r = json.load(open(f))
-    else:
-        r = dict(status=0, title='', intl=[])
+    r = json.load(open(f)) if os.path.exists(f) else {}
+    if r.get('parse_version') != 2:
+        r = dict(status=0, title='', intl=[], intl_section_valid=False, parse_version=2)
         for cand in (lc, lc.upper(), lc.lower()):
             try: q = s_.get(f"https://limitlesstcg.com/cards/jp/{cand}/{num}", timeout=40)
             except Exception: continue
             r['status'] = q.status_code
             if q.status_code == 200:
                 h = q.text; t = re.search(r'<title>(.*?)</title>', h, re.S); r['title'] = html.unescape(t.group(1)).strip() if t else ''
-                i = h.find('Int. Prints'); j = h.find('JP. Prints', i if i > 0 else 0)
-                if i > 0:
-                    seg = h[i:(j if j > i else h.find('</table>', i))]
-                    r['intl'] = [(x, y, html.unescape(z).strip()) for x, y, z in re.findall(r'href="/cards/([A-Za-z0-9\-]+)/([^"/]+)"\s*>\s*([^<]+?)\s*<span', seg) if x.lower() != 'jp']
+                prints = parse_prints(h, japanese=False)
+                r['intl_section_valid'] = prints is not None
+                r['intl'] = prints or []
                 break
             time.sleep(0.2)
         json.dump(r, open(f, 'w')); time.sleep(0.3)
     if r['status'] != 200: c['sem página'] += 1; continue
+    if not r.get('intl_section_valid'): c['seção internacional ausente ou ilegível'] += 1; continue
     t0 = r['title'].split(' - ')[0]; tk = key(t0)
     okname = bool(tk and (tk in k[2] or k[2] in tk or tk[:6] == k[2][:6]))
     if not okname and not t0.isascii():
         nat = re.sub(r'\s+', '', uinfo[k]['nome_nativo'] or ''); t1 = re.sub(r'\s+', '', t0)
         base_nat = re.sub(r'(ex|EX|GX|V|VMAX|VSTAR|BREAK)$', '', nat)
-        okname = (not nat) or (base_nat and base_nat in t1) or (t1 in nat)
+        okname = bool(nat and t1 and ((base_nat and base_nat in t1) or t1 in nat))
     if not okname: c['página de outra carta'] += 1; continue
     if r['intl']: c['tem impressão internacional'] += 1; out[k] = [f"{z} ({x}) #{y}" for x, y, z in r['intl']]
     else: c['sem impressão internacional'] += 1; out[k] = []

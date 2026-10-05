@@ -135,6 +135,7 @@ e [`research/pokedata/pipeline/docs/ESTADO_DO_PROJETO.md`](research/pokedata/pip
 A revisão técnica mais recente prevalece sobre alegações históricas de conclusão.
 Somente scripts/documentação novos foram importados; a planilha revisada é privada.
 Não confundir snapshots antigos em inputs/ com a entrega revisada. Não integrar
-arte confirmada como impressão confirmada. Há dois testes esperados-falhar que
-reproduzem defeitos abertos; não representam aprovação de produção.
+arte confirmada como impressão confirmada. Os dois defeitos reproduzidos naquela revisão foram corrigidos em código; leia
+[`docs/POKEDATA_FIXES_20261005.md`](docs/POKEDATA_FIXES_20261005.md).
+Os 20 testes offline passaram, mas os dados ainda não foram reprocessados por imagem.
 

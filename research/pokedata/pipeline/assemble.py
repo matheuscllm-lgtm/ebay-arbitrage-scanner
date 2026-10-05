@@ -1,7 +1,7 @@
-"""Etapa 10 — classifica cada carta única: arte confirmada, provável, inconclusiva, não encontrada ou exclusiva.
+"""Etapa 10 — classifica cada carta única: arte confirmada, provável, inconclusiva, não encontrada.
 
 "Arte confirmada" quer dizer mesma ilustração. Edição, acabamento e carimbo não são conferidos aqui.
-Roda duas vezes: antes e depois de lim_jp.py, que traz a evidência externa das exclusivas japonesas.
+Roda duas vezes: antes e depois de lim_jp.py, que consulta listas externas de impressões japonesas.
 
 Entrada: pairs_*.pkl, s2_*.pkl, lim_res.pkl, limitless_jobs.json, catalog.pkl, lim_jp.pkl (se existir)   Saída: result.pkl
 """
@@ -11,6 +11,7 @@ from datetime import datetime
 from common import *
 import rules
 from coarse import coarse
+from identity_policy import add_bridge_candidates, overall_status
 
 rows, uinfo = pickle.load(open('catalog.pkl', 'rb'))
 sets, cards = load(); units = art_units(cards)
@@ -25,9 +26,10 @@ BASIC = re.compile(r'^(basic)?(grass|fire|water|lightning|psychic|fighting|darkn
 def is_energy(k): return bool(BASIC.match(k[2]))
 
 # ---------------------------------------------------------------- pairwise evidence
-CONF = {}; GRAY = {}
+CONF = {}; GRAY = {}; DIRECT_EN_CH = set()
 for tag in ('EN_JA', 'EN_CH', 'CH_JA'):
     pairs = pickle.load(open(f'pairs_{tag}.pkl', 'rb')); s2 = pickle.load(open(f's2_{tag}.pkl', 'rb'))
+    if tag == 'EN_CH': DIRECT_EN_CH = set(s2)
     conf, gray, npr = rules.classify(pairs, s2, BAD)
     # coarse whole-image fallback for same-name pairs that SIFT could not settle (textured full arts, foil scans)
     hasB = {b for c in conf.values() for b in c}
@@ -64,7 +66,9 @@ if os.path.exists('limitless_jobs.json'):
             if r['status'] != 200: LIM[k] = dict(kind='sem página'); continue
             tk = key(r['title'].split(' - ')[0])
             if not (tk and (tk in k[2] or k[2] in tk or tk[:6] == k[2][:6])): LIM[k] = dict(kind='sem página'); continue
-            if not r['jp']: LIM[k] = dict(kind='sem impressão japonesa'); continue
+            if not r['jp']:
+                LIM[k] = dict(kind='sem impressão japonesa' if r.get('jp_section_valid') is True else 'seção japonesa não validada')
+                continue
             inside = []; outside = []
             for code, num, sname in r['jp']:
                 n = re.search(r'(\d+)', num)
@@ -144,12 +148,8 @@ def name_compat(a, b):
     if ta <= tb or tb <= ta: return 1
     return 1 if len(ta & tb) / len(ta | tb) >= 0.6 else 0
 VIA = defaultdict(dict)
-for a, c in CONF['EN_JA'].items():
-    for j in c:
-        for cn in REV['CH_JA'].get(j, {}):
-            if cn in CONF['EN_CH'].get(a, {}) or cn in PROV['EN_CH'].get(a, {}): continue
-            if name_compat(a, cn) >= 1: VIA[a][cn] = j
-            else: PROV['EN_CH'][a][cn] = ({}, 0, 'via', M_VIA)
+# Preserve the output schema, but indirect links are never confirmations.
+add_bridge_candidates(CONF, REV, PROV, GRAY, DIRECT_EN_CH)
 REVP = revd(PROV)
 REVVIA = defaultdict(dict)
 for a, c in VIA.items():
@@ -186,11 +186,9 @@ def noimg_cands(k, T):
     return out
 LATEST = {L: max(sdate((s['id'],)) for s in sets.values() if s['language'] == L) for L in ORDER}
 
-# evidência externa das exclusivas japonesas: página da carta no Limitless sem nenhuma impressão internacional
+# Listas externas são pistas de cobertura, nunca prova de exclusividade.
 LJP = pickle.load(open('lim_jp.pkl', 'rb')) if os.path.exists('lim_jp.pkl') else {}
 OK, PR, NE = 'arte confirmada', 'provável', 'não encontrada'
-C_EN = 'Limitless lista a carta sem impressão japonesa; sem equivalente em chinês simplificado no PokeData'
-C_JP = 'Limitless lista a carta japonesa sem nenhuma impressão internacional; sem equivalente em inglês nem em chinês simplificado no PokeData'
 
 STATUS = {}
 for k in units:
@@ -213,17 +211,16 @@ for k in units:
         if lim and lim['kind'] == 'impressão japonesa':
             st['JAPANESE'] = 'inconclusivo: impressão japonesa existe fora do catálogo do PokeData' if not lim['inside'] else 'inconclusivo: mesma carta existe em japonês no PokeData, arte não confirmada'
         elif lim and lim['kind'] == 'sem impressão japonesa':
-            st['JAPANESE'] = 'exclusiva: sem impressão japonesa (Limitless)'
+            st['JAPANESE'] = 'inconclusivo: Limitless não lista impressão japonesa; exclusividade não comprovada'
+        elif lim and lim['kind'] == 'seção japonesa não validada':
+            st['JAPANESE'] = 'inconclusivo: seção de impressões japonesas ausente ou ilegível'
     if L == 'JAPANESE' and st['ENGLISH'] == NE and (LATEST['ENGLISH'] - sdate(k)).days < 150:
         st['ENGLISH'] = 'inconclusivo: set recente, versão em inglês pode ainda não ter saído'
     # overall bucket. "Não encontrada" não é "exclusiva": exclusiva exige fonte externa dizendo que não há outra impressão.
     vals = list(st.values()); crit = ''
-    if any(v == OK for v in vals): ov = OK
-    elif any(v.startswith(PR) for v in vals): ov = PR
-    elif L == 'ENGLISH' and st['JAPANESE'].startswith('exclusiva') and st['CHINESE'] == NE: ov = 'exclusiva'; crit = C_EN
-    elif L == 'JAPANESE' and all(v == NE for v in vals) and k in LJP and not LJP[k]: ov = 'exclusiva'; crit = C_JP
-    elif all(v == NE or v.startswith('exclusiva') for v in vals): ov = NE
-    else: ov = 'inconclusivo'
+    ov = overall_status(vals)
+    if L == 'JAPANESE' and k in LJP and not LJP[k]:
+        crit = 'Limitless sem impressão internacional listada; exclusividade não comprovada'
     st['geral'] = ov; st['criterio'] = crit
     STATUS[k] = st
 

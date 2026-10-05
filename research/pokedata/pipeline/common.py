@@ -1,6 +1,7 @@
 """Funções comuns: leitura dos dados, separação de nome base e variante, agrupamento em cartas únicas."""
 import json, re, unicodedata
 from collections import defaultdict
+from pathlib import Path
 
 BALLS = r'(?:Poke ?[Bb]all|Master ?[Bb]all|Dusk Ball|Love Ball|Quick Ball|Friend Ball)'
 STRIP = [
@@ -61,6 +62,9 @@ def tokens(s):
     return [t for t in s.split() if t not in STOP]
 
 def load():
+    manifest = Path('collection_manifest.json')
+    if manifest.exists() and json.loads(manifest.read_text()).get('complete') is not True:
+        raise RuntimeError('Incomplete collection: refusing stale all_cards.json')
     sets = {s['id']: s for s in json.load(open('sets.json'))}
     cards = json.load(open('all_cards.json'))
     return sets, cards
@@ -84,3 +88,4 @@ def rep_image(recs):
         if r['_tags']: pen += 1
         return (pen, len(r['name']))
     return min(ok, key=score)
+

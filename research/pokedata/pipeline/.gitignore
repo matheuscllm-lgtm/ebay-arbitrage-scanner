@@ -22,3 +22,7 @@ docs/comparacao_pr53.csv
 *.xlsx
 *.csv
 *.zip
+
+collection_manifest.json
+*.download
+*.tmp

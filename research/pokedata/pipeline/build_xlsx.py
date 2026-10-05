@@ -39,8 +39,8 @@ def rank(a, cands):
         return (0 if nc >= 1 else 1, abs(dd) if dd >= -60 else abs(dd) + 400, -ni)
     out = []; seen = set()
     for b, _ in sorted(cands.items(), key=sc):
-        m = re.search(r'(\d+)$', b[1]); sig = (b[0], int(m.group(1)) if m else b[1])
-        if sig in seen: continue           # PokeData lists some cards twice (036 and 36)
+        sig = b  # Full art-unit key: set, full number and name. No guessed alias merge.
+        if sig in seen: continue
         seen.add(sig); out.append(b)
     return out
 def partners(k, T):
@@ -150,9 +150,8 @@ groups = {}
 for k in sorted([k for k in units if LANG[k] == 'ENGLISH'], key=ukey):
     e = EQ[k]
     if not e['JAPANESE'] and not e['CHINESE']: continue
-    # o PokeData repete algumas cartas no mesmo set e número (036 e 36, ou o mesmo número com nome grafado de outro jeito):
-    # essas cartas ficam em uma linha só, e a última coluna diz quantas são
-    sig = (k[0], numsort(k[1])[0], tuple(e['JAPANESE'][:1]), tuple(e['CHINESE'][:1]))
+    # Preserve unidades distintas; aliases precisam de validação explícita.
+    sig = k  # Keep distinct source units until an explicit alias map is validated.
     groups.setdefault(sig, []).append(k)
 cor = []
 for sig, ks in groups.items():
