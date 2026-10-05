@@ -1,4 +1,4 @@
-# PokeData — continuidade EN / JP / CHS / CHT
+# Catálogo de cartas — continuidade EN / JP / CHS / CHT
 
 ## Atualização: novos anexos para revisão conjunta
 
