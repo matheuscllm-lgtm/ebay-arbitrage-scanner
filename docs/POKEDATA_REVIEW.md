@@ -38,10 +38,10 @@ Todos os caminhos abaixo partem de `research/pokedata/`.
 - Correspondência: 19.433 linhas; 19.100 com JP, 7.598 com CHS, 7.265 com ambos; confiança herdada alta em 18.063 e média em 1.370.
 - Há 83 referências de sets CHT, mas nenhum cruzamento de cartas CHT no catálogo completo. A base parcial preserva esse trabalho.
 - Base parcial: 3.490 IDs EN únicos, todos acima do corte original; 388 linhas confirmadas herdadas, 178 referências e 375 pares ID–idioma; JP 160, CHS 112, CHT 116. Pendências: 1.188 prováveis e 9.036 não encontradas. Nenhum ID órfão nos detalhes.
-- **Somente 1.785 dos 3.490 IDs EN da base parcial aparecem por igualdade exata no catálogo completo; 1.705 não aparecem.** Não fazer inner join que descarte essas referências. Falta construir e validar a ponte entre os snapshots.
+- ⚠️ *Corrigido na revisão Claude (seção C3): `ID EN` é o número da linha 1..3490; dos 1.785 inteiros coincidentes só 2 são a mesma carta. A ponte por metadados casa as 3.490.* Texto original: **Somente 1.785 dos 3.490 IDs EN da base parcial aparecem por igualdade exata no catálogo completo; 1.705 não aparecem.** Não fazer inner join que descarte essas referências. Falta construir e validar a ponte entre os snapshots.
 - Nenhum erro Excel armazenado foi encontrado no catálogo completo. Isso não é recálculo de fórmulas nem validação visual dos pares.
 
-19.794 unidades EN confirmadas e 19.433 linhas exportadas medem universos diferentes: `build_xlsx.py` aplica nova deduplicação na exportação. Não apresentar a diferença de 361 como perda comprovada ou como duplicatas legítimas sem auditar as chaves.
+⚠️ *Explicado na revisão Claude (seção C2): a diferença de 361 vem do `sig` da aba Correspondência.* 19.794 unidades EN confirmadas e 19.433 linhas exportadas medem universos diferentes: `build_xlsx.py` aplica nova deduplicação na exportação. Não apresentar a diferença de 361 como perda comprovada ou como duplicatas legítimas sem auditar as chaves.
 
 O anexo parcial desta rodada tem SHA-256 `85907fedc09cfcc57a66cda579630b78e1adc0df9aed59df124c79328eeafeaa`; o original do PR #53 tem `c3bf41a5b20f09d4546ed0bcc309783ba078b84b99513645fc300bb753f8d513`. Não confundir igualdade de contagens com identidade de arquivos.
 
@@ -57,7 +57,7 @@ Proposta: nova classificação `inconclusiva` até haver evidência positiva, fo
 
 ### P1 — deduplicação pode usar o denominador como identidade
 
-`pipeline/build_xlsx.py`, função `rank`, usa `re.search(r'(\d+)$', b[1])` e deduplica por `(set_id, número final)`. Para `121/106` e `122/106`, a chave numérica é **106** para ambos; para `TG01/TG30` e `TG02/TG30`, é **30**. Isso pode eliminar impressões diferentes da lista de equivalentes dentro de um mesmo set.
+`pipeline/build_xlsx.py`, função `rank`, usa `re.search(r'(\d+)$', b[1])` e deduplica por `(set_id, número final)`. ⚠️ *Divergência Claude (seção C2): o campo deduplicado é `Número` sem denominador (`089`, `TG01`), então estes dois exemplos não colidem; o risco real é prefixo/sufixo e nome ignorados.* Para `121/106` e `122/106`, a chave numérica é **106** para ambos; para `TG01/TG30` e `TG02/TG30`, é **30**. Isso pode eliminar impressões diferentes da lista de equivalentes dentro de um mesmo set.
 
 O `sig` da aba Correspondência também ignora parte do código alfanumérico e o nome ao usar o primeiro número. A diferença de contagens deve ser investigada com os intermediários.
 
@@ -133,3 +133,104 @@ Hashes dos cinco anexos conferidos; 24 scripts recebidos passaram em análise si
 6. Registrar o que foi implementado, testado offline e validado em execução real. Não integrar ao scanner nem fazer merge como consequência automática deste recebimento.
 
 Não foi localizada configuração de execução automática do Claude em `.github/workflows` nesta base. A tarefa está preparada no repositório para uma sessão do Claude; a revisão dele não foi executada por este agente.
+
+## Revisão independente do Claude (2026-10-05)
+
+Base revisada: `770ae92`. Reproduzido no checkout, offline. Nenhum snapshot,
+status herdado ou regra do scanner foi alterado. Texto do GPT acima preservado;
+divergências marcadas inline com ⚠️ e explicadas aqui.
+
+### Reprodução
+
+| Item | Resultado |
+|---|---|
+| SHA-256 dos 5 anexos (`audit_inputs.py`) | ✅ conferem; parcial do PR #53 `c3bf41a5…` ≠ recebida `85907fed…` |
+| Contagens de catálogo, sets, correspondência, parcial | ✅ idênticas às da tabela "Contagens recontadas" |
+| Scripts em `pipeline/` vs ZIP | ✅ idênticos, exceto `run_pipeline.sh` (correção declarada) e `README.md` (aviso no topo) |
+| `test_pipeline.py`, `bash -n`, suíte `pytest` do repo | ✅ 2/2; sintaxe ok; 1181 passed |
+
+### C1 — Exclusividade (P1): **concordo, e é mais grave**
+
+`lim_jp.py` grava em `lim_jp.pkl` as impressões internacionais que o Limitless
+lista, e seu docstring diz que, nesse caso, "a carta não é exclusiva". Mas
+`build_xlsx.py` só usa o pickle para acrescentar a frase do critério quando a
+lista é **vazia**; com lista não vazia, o status `exclusiva` fica e o critério
+nem menciona o Limitless. No snapshot, das 954 JP exclusivas: 319 checadas sem
+impressão internacional; **75** de eras BW+ com código (logo, na fila do
+`lim_jp`) sem a frase — sem página, página de outra carta **ou com impressão
+internacional listada**, indistinguíveis sem o pickle; 560 nunca consultadas
+(pré-BW ou sem código). Ou seja, 635 exclusivas se apoiam só em ausência no
+PokeData. Proposta mantida: `inconclusiva` até haver evidência positiva, e
+reclassificar de fato pelo resultado do `lim_jp` (não só anotar). **Proposto,
+não implementado** — exige os intermediários do pipeline para regenerar.
+
+### C2 — Deduplicação (P1): **concordo com o risco, discordo do mecanismo**
+
+O `rank` deduplica por `(set_id, dígitos finais de Número)`. `Número` no
+catálogo não tem denominador (`089`, `TG01`), então `121/106` vs `122/106` e
+`TG01/TG30` vs `TG02/TG30` **não colidem**. Colidem prefixos/sufixos: há 486
+pares `(set, inteiro)` no Catálogo EN com números distintos, ex. `GG01`×`001`.
+
+A diferença 19.794 → 19.433 foi reproduzida **exatamente** pelo `sig` da aba
+Correspondência (`set`, primeiro inteiro de `Número`, 1º parceiro JP, 1º CN),
+recalculado a partir de `Códigos equivalentes`: 361 linhas descartadas =
+**172** mesmo nome (cadastro duplo `001`/`1`, dedupe legítimo) + **189** nomes
+diferentes. Entre os 189 há impressões distintas perdidas da aba: `H3`×`3`
+(Ariados), `50a`×`50b` (Golduck) e mais 3 pares a/b; variantes como
+"Glaceon ex Holiday Calendar" e "Raikou Cosmo"; e também ruído de nome do
+PokeData ("Nidoran♀"×"Nidoran F"). Proposta: chave com número completo
+(prefixo + dígitos + sufixo) + nome base + variante. **Proposto, não
+implementado** (mesma dependência de intermediários). `number_key` em
+`bridge_partial_ids.py` já é o formato sugerido e tem teste.
+
+### C3 — Ponte de IDs (P1): **concordo que não há join por ID; o número 1.785 é enganoso**
+
+`ID EN` da base parcial é exatamente `1..3490` (número da linha). Dos 1.785
+inteiros que coincidem com `ID PokeData`, **2** apontam para o mesmo set e
+número — coincidência. Implementado `bridge_partial_ids.py`: set + número
+(sem denominador, sem zeros à esquerda, preservando prefixo/sufixo) + nome
+PokeData exato. Resultado: **3.469 `unico`, 21 `ambiguo`, 0 `sem_match`**;
+nenhuma referência descartada. Os 21 ambíguos são cadastros duplos do próprio
+PokeData (ex. Miscellaneous Promos `004`/`4`, IDs 40609 e 82159). Também: a
+base parcial tem 9 alvos referenciados 2× (18 linhas, ex. ID EN 1235 e 1236).
+Os exemplos do GPT (22 → 521348; 145 → 71600) saem iguais. A ponte prova
+identidade de cadastro, não arte nem impressão.
+
+### C4 — Arte vs impressão (P1): **concordo**
+
+Confirmado no código: `art_units` agrupa por `(set, número, nome-base)`; o
+`VAR_RX` de `busca` remove acabamento. C2 mostra o efeito concreto: variantes
+com a mesma arte somem da Correspondência. Nenhuma alteração.
+
+### C5 — `run_pipeline.sh` (P2): **concordo, correção válida**
+
+`wait` sem argumentos retorna 0 mesmo com filho em erro; esperar cada PID com
+`|| extract_status=1` colhe os dois filhos sob `set -euo pipefail` antes de abortar.
+Teste cobre falha em cada shard e sucesso.
+
+### C6 — P2 de coleta parcial e proveniência: **concordo**, sem nova evidência.
+
+### Alterações desta revisão
+
+| Alteração | Antes → depois | Motivo e validação |
+|---|---|---|
+| `research/pokedata/bridge_partial_ids.py` (novo) | Sem ponte; IDs comparados por igualdade de inteiro → ponte por metadados, CSV opcional (`*.csv` é gitignored), só identidade | C3. Rodado nos snapshots: 3.469/21/0 |
+| `research/pokedata/test_bridge.py` (novo) | — → 5 testes offline: ID de linha nunca vira ID PokeData, ambíguo preservado, prefixo (`TG01`×`1`) é identidade, referência sem match mantida, `number_key` | `python research/pokedata/test_bridge.py` → OK |
+| `audit_inputs.py` | `ids_found/missing_in_full_catalog` (1.785/1.705) → `id_en_is_row_number`, `id_namespace` (1.785 coincidentes, 2 iguais) e `metadata_bridge` | A métrica antiga sugeria identidade parcial que não existe |
+| Este documento | — → correções inline ⚠️ + esta seção | Regra de justificativa entre agentes |
+
+```bash
+python research/pokedata/audit_inputs.py
+python research/pokedata/test_pipeline.py
+python research/pokedata/test_bridge.py
+python research/pokedata/bridge_partial_ids.py -o /tmp/ponte.csv
+```
+
+### Pendências
+
+1. Regenerar o catálogo com C1/C2 exige os intermediários (`*.pkl`, `ext/`, `img/`), ausentes do ZIP — nova coleta, fora desta revisão.
+2. Conciliar os 375 pares JP/CHS/CHT da parcial com o catálogo via a ponte (agora possível); CHT segue frente própria.
+3. Decidir o representante dos 21 ambíguos e das 9 referências duplicadas da parcial.
+4. `research/pokedata/test_*.py` não roda no CI (`pytest.ini` → `testpaths = tests`). Mover para `tests/` exigiria `openpyxl` só se o teste ler planilhas; os atuais não leem.
+5. Nada disto integra ao scanner nem autoriza merge.
+

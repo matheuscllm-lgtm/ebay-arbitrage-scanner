@@ -11,6 +11,8 @@ O XLSX completo é disponibilizado pelo ZIP porque seu envio avulso em base64 ex
 ```bash
 python research/pokedata/audit_inputs.py
 python research/pokedata/test_pipeline.py
+python research/pokedata/test_bridge.py
+python research/pokedata/bridge_partial_ids.py   # ponte parcial -> catálogo; -o arquivo.csv (gitignored)
 ```
 
 As verificações são offline. Não executar `pipeline/run_pipeline.sh` para uma simples revisão: ele baixa fontes e processa o catálogo completo. O pipeline ainda tem achados pendentes e não está integrado ao scanner.
