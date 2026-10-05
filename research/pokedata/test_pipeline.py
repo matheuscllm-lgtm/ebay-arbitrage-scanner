@@ -41,6 +41,18 @@ exit 0
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("build_xlsx.py", calls)
 
+    def test_classification_runs_again_after_limitless(self):
+        result, calls = self.run_stubbed("none")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        lines = calls.splitlines()
+        assemble = [i for i, line in enumerate(lines) if line.startswith("assemble.py")]
+        limitless = next(i for i, line in enumerate(lines) if line.startswith("lim_jp.py"))
+        export = next(i for i, line in enumerate(lines) if line.startswith("build_xlsx.py"))
+        self.assertEqual(len(assemble), 2)
+        self.assertLess(assemble[0], limitless)
+        self.assertLess(limitless, assemble[1])
+        self.assertLess(assemble[1], export)
+
 
 if __name__ == "__main__":
     unittest.main()

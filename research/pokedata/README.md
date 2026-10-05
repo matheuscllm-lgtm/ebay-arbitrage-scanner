@@ -1,5 +1,7 @@
 # Catálogo de cartas — anexos para revisão
 
+> Estado vigente: [revisão de 05/10/2026](../../docs/POKEDATA_REVISION_20261005.md). A pasta pipeline/ contém os scripts revisados; inputs/ preserva snapshots antigos, não a planilha revisada. Não executar coletas ou integrar ao scanner enquanto persistirem os bloqueadores.
+
 Entrada canônica desta revisão: [docs/POKEDATA_REVIEW.md](../../docs/POKEDATA_REVIEW.md).
 Contexto anterior: [docs/POKEDATA_PROJECT_STATE.md](../../docs/POKEDATA_PROJECT_STATE.md).
 
@@ -14,3 +16,4 @@ python research/pokedata/test_pipeline.py
 ```
 
 As verificações são offline. Não executar `pipeline/run_pipeline.sh` para uma simples revisão: ele baixa fontes e processa o catálogo completo. O pipeline ainda tem achados pendentes e não está integrado ao scanner.
+

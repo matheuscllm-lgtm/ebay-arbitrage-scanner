@@ -127,3 +127,14 @@ Use a planilha versionada indicada nesse documento, incluída por autorização 
 seleciona referências de pesquisa e não altera a política de compra do scanner.
 Preserve status herdados com rastreabilidade e distinga contagens conferidas de
 correspondências efetivamente revalidadas. Não inferir exclusividade de uma busca vazia.
+
+## Atualização da revisão — 05/10/2026
+
+Leia [`docs/POKEDATA_REVISION_20261005.md`](docs/POKEDATA_REVISION_20261005.md)
+e [`research/pokedata/pipeline/docs/ESTADO_DO_PROJETO.md`](research/pokedata/pipeline/docs/ESTADO_DO_PROJETO.md).
+A revisão técnica mais recente prevalece sobre alegações históricas de conclusão.
+Somente scripts/documentação novos foram importados; a planilha revisada é privada.
+Não confundir snapshots antigos em inputs/ com a entrega revisada. Não integrar
+arte confirmada como impressão confirmada. Há dois testes esperados-falhar que
+reproduzem defeitos abertos; não representam aprovação de produção.
+

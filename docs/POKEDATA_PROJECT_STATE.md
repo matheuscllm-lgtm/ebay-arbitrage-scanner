@@ -1,5 +1,7 @@
 # Catálogo de cartas — continuidade EN / JP / CHS / CHT
 
+> Atualização 05/10/2026: leia [a revisão mais recente](POKEDATA_REVISION_20261005.md). O conteúdo abaixo é histórico; os novos scripts estão em research/pokedata/pipeline/ e o novo XLSX não foi publicado.
+
 ## Atualização: novos anexos para revisão conjunta
 
 O operador forneceu cinco anexos e autorizou incluí-los no repositório. Leia
@@ -87,3 +89,4 @@ As bases auxiliares mencionadas incluem type-null/PTCG-database, duanxr/PTCG-CHS
 - Sugestões de busca nunca contam como evidência.
 - Entrega informa lote realizado, restante e fontes inacessíveis.
 - Código, configuração e regras econômicas inalterados nesta transferência de contexto.
+

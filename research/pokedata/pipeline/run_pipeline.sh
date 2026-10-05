@@ -5,6 +5,7 @@
 set -euo pipefail
 R="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="${1:-PokeData_catalogo_correspondencia.xlsx}"
+PR53="${2:-}"   # opcional: caminho da planilha do PR #53
 
 python3 "$R/fetch_cards.py"                       # 1  sets e cartas do PokeData
 python3 "$R/fetch_external.py"                    # 2  pokemon-tcg-data, TCGdex (sets), PokeAPI
@@ -39,7 +40,9 @@ python3 "$R/limitless_pairs.py"                   # 9c pares indicados
 python3 "$R/stage2_pairs.py" lim_pairs.pkl s2_LIM.pkl   # 9d comparação de imagem
 python3 "$R/limitless_classify.py"                # 9e resultado
 
-python3 "$R/assemble.py"                          # 10 classificação final
-python3 "$R/lim_jp.py"                            # 11 exclusivas japonesas no Limitless
-python3 "$R/build_xlsx.py" "$OUT"                 # 12 planilha
+python3 "$R/assemble.py"                          # 10 classificação
+python3 "$R/lim_jp.py"                            # 11 evidência externa das exclusivas japonesas (Limitless)
+python3 "$R/assemble.py"                          # 11b aplica essa evidência
+python3 "$R/build_xlsx.py" "$OUT" ${PR53:+"$PR53"}   # 12 planilha; PR53=<planilha do PR #53> acrescenta cobertura e chinês tradicional
 echo "Planilha gerada: $OUT (recalcular as fórmulas no Excel ou LibreOffice)"
+
