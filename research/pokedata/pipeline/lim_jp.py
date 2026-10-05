@@ -1,10 +1,11 @@
-"""Etapa 11 — confere no Limitless as cartas japonesas (2010 em diante) marcadas como exclusivas.
+"""Etapa 11 — confere no Limitless as cartas japonesas (2010 em diante) candidatas a exclusiva.
 
 Se a página japonesa lista uma impressão internacional, a carta não é exclusiva.   Entrada: result.pkl   Saída: lim_jp.pkl
 """
 import json, re, os, time, html, requests, pickle
 from collections import Counter
 from common import *
+from identity import CANDIDATE
 sets, cards = load(); units = art_units(cards)
 R = pickle.load(open('result.pkl', 'rb')); ST = R['STATUS']
 rows_, uinfo = pickle.load(open('catalog.pkl', 'rb'))
@@ -13,7 +14,7 @@ def lcode(c):
     c = c.replace('+', 'p')
     m = {'SM-P': 'SMP', 'XY-P': 'XYP', 'BW-P': 'BWP', 'S-P': 'SP', 'SV-P': 'SVP', 'M-P': 'MP'}
     return m.get(c, c)
-todo = [k for k, s in ST.items() if s['geral'] == 'exclusiva' and sets[k[0]]['language'] == 'JAPANESE' and sets[k[0]]['series'] in ERAS and sets[k[0]]['code'] and re.search(r'\d+$', k[1])]
+todo = [k for k, s in ST.items() if s.get('motivo', '').startswith(CANDIDATE) and sets[k[0]]['language'] == 'JAPANESE' and sets[k[0]]['series'] in ERAS and sets[k[0]]['code'] and re.search(r'\d+$', k[1])]
 print('todo', len(todo), Counter(sets[k[0]]['code'] for k in todo).most_common(12), flush=True)
 os.makedirs('ext/limitless', exist_ok=True)
 s_ = requests.Session(); out = {}; c = Counter()

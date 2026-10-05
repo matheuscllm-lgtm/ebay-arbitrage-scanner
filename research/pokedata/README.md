@@ -13,6 +13,8 @@ python research/pokedata/audit_inputs.py
 python research/pokedata/test_pipeline.py
 python research/pokedata/test_bridge.py
 python research/pokedata/bridge_partial_ids.py   # ponte parcial -> catálogo; -o arquivo.csv (gitignored)
+python research/pokedata/test_identity.py
+python research/pokedata/revise_snapshot.py      # efeito de C1/C2/C4 e conciliação; -o arquivo.csv (gitignored)
 ```
 
-As verificações são offline. Não executar `pipeline/run_pipeline.sh` para uma simples revisão: ele baixa fontes e processa o catálogo completo. O pipeline ainda tem achados pendentes e não está integrado ao scanner.
+As verificações são offline. Não executar `pipeline/run_pipeline.sh` para uma simples revisão: ele baixa fontes e processa o catálogo completo. As correções C1, C2 e C4 estão no pipeline (`pipeline/identity.py`), mas o catálogo publicado ainda não foi regenerado com elas; `revise_snapshot.py` mede o efeito sobre o snapshot. Nada disto está integrado ao scanner.

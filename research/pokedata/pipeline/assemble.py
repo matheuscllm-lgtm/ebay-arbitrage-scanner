@@ -8,6 +8,7 @@ from datetime import datetime
 from common import *
 import rules
 from coarse import coarse
+from identity import single_language
 
 rows, uinfo = pickle.load(open('catalog.pkl', 'rb'))
 sets, cards = load(); units = art_units(cards)
@@ -174,16 +175,10 @@ for k in units:
         st['ENGLISH'] = 'inconclusivo: set recente, versão em inglês pode ainda não ter saído'
     if L == 'CHINESE' and st['JAPANESE'] == 'não encontrado':
         st['JAPANESE'] = 'inconclusivo: não encontrada no PokeData, exclusividade não comprovada'
-    # overall bucket
-    vals = list(st.values())
-    if any(v == 'confirmado' for v in vals): ov = 'confirmado'
-    elif L == 'ENGLISH':
-        ov = 'exclusiva' if (st['JAPANESE'].startswith('exclusiva') and st['CHINESE'] == 'não encontrado') else 'inconclusivo'
-    elif L == 'JAPANESE':
-        ov = 'exclusiva' if all(v == 'não encontrado' for v in vals) else 'inconclusivo'
-    else:
-        ov = 'inconclusivo'
-    st['geral'] = ov
+    # overall bucket: exclusiva only with proven absence in every target language
+    # (identity.single_language); absence in the catalogue makes a candidate, not an exclusive
+    ev = {T: 'ausente' for T, v in st.items() if v.startswith('exclusiva')}
+    st['geral'], st['motivo'] = single_language(L, dict(st), ev)
     STATUS[k] = st
 
 pickle.dump(dict(CONF={t: dict(v) for t, v in CONF.items()}, GRAY={t: dict(v) for t, v in GRAY.items()}, VIA=dict(VIA), STATUS=STATUS, LIM=LIM), open('result.pkl', 'wb'))

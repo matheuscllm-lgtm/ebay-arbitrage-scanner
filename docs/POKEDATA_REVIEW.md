@@ -241,3 +241,43 @@ Pedido do operador: retirar o nome do provedor dos títulos de apresentação e 
 Motivo para Claude: apresentar o projeto pelo seu objetivo, distinguindo seu nome das fontes consultadas. Escopo: títulos em CLAUDE.md, nos dois documentos de continuidade/revisão e nos dois READMEs de pesquisa. Fontes, URLs, créditos, IDs, nomes de arquivos, ZIP, planilhas originais e documentação histórica recebida foram preservados. Mudança apenas editorial; nenhuma correção de matching ou regra econômica foi implementada nesta rodada.
 
 Validação: comparação textual dos cinco documentos, com preservação dos links e das referências fora dos títulos. Não se aplicam testes de execução para esta mudança de documentação.
+
+## Correções implementadas pelo Claude — 2026-10-05
+
+Pedido do operador: seguir com as correções recomendadas na revisão (C1, C2, C4) e
+conciliar a base parcial. Base: PR #54 (`d98aa2c`, ponte de IDs) + títulos do PR #53
+(`b2ac22c`), unidos por merge; o conflito em `docs/POKEDATA_REVIEW.md` foi resolvido
+mantendo as duas seções. Títulos novos seguem a regra de apresentação (catálogo de
+cartas); fontes, URLs, IDs e nomes de arquivo preservados.
+
+**Estado:** implementado no pipeline e testado offline. **Não** validado em execução
+real: o catálogo publicado não foi regenerado (exige os intermediários ausentes do
+ZIP e nova coleta). Snapshots, status herdados e regras do scanner inalterados.
+
+| Correção | Antes → depois | Evidência e validação |
+|---|---|---|
+| C1 exclusividade (`identity.single_language`, `assemble.py`, `lim_jp.py`, `build_xlsx.py`) | Ausência no catálogo virava `exclusiva`; resultado do `lim_jp` só anotava o critério → `exclusiva` exige ausência comprovada por fonte externa em EN, JP, CHS **e CHT**; sem isso, `inconclusivo` com motivo `candidata a exclusiva: …` por idioma. Impressão internacional achada pelo Limitless agora reclassifica a carta. Aba `Exclusivas` → `Candidatas a exclusiva` | No snapshot: 975 → 0 exclusivas; 340 têm fonte externa para um idioma (21 EN, 319 JP) e 635 JP só ausência. Testes: ausência ≠ exclusiva, CHT não pesquisado bloqueia, impressão achada remove a candidatura |
+| C2 deduplicação (`identity.print_key`, `build_xlsx.rank` e `sig` da Correspondência) | Chave por dígitos (finais em `rank`, primeiro inteiro em `sig`) → número completo (prefixo + dígitos + sufixo, sem zeros à esquerda) + nome-chave | Chave antiga reproduz exatamente as 19.433 linhas publicadas; a corrigida dá 19.623 (+190 linhas de impressões distintas, ex. `H3`×`3`, `50a`×`50b`, Glaceon ex × Glaceon ex Holiday Calendar). Em `rank`, a mesma chave deixa de juntar `GG01`×`001` (486 colisões no Catálogo EN). O cadastro duplo `036`/`36` do mesmo nome segue unido. Pode reaparecer ruído de nome (ex. `Nidoran♀`×`Nidoran F`): preferimos linha duplicada visível a impressão perdida |
+| C4 arte × impressão (`identity.match_level`, colunas novas na Correspondência) | Só `Confiança` alta/média, nota dizia "mesma versão" → colunas `Arte` (confirmada ≥40 pontos / provável 12–39) e `Impressão / acabamento` (sempre `não conferida`); notas da aba Leia-me reescritas | Snapshot: 18.063 arte confirmada, 1.370 arte provável, 19.433 impressão não conferida. Nenhuma linha é apagada; uso em venda exige conferir a impressão |
+| Conciliação da base parcial (`revise_snapshot.py`) | Sem comparação via IDs corretos → 388 registros (375 pares) cruzados pela ponte do PR #54 com os `Códigos equivalentes` do catálogo, normalizando notação (`SM4p`=`SM4+`, promo `…/SV-P`, pacote de gemas `CBB5C 08 07/07`=`CBB5C 0807`) | JP: 152 iguais, 8 sem equivalente no catálogo, **0 divergentes**. CHS: 76 iguais, 5 iguais no número com subproduto não distinguido (`151C1–4`×`151C`), 29 sem equivalente, **2 divergentes** (ID EN 417 `CSM2cC 071`×`CSM2DC 195`; ID EN 423 `CSM2.5C 006`×`CSMPbC 001`) → revisão visual. CHT: 116 preservados como frente própria |
+
+Antes da normalização de notação, a conciliação acusava 26 divergências; 24 eram
+só notação diferente para a mesma impressão. Nenhum rótulo herdado foi alterado: o
+CSV de auditoria (`-o`, gitignored) registra referência, status anterior/novo,
+motivo, método e data, sem preços.
+
+```bash
+python research/pokedata/test_identity.py      # 17 testes
+python research/pokedata/test_bridge.py        # 5
+python research/pokedata/test_pipeline.py       # 2
+python research/pokedata/revise_snapshot.py     # resumo acima
+python -m pytest -q                             # 1181 passed (scanner intocado)
+```
+
+### Pendências
+
+1. Regenerar o catálogo com o pipeline corrigido: exige nova coleta (intermediários fora do ZIP) e conferência dos termos de uso antes de republicar.
+2. Revisão visual: 2 divergências CHS, 1.370 linhas de arte provável e a impressão de todas as linhas.
+3. Evidência positiva para exclusividade: nenhuma fonte cobre CHS/CHT hoje; as 975 ficam candidatas.
+4. 29 CHS e 8 JP confirmados na base parcial sem equivalente no catálogo: cartas sem imagem ou sets fora do PokeData, não contradições.
+5. `research/pokedata/test_*.py` fora do CI (`testpaths = tests`).

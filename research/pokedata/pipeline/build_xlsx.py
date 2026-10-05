@@ -10,12 +10,20 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from common import *
+from identity import CANDIDATE, match_level, print_key, single_language
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'PokeData_catalogo_correspondencia.xlsx'
 rows, uinfo = pickle.load(open('catalog.pkl', 'rb'))
 R = pickle.load(open('result.pkl', 'rb')); CONF, GRAY, VIA, STATUS, LIM = R['CONF'], R['GRAY'], R['VIA'], R['STATUS'], R['LIM']
 sets, cards = load(); units = art_units(cards)
 LANG = {k: sets[k[0]]['language'] for k in units}
+# C1: the Limitless check of Japanese candidates reclassifies the card, not just its criterion text.
+# An empty "Int. Prints" list proves absence in English only; CHS/CHT stay unproven.
+LJP = pickle.load(open('lim_jp.pkl', 'rb')) if os.path.exists('lim_jp.pkl') else {}
+for k, prints in LJP.items():
+    if k not in STATUS: continue
+    per_lang = {T: v for T, v in STATUS[k].items() if T not in ('geral', 'motivo')}
+    STATUS[k]['geral'], STATUS[k]['motivo'] = single_language(LANG[k], per_lang, {'ENGLISH': list(prints) if prints else 'ausente'})
 def sdate(k): return datetime.strptime(sets[k[0]]['release_date'][5:16], '%d %b %Y')
 REV = {t: defaultdict(dict) for t in CONF}; REVG = {t: defaultdict(dict) for t in GRAY}
 for t in CONF:
@@ -33,8 +41,8 @@ def rank(a, cands):
         return (0 if nc >= 1 else 1, abs(dd) if dd >= -60 else abs(dd) + 400, -ni)
     out = []; seen = set()
     for b, _ in sorted(cands.items(), key=sc):
-        m = re.search(r'(\d+)$', b[1]); sig = (b[0], int(m.group(1)) if m else b[1])
-        if sig in seen: continue           # PokeData lists some cards twice (036 and 36)
+        sig = print_key(b)                 # C2: full number + name; PokeData lists some cards twice (036 and 36)
+        if sig in seen: continue
         seen.add(sig); out.append(b)
     return out
 def partners(k, T):
@@ -117,12 +125,12 @@ for r in sorted(rows, key=lambda r: ukey(r['_uk']) + (r['nome'],)):
 # ---------------- correspondence (EN anchored)
 COR_H = ['Era (EN)', 'Set (EN)', 'Código (EN)', 'Número (EN)', 'Nome (EN)', 'Raridade (EN)', 'Busca eBay (EN)',
          'Situação JP', 'Set (JP)', 'Código (JP)', 'Número (JP)', 'Nome no PokeData (JP)', 'Nome japonês', 'Raridade (JP)', 'Busca eBay (JP)', 'Outras impressões JP com a mesma arte',
-         'Situação CN simplificado', 'Set (CN)', 'Código (CN)', 'Número (CN)', 'Nome no PokeData (CN)', 'Nome chinês', 'Busca eBay (CN)', 'Outras impressões CN com a mesma arte', 'Observações', 'Confiança', 'Pontos coincidentes JP', 'Pontos coincidentes CN']
+         'Situação CN simplificado', 'Set (CN)', 'Código (CN)', 'Número (CN)', 'Nome no PokeData (CN)', 'Nome chinês', 'Busca eBay (CN)', 'Outras impressões CN com a mesma arte', 'Observações', 'Confiança', 'Pontos coincidentes JP', 'Pontos coincidentes CN', 'Arte', 'Impressão / acabamento']
 cor = []; seen = set()
 for k in sorted([k for k in units if LANG[k] == 'ENGLISH'], key=ukey):
     e = EQ[k]
     if not e['JAPANESE'] and not e['CHINESE']: continue
-    sig = (k[0], numsort(k[1])[0], tuple(e['JAPANESE'][:1]), tuple(e['CHINESE'][:1]))
+    sig = (print_key(k), tuple(e['JAPANESE'][:1]), tuple(e['CHINESE'][:1]))   # C2: H3×3, 50a×50b, GG01×001 stay apart
     if sig in seen: continue
     seen.add(sig)
     u = main_row[k]; obs = []
@@ -145,7 +153,7 @@ for k in sorted([k for k in units if LANG[k] == 'ENGLISH'], key=ukey):
     vt = variants(k)
     if re.search(r'Prerelease|Staff|Stamped|Pokemon Center|Trophy', vt): obs.append('EN também existe com carimbo: ' + vt)
     pts = [p for p in (pj, pc) if p != '']
-    row += ['; '.join(obs), 'alta' if (not pts or min(pts) >= 40) else 'média', pj, pc]
+    row += ['; '.join(obs), 'alta' if (not pts or min(pts) >= 40) else 'média', pj, pc] + list(match_level(pts))   # C4
     cor.append(row)
 
 # ---------------- JP-CN pairs without an English card
@@ -166,11 +174,10 @@ rep = json.load(open('unit_rep.json'))
 BYNAME = defaultdict(lambda: defaultdict(int))
 for k in units:
     if rep.get(f"{k[0]}|{k[1]}|{k[2]}") in HASIMG and k not in BAD: BYNAME[LANG[k]][k[2]] += 1
-LJP = pickle.load(open('lim_jp.pkl', 'rb')) if os.path.exists('lim_jp.pkl') else {}
 inc = []; exc = []
 for k in sorted(units, key=ukey):
     u = main_row[k]; stt = STATUS[k]
-    if stt['geral'] == 'inconclusivo':
+    if stt['geral'] == 'inconclusivo' and not stt.get('motivo', '').startswith(CANDIDATE):
         best = None
         for T in LANGS:
             if T == LANG[k]: continue
@@ -182,8 +189,8 @@ for k in sorted(units, key=ukey):
         lim = LIM.get(k); limtxt = ''
         if lim and lim['kind'] == 'impressão japonesa': limtxt = '; '.join((lim['outside'] + lim['inside'])[:6])
         inc.append([PT[LANG[k]], u['era'], u['set_nome'], u['set_codigo'], u['numero_impresso'], nm(k), st(k, 'ENGLISH'), st(k, 'JAPANESE'), st(k, 'CHINESE'), cand, pts, sim, limtxt, busca(k)])
-    elif stt['geral'] == 'exclusiva':
-        crit = 'Sem impressão japonesa segundo o Limitless e sem equivalente chinês no PokeData' if LANG[k] == 'ENGLISH' else ('Arte sem equivalente em inglês nem em chinês simplificado no PokeData' + ('; Limitless também não lista impressão internacional' if (k in LJP and not LJP[k]) else ''))
+    elif stt['geral'] == 'exclusiva' or stt.get('motivo', '').startswith(CANDIDATE):
+        crit = ('Exclusiva: ' if stt['geral'] == 'exclusiva' else '') + stt.get('motivo', '')   # C1: evidence per target language
         exc.append([PT[LANG[k]], u['era'], u['set_nome'], u['set_codigo'], u['set_data'], u['numero_impresso'], nm(k), u['nome_nativo'], u['raridade'], variants(k), crit] + [(BYNAME[T][k[2]] if LANG[k] != T else '—') for T in LANGS] + [busca(k)])
 
 # ---------------- sets and traditional chinese reference
@@ -209,7 +216,7 @@ for i, s in enumerate(srows, start=2):
 sheet('Correspondência', COR_H, cor, {'Set (EN)': 30, 'Nome (EN)': 28, 'Busca eBay (EN)': 42, 'Set (JP)': 30, 'Nome no PokeData (JP)': 26, 'Busca eBay (JP)': 42, 'Outras impressões JP com a mesma arte': 40, 'Set (CN)': 30, 'Nome no PokeData (CN)': 26, 'Busca eBay (CN)': 42, 'Outras impressões CN com a mesma arte': 40, 'Observações': 40, 'Situação JP': 26, 'Situação CN simplificado': 26}, freeze='F2')
 sheet('JP-CN sem inglês', JC_H, jc, {'Set (JP)': 30, 'Busca eBay (JP)': 42, 'Set (CN)': 30, 'Busca eBay (CN)': 42, 'Situação em inglês': 40})
 sheet('Inconclusivos', INC_H, inc, {'Set': 34, 'Nome': 28, 'Situação em inglês': 44, 'Situação em japonês': 44, 'Situação em chinês simplificado': 44, 'Candidata mais próxima': 40, 'Impressões japonesas segundo o Limitless': 60, 'Busca eBay': 44})
-sheet('Exclusivas', EXC_H, exc, {'Set': 34, 'Nome': 28, 'Critério': 60, 'Busca eBay': 44})
+sheet('Candidatas a exclusiva', EXC_H, exc, {'Set': 34, 'Nome': 28, 'Critério': 60, 'Busca eBay': 44})
 tw = json.load(open('ext/tcgdex_sets_zh-tw.json')); jpcodes = {key(s['code']): s for s in sets.values() if s['language'] == 'JAPANESE' and s['code']}
 twr = []
 for t in tw:
@@ -223,14 +230,14 @@ sheet('Ref. chinês tradicional', ['Código (tradicional)', 'Nome do set (繁體
 ws0.column_dimensions['A'].width = 36
 for c in 'BCDEFGH': ws0.column_dimensions[c].width = 18
 B = Font(name='Arial', size=10, bold=True)
-ws0['A1'] = 'PokeData — catálogo EN / JP / CN e correspondência entre idiomas'; ws0['A1'].font = Font(name='Arial', size=14, bold=True)
+ws0['A1'] = 'Catálogo de cartas EN / JP / CN e correspondência entre idiomas'; ws0['A1'].font = Font(name='Arial', size=14, bold=True)
 ws0['A2'] = 'Dados extraídos do PokeData (pokedata.io) em 04/10/2026. Equivalências confirmadas por comparação de imagem da ilustração.'
 info = [('Sets', 'Um set por linha, com contagens calculadas a partir dos catálogos.'),
         ('Catálogo EN / JP / CN', 'Uma linha por registro do PokeData (cada acabamento é um registro). "Carta única" = 1 marca a linha principal de cada carta.'),
-        ('Correspondência', 'Cartas em inglês com equivalente confirmado em japonês e/ou chinês simplificado (mesma ilustração).'),
+        ('Correspondência', 'Cartas em inglês com equivalente em japonês e/ou chinês simplificado. Colunas Arte (confirmada/provável) e Impressão / acabamento (não conferida) separam ilustração de versão física.'),
         ('JP-CN sem inglês', 'Pares japonês ↔ chinês simplificado confirmados que não têm carta em inglês confirmada.'),
         ('Inconclusivos', 'Cartas que não puderam ser confirmadas nem dadas como exclusivas; não entram na Correspondência.'),
-        ('Exclusivas', 'Cartas de um único idioma, com o critério usado em cada caso.'),
+        ('Candidatas a exclusiva', 'Cartas sem equivalente encontrado, com a evidência por idioma-alvo. Exclusiva só com ausência comprovada em EN, JP, CHS e CHT; ausência no catálogo não basta.'),
         ('Ref. chinês tradicional', 'Sets em chinês tradicional listados pelo TCGdex. O PokeData só tem chinês simplificado.')]
 ws0['A4'] = 'Abas'; ws0['A4'].font = B
 for i, (a, b) in enumerate(info, start=5): ws0[f'A{i}'] = a; ws0[f'B{i}'] = b
@@ -267,12 +274,12 @@ notes = ['Notas',
          'Confirmado: a ilustração coincidiu na comparação de imagem (mínimo de 12 pontos coincidentes dentro da arte, com cores compatíveis).',
          'Confiança na aba Correspondência: alta = 40 pontos coincidentes ou mais; média = entre 12 e 39. As linhas de confiança média merecem conferência visual antes de uma venda.',
          'Inconclusivo: há indício de equivalente, mas sem confirmação por imagem. O motivo aparece na coluna de situação de cada idioma.',
-         'Exclusiva (inglês): carta de 2011 em diante sem impressão japonesa no banco do Limitless e sem equivalente chinês no PokeData.',
-         'Exclusiva (japonês): arte que não aparece em nenhuma carta em inglês nem em chinês simplificado do PokeData. O catálogo em inglês do site é quase completo, por isso o critério vale nesse sentido.',
+         'Exclusiva: exige ausência comprovada por fonte externa em todos os idiomas-alvo, inclusive chinês tradicional. Sem isso a carta fica como candidata a exclusiva, com a evidência por idioma.',
+         'Limitless: lista de impressões internacionais vazia comprova ausência só em inglês; com impressões listadas, a carta japonesa deixa de ser candidata.',
          'Chinês simplificado sem equivalente fica como inconclusivo: o catálogo japonês do PokeData não tem vários decks e promos de onde essas cartas podem ter vindo.',
          'Raridade: o PokeData não publica raridade. Inglês vem de pokemon-tcg-data; japonês vem do TCGdex (cobertura parcial); chinês simplificado não tem fonte confiável.',
          'Nomes japoneses e chineses: TCGdex quando disponível; nos demais casos, nome oficial do Pokémon (PokeAPI). Treinadores e Energias sem fonte ficam só em inglês.',
-         '"Mesma versão" = mesma ilustração e mesma carta. Acabamento (holo, reverse, padrão de Poké Ball) não entra na comparação.',
+         'Arte confirmada não é impressão confirmada: edição, acabamento (holo, reverse, padrão de Poké Ball) e carimbo não são conferidos. Uso em venda exige conferir a impressão.',
          'Fontes: pokedata.io · github.com/PokemonTCG/pokemon-tcg-data · tcgdex.dev · github.com/PokeAPI/pokeapi · limitlesstcg.com']
 for i, t in enumerate(notes): ws0[f'A{r2 + i}'] = t
 ws0[f'A{r2}'].font = B
