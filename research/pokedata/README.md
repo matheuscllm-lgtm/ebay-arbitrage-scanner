@@ -1,4 +1,4 @@
-# PokeData — anexos para revisão
+# Catálogo de cartas — anexos para revisão
 
 Entrada canônica desta revisão: [docs/POKEDATA_REVIEW.md](../../docs/POKEDATA_REVIEW.md).
 Contexto anterior: [docs/POKEDATA_PROJECT_STATE.md](../../docs/POKEDATA_PROJECT_STATE.md).
