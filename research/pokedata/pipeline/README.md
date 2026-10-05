@@ -1,4 +1,4 @@
-# PokeData — catálogo EN / JP / CN e correspondência entre idiomas
+# Catálogo de cartas EN / JP / CN e correspondência entre idiomas
 
 > Importado para revisão no PR #53. Antes de usar, leia
 > [a revisão vigente](../../../docs/POKEDATA_REVIEW.md): os status abaixo são
