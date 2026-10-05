@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "pipeline"))
-from identity import (JP_INTL, JP_UNCHECKED, correspondence_signature, dedupe_ranked,  # noqa: E402
+from identity import (JP_INTL, JP_NOT_FOUND, JP_UNCHECKED, correspondence_signature, dedupe_ranked,  # noqa: E402
                       number_identity, reclassify_jp_exclusive)
 
 
@@ -40,8 +40,10 @@ class DedupeTests(unittest.TestCase):
 class ExclusivityTests(unittest.TestCase):
     EXC = {"ENGLISH": "não encontrado", "CHINESE": "não encontrado", "geral": "exclusiva"}
 
-    def test_checked_without_international_print_stays_exclusive(self):
-        self.assertEqual(reclassify_jp_exclusive(self.EXC, True, [])["geral"], "exclusiva")
+    def test_checked_without_international_print_is_inconclusive(self):
+        out = reclassify_jp_exclusive(self.EXC, True, [])
+        self.assertEqual((out["geral"], out["ENGLISH"], out["herdado"]),
+                         ("inconclusivo", JP_NOT_FOUND, "exclusiva"))
 
     def test_international_print_listed_is_not_exclusive(self):
         out = reclassify_jp_exclusive(self.EXC, True, ["Azumarill (SVBA) #14"])
