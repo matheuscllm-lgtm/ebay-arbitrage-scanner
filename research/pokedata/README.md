@@ -12,9 +12,11 @@ O XLSX completo é disponibilizado pelo ZIP porque seu envio avulso em base64 ex
 
 ```bash
 python research/pokedata/audit_inputs.py
-python -m unittest discover -s research/pokedata -p 'test_*.py'   # pipeline, ponte, identidade
+pip install -r research/pokedata/requirements-test.txt            # numpy, para um teste do detector de marcadores
+python -m unittest discover -s research/pokedata -p 'test_*.py'   # pipeline, ponte, referências, pré-checagem (também no CI)
 python research/pokedata/bridge_partial_ids.py   # ponte parcial -> catálogo; -o arquivo.csv (gitignored)
+python research/pokedata/reconcile_partial.py    # 388 registros / 375 pares × snapshot de 04/10; -o arquivo.csv (gitignored)
 ```
 
-As verificações são offline. Não executar `pipeline/run_pipeline.sh` para uma simples revisão: ele baixa fontes e processa o catálogo completo. O pipeline ainda tem achados pendentes e não está integrado ao scanner.
+As verificações são offline. Não executar `pipeline/run_pipeline.sh` para uma simples revisão: ele baixa fontes e processa o catálogo completo. Reprocessar só pelo roteiro [docs/POKEDATA_REPROCESSAMENTO.md](../../docs/POKEDATA_REPROCESSAMENTO.md), em ambiente privado. O pipeline não está integrado ao scanner.
 
