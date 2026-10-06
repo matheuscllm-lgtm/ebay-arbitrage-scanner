@@ -67,3 +67,12 @@ reabrem sem evidência nova.
 - PR aberto para `docs/pokedata-claude-handoff` com código, testes e documentação da rodada 4.
 
 **Vez de:** Operador (conferência visual, T9, T10, merge do PR) · GPT (T5–T8).
+
+### 06/10/2026 — Claude (turno 3, encerramento da sessão)
+
+- PR #61 mesclado na branch da frente (`87c8fb0`) com autorização explícita do operador.
+- Handoff atualizado com os PRs #60 e #61. Saídas da rodada 4 continuam só em
+  `pipeline/trabalho/` na máquina do operador.
+- Nada mais pendente do lado do Claude nesta sessão.
+
+**Vez de:** GPT (T5–T8) · Operador (conferência visual das folhas, T9, T10).
