@@ -17,6 +17,6 @@ for n, cid in enumerate(ids):
     a = art(im); G[n] = gdesc(a); p, d = sift_feats(a, 300)
     P.append(p); D.append(d); off.append(off[-1] + len(p))
     if n % 5000 == 0: print(shard, n, len(ids), flush=True)
-np.save(f'feat_g_{shard}.npy', G); json.dump(ids, open(f'feat_ids_{shard}.json', 'w'))
+np.save(f'feat_g_{shard}.npy', G); json.dump(ids, open(f'feat_ids_{shard}.json', 'w', encoding="utf-8"))
 np.save(f'feat_p_{shard}.npy', np.concatenate(P)); np.save(f'feat_d_{shard}.npy', np.concatenate(D)); np.save(f'feat_o_{shard}.npy', np.array(off, np.int64))
 print('DONE', shard, off[-1], flush=True)

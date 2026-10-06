@@ -1,6 +1,7 @@
 # Catálogo de cartas — roteiro de reprocessamento
 
-Preparado em 06/10/2026 (revisão Claude, issue #56). **Não executado.** Atende ao item 1 de
+Preparado em 06/10/2026 (revisão Claude, issue #56). **Primeira execução concluída em 06/10**;
+resultados históricos em `POKEDATA_REVIEW.md`, "Rodada 4". O roteiro serve para próximas execuções. Atende ao item 1 de
 [`POKEDATA_FIXES_20261005.md`](POKEDATA_FIXES_20261005.md): reprocessar em ambiente privado,
 guardando relatório de cobertura e de coletas incompletas. As contagens dos snapshots de
 04/10 e da entrega privada de 05/10 são históricas; nenhuma foi produzida pelo código atual.
@@ -27,6 +28,7 @@ P=../../inputs/PokeData_correspondencias_JP_CHS_CHT_parcial_recebido.xlsx
 python ../preflight.py "$P"                          # precisa terminar sem FALHA
 bash ../run_pipeline.sh catalogo.xlsx "$P"           # a etapa 0 repete a pré-checagem
 python ../compare_pr53.py "$P" comparacao_pr53.csv
+python ../../accept_run.py . catalogo.xlsx "$P" comparacao_pr53.csv
 ```
 
 A pré-checagem (`preflight.py`) recusa: Python < 3.10, pacotes ou `curl` ausentes, menos de
@@ -48,6 +50,16 @@ não comprovam completude nem atualidade.
 
 `audit_revision.py` valida a entrega privada de 05/10 com contagens fixas; para uma nova
 execução, servem as conferências da tabela, não aquelas contagens.
+
+Revisão GPT (T8/P56-9): `accept_run.py` automatiza **sete** conferências, usando a base parcial
+fornecida para cobertura/CHT/comparação. Detecta `exclusiva` também em variantes não principais
+e confere que o Leia-me contém os totais de ambíguas/não localizadas (valor ou fórmula COUNTIF
+correta). Fórmulas são verificadas sem recálculo; caches antigos não são certificados. As
+listas de IDs ambíguos/não localizados no relatório exigem revisão humana mesmo se `rc=0`.
+A comparação de categorias com o snapshot de 04/10 e a explicação das diferenças de linhas
+continuam no relatório humano. O script não confirma imagem/impressão nem certifica a
+proveniência dos arquivos em relação ao manifesto. O resultado 6/6 da rodada 4 é histórico;
+o aceite expandido ainda precisa ser aplicado à saída privada, sem recoletar.
 
 ## 4. O que volta ao repositório
 

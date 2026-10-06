@@ -66,10 +66,10 @@ def tokens(s):
 
 def load():
     manifest = Path('collection_manifest.json')
-    if manifest.exists() and json.loads(manifest.read_text()).get('complete') is not True:
+    if manifest.exists() and json.loads(manifest.read_text(encoding="utf-8")).get('complete') is not True:
         raise RuntimeError('Incomplete collection: refusing stale all_cards.json')
-    sets = {s['id']: s for s in json.load(open('sets.json'))}
-    cards = json.load(open('all_cards.json'))
+    sets = {s['id']: s for s in json.load(open('sets.json', encoding="utf-8"))}
+    cards = json.load(open('all_cards.json', encoding="utf-8"))
     return sets, cards
 
 def art_units(cards):

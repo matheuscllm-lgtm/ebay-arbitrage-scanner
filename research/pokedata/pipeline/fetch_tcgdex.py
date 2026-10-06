@@ -22,5 +22,5 @@ for lang in ['ja', 'zh-cn', 'zh-tw', 'en']:
         page += 1
         if page % 10 == 0: print(lang, page, len(allc), flush=True)
         time.sleep(0.2)
-    json.dump(allc, open(f'ext/tcgdex_cards_{lang}.json', 'w'), ensure_ascii=False)
+    json.dump(allc, open(f'ext/tcgdex_cards_{lang}.json', 'w', encoding="utf-8"), ensure_ascii=False)
     print('DONE', lang, len(allc), flush=True)

@@ -63,6 +63,6 @@ if __name__ == '__main__':
         if im is None: continue
         a = art(im); G[n] = gdesc(a); F[cid] = sift_feats(a)
         if n % 5000 == 0: print(shard, n, len(ids), flush=True)
-    np.save(f'feat_g_{shard}.npy', G); json.dump(ids, open(f'feat_ids_{shard}.json', 'w'))
+    np.save(f'feat_g_{shard}.npy', G); json.dump(ids, open(f'feat_ids_{shard}.json', 'w', encoding="utf-8"))
     pickle.dump(F, open(f'feat_sift_{shard}.pkl', 'wb'), protocol=4)
     print('DONE', shard, flush=True)

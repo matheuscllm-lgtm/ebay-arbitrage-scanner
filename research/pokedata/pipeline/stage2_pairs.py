@@ -2,7 +2,7 @@
 import pickle, json, sys, time, os
 from multiprocessing import Pool
 from stage2 import verify2
-rep = json.load(open('unit_rep.json'))
+rep = json.load(open('unit_rep.json', encoding="utf-8"))
 HAS = {int(f[:-4]) for f in os.listdir('img') if f.endswith('.jpg')}
 def cid(k): return rep.get(f"{k[0]}|{k[1]}|{k[2]}")
 def work(p):

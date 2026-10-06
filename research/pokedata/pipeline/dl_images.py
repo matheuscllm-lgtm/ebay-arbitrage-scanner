@@ -15,7 +15,7 @@ for k, recs in units.items():
     r = rep_image(recs)
     if r is None: continue
     jobs.append((r['id'], r['img_url']))
-json.dump({f"{k[0]}|{k[1]}|{k[2]}": (rep_image(v)['id'] if rep_image(v) else None) for k, v in units.items()}, open('unit_rep.json', 'w'))
+json.dump({f"{k[0]}|{k[1]}|{k[2]}": (rep_image(v)['id'] if rep_image(v) else None) for k, v in units.items()}, open('unit_rep.json', 'w', encoding="utf-8"))
 print('jobs', len(jobs), flush=True)
 tl = threading.local()
 def sess():
@@ -41,7 +41,7 @@ def dl(job):
         except Exception as e:
             time.sleep(1 + a)
     cnt['fail'] += 1
-    with open('img_fail.log', 'a') as f: f.write(f"{cid}\t{url}\n")
+    with open('img_fail.log', 'a', encoding="utf-8") as f: f.write(f"{cid}\t{url}\n")
 t = time.time()
 with ThreadPoolExecutor(12) as ex:
     for i, _ in enumerate(ex.map(dl, jobs)):

@@ -5,7 +5,7 @@ Entrada: pairs_<tag>.pkl   Saída: s2_<tag>.pkl
 import pickle, json, sys, time
 from multiprocessing import Pool
 from stage2 import verify2
-rep = json.load(open('unit_rep.json'))
+rep = json.load(open('unit_rep.json', encoding="utf-8"))
 def cid(k): return rep[f"{k[0]}|{k[1]}|{k[2]}"]
 def work(p):
     a, b = p

@@ -70,11 +70,11 @@ def native(base):
     return native_one(base)
 
 # ---------- EN enrichment (pokemon-tcg-data)
-P = json.load(open('ext/ptcg_sets_en.json'))
+P = json.load(open('ext/ptcg_sets_en.json', encoding="utf-8"))
 pidx = defaultdict(list)
 for p in P:
     pd = datetime.strptime(p['releaseDate'], '%Y/%m/%d')
-    for x in json.load(open(f"ext/ptcg/{p['id']}.json")):
+    for x in json.load(open(f"ext/ptcg/{p['id']}.json", encoding="utf-8")):
         pidx[numkey(x['number'])].append((p, pd, x, key(x['name'])))
 def en_lookup(c, s, nk_):
     best = None
@@ -86,12 +86,12 @@ def en_lookup(c, s, nk_):
     return best
 
 # ---------- JP enrichment (TCGdex) : set mapping by date + species agreement
-ja = [c for c in json.load(open('ext/tcgdex_cards_ja.json')) if c]
+ja = [c for c in json.load(open('ext/tcgdex_cards_ja.json', encoding="utf-8")) if c]
 tmeta = {}
-for st in json.load(open('ext/tcgdex_sets_ja.json')):
+for st in json.load(open('ext/tcgdex_sets_ja.json', encoding="utf-8")):
     p = f"ext/tcgdex_sets/ja__{st['id'].replace('/', '_')}.json"
     if os.path.exists(p):
-        d = json.load(open(p)); tmeta[st['id']] = d
+        d = json.load(open(p, encoding="utf-8")); tmeta[st['id']] = d
 tj = defaultdict(list)
 for c in ja: tj[c['set']['id']].append(c)
 bys = defaultdict(list)
@@ -142,8 +142,8 @@ tjsp = {}
 for tid, tc in tj.items():
     cnt = Counter(x['_dex'] for x in tc if x['_dex'])
     tjsp[tid] = {x['_dex']: x for x in tc if x['_dex'] and cnt[x['_dex']] == 1}
-TW = {st['id']: st['name'] for st in json.load(open('ext/tcgdex_sets_zh-tw.json'))}
-CNSET = {st['id']: st['name'] for st in json.load(open('ext/tcgdex_sets_zh-cn.json')) if st['id'].startswith('C')}
+TW = {st['id']: st['name'] for st in json.load(open('ext/tcgdex_sets_zh-tw.json', encoding="utf-8"))}
+CNSET = {st['id']: st['name'] for st in json.load(open('ext/tcgdex_sets_zh-cn.json', encoding="utf-8")) if st['id'].startswith('C')}
 CNSET['CS1aC'] = '极巨争锋 雷'; CNSET['CSV1C'] = '亘古开来'; CNSET['CBB1C'] = '宝石包 Vol.1'
 RAR_JP = {'Common': 'C', 'Uncommon': 'U', 'Rare': 'R', 'Double rare': 'RR', 'Triple Rare': 'RRR', 'Illustration rare': 'AR', 'Special illustration rare': 'SAR', 'Character Rare': 'CHR', 'Character Super Rare': 'CSR', 'Shiny rare': 'S', 'Shiny Ultra Rare': 'SSR', 'ACE SPEC Rare': 'ACE', 'Radiant Rare': 'K', 'Ultra Rare': 'SR', 'Hyper rare': 'UR/HR', 'Mega Hyper Rare': 'MUR', 'Black White Rare': 'BWR', 'Promo': 'PROMO'}
 RAR_EN = {'Special Illustration Rare': 'SIR', 'Illustration Rare': 'IR', 'Hyper Rare': 'Gold', 'Rare Rainbow': 'Rainbow', 'Rare Secret': 'Secret', 'Trainer Gallery Rare Holo': 'TG', 'Rare Holo VMAX': 'VMAX', 'Rare Holo V': 'V', 'Rare Ultra': 'Full Art', 'Ultra Rare': 'Full Art', 'Double Rare': 'Double Rare', 'ACE SPEC Rare': 'ACE SPEC', 'Shiny Rare': 'Shiny', 'Shiny Ultra Rare': 'Shiny Full Art', 'Rare Shiny': 'Shiny', 'Amazing Rare': 'Amazing Rare', 'Radiant Rare': 'Radiant', 'Rare Holo': 'Holo'}

@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 import rules
 from coarse import coarse
 
-BAD = {tuple(k) for k in json.load(open('cardback_units.json'))}
+BAD = {tuple(k) for k in json.load(open('cardback_units.json', encoding="utf-8"))}
 s2 = pickle.load(open('s2_LIM.pkl', 'rb'))
 res = defaultdict(dict); c = Counter()
 for (a, b), r in s2.items():

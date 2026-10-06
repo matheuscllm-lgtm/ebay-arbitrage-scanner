@@ -13,7 +13,7 @@ from identity_policy import art_eligible
 from common import *
 
 units, sets = C.units, C.sets
-BAD = {tuple(k) for k in json.load(open('cardback_units.json'))}
+BAD = {tuple(k) for k in json.load(open('cardback_units.json', encoding="utf-8"))}
 conf, gray, _ = rules.classify(pickle.load(open('pairs_EN_JA.pkl', 'rb')), pickle.load(open('s2_EN_JA.pkl', 'rb')), BAD)
 confirmed = {k for k, candidates in conf.items() if any(art_eligible(v) for v in candidates.values())}
 
@@ -27,5 +27,5 @@ code = {sid: v.most_common(1)[0][0] for sid, v in votes.items()}
 
 ERAS = {'Black & White', 'XY', 'Sun & Moon', 'Sword & Shield', 'Scarlet & Violet', 'Mega Evolution'}
 todo = [k for k in units if sets[k[0]]['language'] == 'ENGLISH' and sets[k[0]]['series'] in ERAS and k not in confirmed]
-json.dump({'code': {str(k): v for k, v in code.items()}, 'todo': [list(k) for k in todo]}, open('limitless_todo.json', 'w'))
+json.dump({'code': {str(k): v for k, v in code.items()}, 'todo': [list(k) for k in todo]}, open('limitless_todo.json', 'w', encoding="utf-8"))
 print('cartas em inglês (2011+) sem japonês confirmado:', len(todo))
