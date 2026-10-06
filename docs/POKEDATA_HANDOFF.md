@@ -65,7 +65,7 @@ com o operador decidindo.
 - Base parcial: 3.490 referências; 388 registros confirmados; 375 pares ID–idioma; 116 CHT.
 - Ponte: **3.469 `unico` + 21 `unico_numero_literal`**, 0 sem match. Das 1.785 coincidências numéricas de ID, só 2 são a mesma carta.
 - Conciliação com o snapshot de 04/10: **JP 152 iguais e 8 sem equivalente**; **CHS 76 iguais, 5 subprodutos, 2 divergentes (IDs EN 417 e 423) e 29 sem equivalente**; CHT 116 preservados.
-- Testes: `unittest` de pesquisa **59 OK** (45 + 3 do 429 + 11 do aceite); `pytest` **1181 passed**.
+- Testes: `unittest` de pesquisa **61 OK** (45 + 5 do 429 + 11 do aceite); `pytest` **1181 passed**.
 - Rodada 4 (06/10, execução real): Cobertura PR53 **3.490 = base parcial, 0 ambíguas, 0 não localizadas**; Correspondência **18.723** linhas (JP 18.170, CHS 7.270, ambos 6.717); exclusivas **0**; comparação com a base parcial: **JP 143 igual + 9 provável + 1 inconclusiva + 7 set fora; CHS 69 igual + 5 subprodutos + 7 provável + 1 inconclusiva + 12 sem imagem + 18 set fora**; os IDs 417 e 423 deixaram de divergir (provável com a mesma candidata).
 - Conferido em 06/10 numa máquina Windows (Python 3.12): ponte, conciliação, `pytest` e `audit_inputs.py` batem com os valores acima.
 
