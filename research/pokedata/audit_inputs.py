@@ -32,7 +32,7 @@ def records(workbook, sheet, header_row=1):
 
 def audit():
     report = {"scope": "offline snapshot structure and inherited labels; no image revalidation"}
-    manifest = json.loads((ROOT / "inputs/manifest.json").read_text())
+    manifest = json.loads((ROOT / "inputs/manifest.json").read_text(encoding="utf-8"))
     for item in manifest:
         data = input_bytes(item)
         assert len(data) == item["bytes"], item["path"]
@@ -40,7 +40,7 @@ def audit():
     report["original_files_sha256_verified"] = len(manifest)
     scripts = list((ROOT / "pipeline").glob("*.py"))
     for path in scripts:
-        ast.parse(path.read_text(), filename=str(path))
+        ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     report["python_scripts_syntax_checked"] = len(scripts)
     catalog = next(item for item in manifest if item["path"] == "PokeData_catalogo_correspondencia.xlsx")
     w = load_workbook(io.BytesIO(input_bytes(catalog)), read_only=True, data_only=True)

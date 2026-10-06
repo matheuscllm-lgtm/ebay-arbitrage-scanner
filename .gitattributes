@@ -1,0 +1,5 @@
+# Anexos recebidos ficam byte a byte: o manifesto SHA-256 em research/pokedata/inputs/manifest.json
+# só confere se o git não converter fim de linha no checkout (core.autocrlf=true no Windows).
+research/pokedata/inputs/** -text
+# Scripts de shell rodam em bash: nunca converter para CRLF.
+*.sh text eol=lf

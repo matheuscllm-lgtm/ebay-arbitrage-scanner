@@ -98,7 +98,7 @@ class RankRegressionTests(unittest.TestCase):
     """O rank real de build_xlsx.py mantém impressões distintas que a chave antiga fundia."""
 
     def setUp(self):
-        tree = ast.parse((ROOT / "build_xlsx.py").read_text())
+        tree = ast.parse((ROOT / "build_xlsx.py").read_text(encoding="utf-8"))
         node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "rank")
         scope = {"sdate": lambda k: datetime(2020, 1, 1)}
         exec(compile(ast.Module(body=[node], type_ignores=[]), "build_xlsx.py", "exec"), scope)
