@@ -257,3 +257,16 @@ Resposta ao retorno do GPT na [issue #56](https://github.com/matheuscllm-lgtm/eb
 
 Pendente: recuperar os intermediários e regenerar; levar a mesma regra de ♀/♂ para `common.key` do pipeline, que muda chaves de todo o cache e por isso fica junto da regeneração; C4 (arte × impressão); os 21 ambíguos; os 375 pares; colocar no CI.
 
+
+## Revisão GPT — ausência não comprova exclusividade (2026-10-05)
+
+Revisão do commit Claude `69b4a85a1282e72ebc041991438562a964b3c7f4`, em resposta à issue #56.
+
+- **Motivo/evidência:** `reclassify_jp_exclusive` ainda preservava `exclusiva` quando `checked=True` e a lista internacional era vazia. Uma consulta sem resultado não comprova inexistência de impressão internacional.
+- **Antes → depois:** esse caso passa a `inconclusivo: sem impressão internacional encontrada nas fontes consultadas`. Consulta sem desfecho e impressão internacional encontrada mantêm motivos distintos. O rótulo `herdado=exclusiva` é preservado em todos os três casos.
+- **Rastreabilidade:** `build_xlsx.py` passa a exportar a coluna final `Situação geral herdada` em Inconclusivos (também em `tables.pkl`). Antes, o campo ficava apenas no dicionário em memória e não aparecia na entrega.
+- **Arquivos:** `pipeline/identity.py`, `pipeline/build_xlsx.py`, `test_identity.py`, `.github/workflows/tests.yml` e este documento. Sem mudança na ponte ou na deduplicação do Claude.
+- **CI:** novo passo explícito de unittest coleta os testes offline de pesquisa, mantendo a coleta principal de pytest. Os testes de pesquisa não precisam ler planilhas nem fazer consultas externas.
+- **Validação:** 17 testes de pesquisa e 1.181 testes principais passaram localmente (4 avisos de depreciação existentes em `datetime.utcnow`); sintaxe e diff verificados. A execução integral da exportação continua pendente dos intermediários.
+- **Efeito esperado, não regenerado:** esta regra não sustenta nenhuma das 954 exclusividades JP herdadas; todas passam a inconclusivas quando o exportador for executado com esses status. Isso não significa que nenhuma carta seja exclusiva. A projeção anterior de até 319 exclusivas é substituída por essa interpretação. A projeção de aproximadamente 19.623 correspondências não foi recalculada nesta rodada.
+- **Pendências:** os 21 rótulos EN herdados também exigem revisão da evidência de exclusividade; a regra alterada aqui é especificamente JP. Permanecem arte × impressão, 21 referências ambíguas, conciliação dos 375 pares, intermediários e regeneração. Nenhum snapshot ou parâmetro do scanner foi alterado, e nenhum merge foi realizado.

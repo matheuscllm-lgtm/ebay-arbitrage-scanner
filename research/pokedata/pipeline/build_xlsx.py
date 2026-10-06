@@ -17,8 +17,8 @@ rows, uinfo = pickle.load(open('catalog.pkl', 'rb'))
 R = pickle.load(open('result.pkl', 'rb')); CONF, GRAY, VIA, STATUS, LIM = R['CONF'], R['GRAY'], R['VIA'], R['STATUS'], R['LIM']
 sets, cards = load(); units = art_units(cards)
 LANG = {k: sets[k[0]]['language'] for k in units}
-# Exclusividade JP exige evidência positiva do Limitless (lim_jp.pkl); sem pickle,
-# sem página ou com impressão internacional listada, a carta vira inconclusiva.
+# A consulta ao Limitless não prova exclusividade: lista vazia, ausência de
+# desfecho e impressão internacional têm motivos distintos, todos inconclusivos.
 LJP = pickle.load(open('lim_jp.pkl', 'rb')) if os.path.exists('lim_jp.pkl') else {}
 for k in list(STATUS):
     if LANG.get(k) == 'JAPANESE' and STATUS[k]['geral'] == 'exclusiva':
@@ -161,7 +161,7 @@ for j in sorted([k for k in units if LANG[k] == 'JAPANESE'], key=ukey):
     jc.append([ju['era'], ju['set_nome'], ju['set_codigo'], ju['numero_impresso'], ju['nome_base'], ju['nome_nativo'], busca(j), cu['set_nome'], cu['set_codigo'], cu['numero_impresso'], cu['nome_base'], cu['nome_nativo'], busca(c), '; '.join(code(x) for x in e['CHINESE'][1:]), STATUS[j]['ENGLISH']])
 
 # ---------------- inconclusive and exclusive
-INC_H = ['Idioma', 'Era', 'Set', 'Código', 'Número', 'Nome', 'Situação em inglês', 'Situação em japonês', 'Situação em chinês simplificado', 'Candidata mais próxima', 'Pontos coincidentes', 'Semelhança da arte (0–1)', 'Impressões japonesas segundo o Limitless', 'Busca eBay']
+INC_H = ['Idioma', 'Era', 'Set', 'Código', 'Número', 'Nome', 'Situação em inglês', 'Situação em japonês', 'Situação em chinês simplificado', 'Candidata mais próxima', 'Pontos coincidentes', 'Semelhança da arte (0–1)', 'Impressões japonesas segundo o Limitless', 'Busca eBay', 'Situação geral herdada']
 EXC_H = ['Idioma', 'Era', 'Set', 'Código', 'Lançamento', 'Número', 'Nome', 'Nome no idioma original', 'Raridade', 'Variantes', 'Critério', 'Cartas de mesmo nome comparadas (EN)', 'Cartas de mesmo nome comparadas (JP)', 'Cartas de mesmo nome comparadas (CN)', 'Busca eBay']
 HASIMG = {int(f[:-4]) for f in os.listdir('img') if f.endswith('.jpg')}
 BAD = {tuple(k) for k in json.load(open('cardback_units.json'))}
@@ -183,7 +183,7 @@ for k in sorted(units, key=ukey):
             b, v = best; cand = f"{ABR[LANG[b]]} {code(b)} {main_row[b]['nome_base']}"; pts = v[0].get('n_in', 0); sim = round(max(v[0].get('ncc', 0), 0), 2)
         lim = LIM.get(k); limtxt = ''
         if lim and lim['kind'] == 'impressão japonesa': limtxt = '; '.join((lim['outside'] + lim['inside'])[:6])
-        inc.append([PT[LANG[k]], u['era'], u['set_nome'], u['set_codigo'], u['numero_impresso'], nm(k), st(k, 'ENGLISH'), st(k, 'JAPANESE'), st(k, 'CHINESE'), cand, pts, sim, limtxt, busca(k)])
+        inc.append([PT[LANG[k]], u['era'], u['set_nome'], u['set_codigo'], u['numero_impresso'], nm(k), st(k, 'ENGLISH'), st(k, 'JAPANESE'), st(k, 'CHINESE'), cand, pts, sim, limtxt, busca(k), stt.get('herdado', '')])
     elif stt['geral'] == 'exclusiva':
         crit = 'Sem impressão japonesa segundo o Limitless e sem equivalente chinês no PokeData' if LANG[k] == 'ENGLISH' else 'Arte sem equivalente em inglês nem em chinês simplificado no PokeData; Limitless também não lista impressão internacional'
         exc.append([PT[LANG[k]], u['era'], u['set_nome'], u['set_codigo'], u['set_data'], u['numero_impresso'], nm(k), u['nome_nativo'], u['raridade'], variants(k), crit] + [(BYNAME[T][k[2]] if LANG[k] != T else '—') for T in LANGS] + [busca(k)])

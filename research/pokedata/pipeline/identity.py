@@ -48,12 +48,13 @@ def dedupe_ranked(keys):
     return out
 
 
+JP_NOT_FOUND = 'inconclusivo: sem impressão internacional encontrada nas fontes consultadas'
 JP_UNCHECKED = 'inconclusivo: sem evidência positiva de exclusividade (Limitless não consultado ou sem desfecho)'
 JP_INTL = 'inconclusivo: Limitless lista impressão internacional fora do PokeData'
 
 
 def reclassify_jp_exclusive(status, checked, intl_prints):
-    """Exclusividade JP só com evidência positiva do Limitless.
+    """Ausência no Limitless não comprova exclusividade JP.
 
     status: dict do assemble para uma unidade JP com geral == 'exclusiva'.
     checked: True se `lim_jp` achou a página da mesma carta; intl_prints: lista do pickle.
@@ -62,9 +63,7 @@ def reclassify_jp_exclusive(status, checked, intl_prints):
     if status.get('geral') != 'exclusiva':
         return dict(status)
     new = dict(status)
-    if checked and not intl_prints:
-        return new
     new['geral'] = 'inconclusivo'
-    new['ENGLISH'] = JP_INTL if (checked and intl_prints) else JP_UNCHECKED
+    new['ENGLISH'] = (JP_INTL if intl_prints else JP_NOT_FOUND) if checked else JP_UNCHECKED
     new['herdado'] = 'exclusiva'
     return new
