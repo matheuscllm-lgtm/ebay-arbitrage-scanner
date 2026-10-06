@@ -28,13 +28,15 @@ reabrem sem evidência nova.
 | T2 | Coleta tolerante a HTTP 429 (backoff longo + repasse serial), com testes | Claude | feita | `8c200f2` em `claude/pokedata-reprocessamento` |
 | T3 | `accept_run.py`: conferências de aceite sem contagens fixas (resposta prática ao P56-9) | Claude | feita, aguarda revisão do GPT (T8) | `7f6f39e` na mesma branch |
 | T4 | Conferências de aceite sobre a planilha nova + registro em `docs/POKEDATA_REVIEW.md` (rodada 4) e PR | Claude | **feita**: 6 de 6 conferências OK; rodada 4 registrada | PR da branch `claude/pokedata-reprocessamento` |
-| T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | aberta | comentário da rodada 3 na #56; só o GPT tem o pacote de 05/10 |
-| T6 | Termos de uso do PokeData (iubenda 81884871, versão 12/12/2025): o que permite, o que proíbe, opções para o operador decidir sobre #53 → `main`. Sem parecer jurídico | GPT | aberta | `research/pokedata/pipeline/README.md`, seção "Cuidados" |
-| T7 | Portabilidade e endurecimento de `research/pokedata/pipeline/`: `encoding="utf-8"` em todo `open()` de texto; validar id de set antes de montar caminho em `fetch_external.py`; escapar células iniciadas por `=`, `+`, `-`, `@` em `build_xlsx.py`. Com testes. **Não tocar `fetch_cards.py`** (T2) nem regras de identidade | GPT | aberta | partir de `origin/claude/pokedata-reprocessamento` |
-| T8 | Revisar `research/pokedata/accept_run.py` frente à tabela da seção 3 do roteiro | GPT | aberta | mesma branch |
+| T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | **parcial; cotejo privado pendente** (pacote indisponível nesta sessão) | [resposta delimitada na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010473984); `POKEDATA_REVIEW.md`, revisão GPT T5–T8 |
+| T6 | Termos de uso do PokeData (iubenda 81884871, versão 12/12/2025): o que permite, o que proíbe, opções para o operador decidir sobre #53 → `main`. Sem parecer jurídico | GPT | **feita**, decisão T9 continua com operador | [leitura e opções](POKEDATA_TERMOS.md); [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa) |
+| T7 | Portabilidade e endurecimento de `research/pokedata/pipeline/`: `encoding="utf-8"` em todo `open()` de texto; validar id de set antes de montar caminho em `fetch_external.py`; escapar células iniciadas por `=`, `+`, `-`, `@` em `build_xlsx.py`. Com testes. **Não tocar `fetch_cards.py`** (T2) nem regras de identidade | GPT | **feita**, aguarda revisão T12 | [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa), branch `gpt/pokedata-t5-t8` a partir de `87c8fb0` |
+| T8 | Revisar `research/pokedata/accept_run.py` frente à tabela da seção 3 do roteiro | GPT | **feita**; aplicado em fixtures, saída real pendente T13 | [resposta P56-9](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010487464); [revisão](POKEDATA_REVIEW.md), seção GPT T5–T8 |
 | T9 | Decidir termos de uso e visibilidade dos derivados (bloqueia #53 → `main`) | Operador | aberta | insumo: T6 |
 | T10 | Fechar #55 e #58 como superados (o classificador de permissões negou ao Claude) | Operador | aberta | decisão em `docs/POKEDATA_HANDOFF.md` |
 | T11 | Revalidação visual (2 divergências CHS, 5 subprodutos, arte provável, impressão) com amostra do `sheet.py` | Claude, depois Operador | folhas geradas (`sample_pr53.py`); 1ª leitura sem par errado; **conferência plena: operador** | `trabalho/revalidacao_pr53.jpg`, `trabalho/revalidacao_provaveis.jpg` |
+| T12 | Revisar a entrega GPT de T6–T8, mantendo limites de T5 e decisões fechadas | Claude | aberta | `gpt/pokedata-t5-t8` → `docs/pokedata-claude-handoff`, commit `65a5aa5`; `POKEDATA_REVIEW.md`, revisão GPT |
+| T13 | Aplicar o aceite expandido (sete checks) aos arquivos privados da rodada 4, sem nova coleta; retornar apenas agregados | Operador | aberta | comando em `POKEDATA_REPROCESSAMENTO.md`, §2; saída real continua na máquina privada |
 
 ## Registro de turnos
 
@@ -67,3 +69,28 @@ reabrem sem evidência nova.
 - PR aberto para `docs/pokedata-claude-handoff` com código, testes e documentação da rodada 4.
 
 **Vez de:** Operador (conferência visual, T9, T10, merge do PR) · GPT (T5–T8).
+
+### 06/10/2026 — GPT (T5–T8)
+
+- Partida de `87c8fb0`, branch própria `gpt/pokedata-t5-t8`, entrega em
+  [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa).
+  PR destinado a `docs/pokedata-claude-handoff`, sem merge. #62 continua separado; manter
+  também o turno de encerramento do Claude quando suas alterações forem incorporadas.
+- T5 respondida na #56 com limite: fallback aproximado legítimo permanece no código e a
+  rodada 4 informa zero referências perdidas; cotejo privado de 05/10 não reproduzido.
+  Pacote privado ausente nesta sessão, solicitado ao operador. T5 não foi marcada feita.
+- T6 entregue em `POKEDATA_TERMOS.md`: fontes oficiais, versão 12/12/2025, ressalva de
+  permissão explícita para uso pessoal e termos incorporados da API; opções concretas para T9.
+- T7 entregue: 49 argumentos UTF-8, IDs externos validados e texto literal no XLSX com
+  `quotePrefix`, preservando valores e fórmulas internas. `fetch_cards.py`, regras de
+  identidade e anexos mantidos sem alterações.
+- T8/P56-9 respondida na #56: aceite sem contagens históricas mantido; corrigidas detecção
+  de exclusivas em variantes e conferência dos totais de localização no Leia-me.
+  Sete checks agora; o 6/6 real de Claude continua como evidência histórica, não execução
+  desta versão. Cotejo com 04/10, recálculo e revalidação visual continuam humanos.
+- Validação: **71 testes de pesquisa OK + 1181 pytest passed**. Sem coleta, derivados
+  novos, leitura de pickle privado, alteração de anexos, merge ou acompanhamento automático.
+- Delegado: T12 (Claude revisa entrega); T13 (operador executa aceite sobre arquivos privados,
+  sem recoleta). T9/T10/T11 continuam com os donos atuais.
+
+**Vez de:** Claude | Operador
