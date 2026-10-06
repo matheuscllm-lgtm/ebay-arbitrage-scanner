@@ -400,7 +400,7 @@ mesma candidata" (`CSM2DC 195/342` e `CSMPbC 001/025`), e a segunda impressão C
 de "igual" para "provável" são a mesma carta com menos de 40 pontos na arte (Tag Team e full art
 com foil pesado) ou nome divergente na fonte.
 
-### Revalidação visual (roteiro, §5) — primeira leitura, pendente de conferência do operador
+### Revalidação visual (roteiro, §5) — conferida em resolução plena pelo Claude (06/10), a pedido do operador
 
 `research/pokedata/pipeline/sample_pr53.py` (novo) gera, na pasta de trabalho e fora do Git:
 
@@ -412,8 +412,14 @@ com foil pesado) ou nome divergente na fonte.
   não foi conferida: Victini `SV-P 288` aparece como par de duas referências EN diferentes
   (IDs 84 e 99), caso típico de mesma arte em impressões distintas.
 - `revalidacao_provaveis.jpg`: 48 pares sorteados (semente 20261006) dos 4.255 "provável" de todas
-  as combinações. Leitura reduzida: nenhum par visivelmente errado; a conferência em resolução
-  plena fica com o operador.
+  as combinações. Leitura reduzida: nenhum par visivelmente errado.
+- **Conferência em resolução plena (06/10, recortes de 6 pares por página):** **18/18** pares do
+  PR #53 e **48/48** prováveis sorteados mostram a mesma ilustração; nenhum par errado. Onde a
+  impressão difere e isso é visível na imagem, é o caso esperado de "arte confirmada ≠ impressão":
+  Victini SV-P 288 (promo JP) × IDs EN 84 e 99 (cartas de set); Energia Lutadora BLW 110 × BW-P 132
+  (carimbo Gym Challenge); Basculin de Hisui SWSH273 × S-P 279 (carimbo GYM); Pikachu M23 006
+  (promo) × SV4a 055; Mew CSDC 025 × S8a 030 (25º aniversário); Dragonite FO 4 × Mystery of the
+  Sea 149 (molduras de eras distintas). Edição e acabamento continuam fora do alcance da imagem.
 
 ### O que volta ao repositório nesta rodada
 

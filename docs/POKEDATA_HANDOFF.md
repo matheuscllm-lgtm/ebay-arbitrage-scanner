@@ -50,7 +50,7 @@ com o operador decidindo.
 | Reprocessamento | ✔ (roteiro) | ✔ | — | **executado em 06/10** na máquina do operador (Windows): coleta completa (694 sets, 83.653 registros), `catalogo.xlsx` e `comparacao_pr53.csv` gerados; detalhes em `POKEDATA_REVIEW.md`, "Rodada 4" |
 | Conferências de aceite sem contagens fixas (`accept_run.py`) | ✔ | ✔ | ✔ (11 testes) | 6 de 6 OK sobre a planilha de 06/10 |
 | Coleta tolerante a HTTP 429 (`fetch_cards.py`) | ✔ | ✔ | ✔ (3 testes) | recuperou os 60 sets que falharam na 1ª tentativa |
-| Revalidação visual (arte × impressão) | ✔ (`sample_pr53.py`) | ✔ | — | folhas de contato geradas (18 pares do PR #53 + 48 prováveis); 1ª leitura do Claude sem par errado; **conferência plena e impressão: operador** |
+| Revalidação visual (arte × impressão) | ✔ (`sample_pr53.py`) | ✔ | — | **conferida em resolução plena (06/10): 18/18 + 48/48 com a mesma ilustração**; impressão (edição, acabamento, carimbo) só onde visível na imagem; detalhe em `POKEDATA_REVIEW.md`, rodada 4 |
 
 ## Decisões fechadas: não reabrir sem evidência nova
 
@@ -76,9 +76,9 @@ com o operador decidindo.
 
 1. **Operador:** termos de uso adiados (06/10): anexos ficam públicos por ora; e-mail ao provedor em andamento. Nenhum derivado novo (planilha, CSV, imagens) é publicado até a resposta.
 2. ~~Reprocessar~~ **Feito em 06/10** (rodada 4). Os intermediários (`trabalho/`, 7 GB) ficam na máquina do operador; para refazer, o roteiro continua valendo.
-3. **Operador:** conferir `trabalho/revalidacao_pr53.jpg` e `trabalho/revalidacao_provaveis.jpg` em resolução plena e, para as linhas que usar, a impressão (edição, acabamento, carimbo). As 2 divergências CHS de 04/10 viraram "provável com a mesma candidata"; os 5 subprodutos continuam como categoria própria.
+3. ~~Conferência visual~~ **Feita em 06/10** (18/18 + 48/48). Para as linhas que forem usadas comercialmente, a impressão (edição, acabamento, carimbo) continua exigindo a carta física ou outra fonte.
 4. **GPT:** responder P56-8 (`resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega de 05/10?) e P56-9 (`audit_revision.py` precisa de um modo sem contagens fixas?).
-5. **Operador:** fechar #55 e #58 como superados.
+5. ~~Fechar #55 e #58~~ **Feito em 06/10**, a pedido do operador.
 6. **Operador:** protocolo "bastão" GPT ↔ Claude, **proposto e não aprovado**. Uma issue por frente, com o estado no corpo; cada comentário é um turno com formato fixo e termina com "Vez de: GPT | Claude | Operador"; o operador só repassa a vez.
 
 ## Armadilhas já pagas

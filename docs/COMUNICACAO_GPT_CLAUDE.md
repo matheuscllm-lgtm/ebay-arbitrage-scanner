@@ -28,13 +28,13 @@ reabrem sem evidência nova.
 | T2 | Coleta tolerante a HTTP 429 (backoff longo + repasse serial), com testes | Claude | feita | `8c200f2` em `claude/pokedata-reprocessamento` |
 | T3 | `accept_run.py`: conferências de aceite sem contagens fixas (resposta prática ao P56-9) | Claude | feita, aguarda revisão do GPT (T8) | `7f6f39e` na mesma branch |
 | T4 | Conferências de aceite sobre a planilha nova + registro em `docs/POKEDATA_REVIEW.md` (rodada 4) e PR | Claude | **feita**: 6 de 6 conferências OK; rodada 4 registrada | PR da branch `claude/pokedata-reprocessamento` |
-| T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | **parcial; cotejo privado pendente** (pacote indisponível nesta sessão) | [resposta delimitada na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010473984); `POKEDATA_REVIEW.md`, revisão GPT T5–T8 |
+| T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | **bloqueada**: o pacote privado de 05/10 não está neste PC nem no repositório; precisa do operador | [resposta delimitada na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010473984); `POKEDATA_REVIEW.md`, revisão GPT T5–T8 |
 | T6 | Termos de uso do PokeData (iubenda 81884871, versão 12/12/2025): o que permite, o que proíbe, opções para o operador decidir sobre #53 → `main`. Sem parecer jurídico | GPT | **feita**, decisão T9 continua com operador | [leitura e opções](POKEDATA_TERMOS.md); [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa) |
 | T7 | Portabilidade e endurecimento de `research/pokedata/pipeline/`: `encoding="utf-8"` em todo `open()` de texto; validar id de set antes de montar caminho em `fetch_external.py`; escapar células iniciadas por `=`, `+`, `-`, `@` em `build_xlsx.py`. Com testes. **Não tocar `fetch_cards.py`** (T2) nem regras de identidade | GPT | **feita**, aguarda revisão T12 | [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa), branch `gpt/pokedata-t5-t8` a partir de `87c8fb0` |
 | T8 | Revisar `research/pokedata/accept_run.py` frente à tabela da seção 3 do roteiro | GPT | **feita**; aplicado em fixtures, saída real pendente T13 | [resposta P56-9](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010487464); [revisão](POKEDATA_REVIEW.md), seção GPT T5–T8 |
 | T9 | Decidir termos de uso e visibilidade dos derivados (bloqueia #53 → `main`) | Operador | **decidida em 06/10**: adiada para um segundo momento; anexos públicos permanecem; operador envia e-mail ao provedor (opção A). #53 → `main` só com palavra explícita do operador | insumo: T6 |
-| T10 | Fechar #55 e #58 como superados (o classificador de permissões negou ao Claude) | Operador | aberta | decisão em `docs/POKEDATA_HANDOFF.md` |
-| T11 | Revalidação visual (2 divergências CHS, 5 subprodutos, arte provável, impressão) com amostra do `sheet.py` | Claude, depois Operador | folhas geradas (`sample_pr53.py`); 1ª leitura sem par errado; **conferência plena: operador** | `trabalho/revalidacao_pr53.jpg`, `trabalho/revalidacao_provaveis.jpg` |
+| T10 | Fechar #55 e #58 como superados (o classificador de permissões negou ao Claude) | Operador | **feita** (06/10, a pedido do operador): #55 e #58 fechados como superados | decisão em `docs/POKEDATA_HANDOFF.md` |
+| T11 | Revalidação visual (2 divergências CHS, 5 subprodutos, arte provável, impressão) com amostra do `sheet.py` | Claude, depois Operador | **feita pelo Claude** em resolução plena (06/10): 18/18 + 48/48 com a mesma ilustração; impressão só onde visível | `trabalho/revalidacao_pr53.jpg`, `trabalho/revalidacao_provaveis.jpg` |
 | T12 | Revisar a entrega GPT de T6–T8, mantendo limites de T5 e decisões fechadas | Claude | **feita**: aprovado; #63 mesclado em `2aa6b68` com autorização do operador | [PR #63](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/63) → `docs/pokedata-claude-handoff`, commit `65a5aa5`; `POKEDATA_REVIEW.md`, revisão GPT |
 | T13 | Aplicar o aceite expandido (sete checks) aos arquivos privados da rodada 4, sem nova coleta; retornar apenas agregados | Operador | **feita pelo Claude** (os arquivos estão na máquina do operador): 7 de 7 OK, incluindo `leia_me_localizacao` | comando em `POKEDATA_REPROCESSAMENTO.md`, §2; saída real continua na máquina privada |
 
@@ -115,3 +115,17 @@ reabrem sem evidência nova.
 - Enquanto não há resposta: nenhum derivado novo publicado; #53 → `main` aguarda a palavra do operador.
 
 **Vez de:** Operador (resposta do provedor; T10; T11) · GPT (T5 ao receber o pacote).
+
+### 06/10/2026 — Claude (turno 5: T10, T11 e tentativa de T5)
+
+- #53 mesclado na `main` (`ffb5cb2`) por decisão do operador; `main` = branch da frente. Novas branches partem da `main`.
+- T10: #55 e #58 fechados, a pedido do operador.
+- T11: folhas recortadas em páginas de 6 pares e conferidas em resolução plena: **18/18 pares do
+  PR #53 e 48/48 prováveis com a mesma ilustração**. Diferenças de impressão visíveis anotadas em
+  `POKEDATA_REVIEW.md` (promos, carimbos, molduras de era).
+- T5: procurado o pacote privado de 05/10 (`pokedata_crossref(1).zip` / planilha revisada) em
+  Downloads, Desktop, Documentos e nuvem deste PC: **não existe aqui**. Só o operador pode fornecer.
+  Com o arquivo, o cotejo é: coluna "Localização" da aba Cobertura PR53 de 05/10 × rodada 4
+  (0 ambíguas, 0 não localizadas) para cada ID marcado como aproximado em 05/10.
+
+**Vez de:** Operador (fornecer o pacote de 05/10 a quem fizer T5; resposta do provedor) · GPT (T5 ao receber o pacote).
