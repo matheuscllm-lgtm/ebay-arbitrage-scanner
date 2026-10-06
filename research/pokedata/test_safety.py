@@ -1,4 +1,5 @@
 """Offline regression fixtures; never downloads catalog data."""
+import collections
 import json
 import os
 import sys
@@ -78,7 +79,7 @@ class CollectionTests(unittest.TestCase):
                 if url.endswith('/sets'): return [{'id': 1}, {'id': 2}], 'fixture'
                 if 'set_id=2' in url: raise RuntimeError('fixture failure')
                 return [], 'fixture'
-            with self.assertRaises(RuntimeError): collect(root, fetch)
+            with self.assertRaises(RuntimeError): collect(root, fetch, pause=lambda _: None)
             self.assertEqual(json.loads((root / 'all_cards.json').read_text()), ['previous'])
             self.assertFalse(json.loads((root / 'collection_manifest.json').read_text())['complete'])
             cwd = os.getcwd()
@@ -93,5 +94,40 @@ class CollectionTests(unittest.TestCase):
                 return ([{'id': 1}], 'fixture') if url.endswith('/sets') else ([], 'fixture')
             self.assertEqual(collect(Path(tmp), fetch), [])
             self.assertTrue(json.loads((Path(tmp) / 'collection_manifest.json').read_text())['complete'])
+
+    def test_rate_limit_backs_off_longer_and_retries(self):
+        """HTTP 429 não é falha definitiva: espera bem mais que os 2-11 s dos erros comuns e tenta de novo."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'cards.json'
+            codes = iter(['429', '429', '200'])
+            def download(url, target):
+                code = next(codes)
+                if code == '200': target.write_text('[]')
+                return code
+            pauses = []
+            value, status = fetch_json('fixture', path, lambda v: validate_cards(v, 1), download, pauses.append)
+            self.assertEqual((value, status), ([], 'downloaded'))
+            self.assertGreaterEqual(min(pauses[:2]), 30)
+
+    def test_rate_limit_eventually_gives_up(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'cards.json'
+            with self.assertRaisesRegex(RuntimeError, 'HTTP 429'):
+                fetch_json('fixture', path, lambda v: validate_cards(v, 1), lambda u, p: '429', lambda _: None)
+
+    def test_failed_sets_retried_serially_before_giving_up(self):
+        """Depois da passada paralela, os sets que falharam são refeitos um a um antes de declarar coleta incompleta."""
+        with tempfile.TemporaryDirectory() as tmp:
+            calls = collections.Counter()
+            def fetch(url, path, validator):
+                if url.endswith('/sets'): return [{'id': 1}, {'id': 2}], 'fixture'
+                calls[url] += 1
+                if url.endswith('set_id=2') and calls[url] == 1: raise RuntimeError('HTTP 429')
+                return [], 'fixture'
+            self.assertEqual(collect(Path(tmp), fetch, pause=lambda _: None), [])
+            manifest = json.loads((Path(tmp) / 'collection_manifest.json').read_text())
+            self.assertTrue(manifest['complete'])
+            self.assertEqual(sum(v for u, v in calls.items() if u.endswith('set_id=2')), 2)
+            self.assertEqual([r['status'] for r in manifest['sets']], ['fixture', 'fixture'])
 
 if __name__ == '__main__': unittest.main()
