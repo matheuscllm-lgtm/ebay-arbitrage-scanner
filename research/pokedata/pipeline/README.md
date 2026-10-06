@@ -1,43 +1,37 @@
-# Catálogo de cartas EN / JP / CN e correspondência entre idiomas
+# Catálogo de cartas — correspondências entre idiomas
 
-> Importado para revisão no PR #53. Antes de usar, leia
-> [a revisão vigente](../../../docs/POKEDATA_REVIEW.md): os status abaixo são
-> herdados e há achados pendentes. O XLSX completo está no ZIP original
-> `../inputs/pokedata_crossref.zip`, membro
-> `pokedata_crossref/output/PokeData_catalogo_correspondencia.xlsx`.
-> Nesta cópia, `run_pipeline.sh` foi corrigido para interromper em falha de
-> qualquer processo de extração; o snapshot original não foi regenerado.
-> Revisão Claude (issue #56): `build_xlsx.py` passou a usar `identity.py` para
-> exclusividade JP com evidência positiva e deduplicação por número completo + nome.
-> Testado só com fixtures; o snapshot não foi regenerado.
+> Leia primeiro [a revisão técnica de 05/10/2026](../../../docs/POKEDATA_REVISION_20261005.md). Há bloqueadores de integração. A planilha revisada e o CSV descritos abaixo pertencem ao pacote privado, não a esta pasta pública. Os dados em inputs/ são snapshots históricos.
 
 Cruza as cartas em inglês do PokeData com as equivalentes em japonês e chinês simplificado.
-A equivalência é confirmada por comparação de imagem da ilustração, não por nome ou código.
+A arte é confirmada por comparação de imagem da ilustração, não por nome ou código.
+"Arte confirmada" não é versão confirmada: edição, acabamento e carimbo não são conferidos.
 
 Extração feita em 04/10/2026. Resultado completo em `output/PokeData_catalogo_correspondencia.xlsx`.
 
 ## Resultado
 
-| Idioma | Sets | Cartas únicas | Confirmadas | Inconclusivas | Exclusivas |
-| --- | --- | --- | --- | --- | --- |
-| Inglês | 183 | 23.047 | 19.794 | 3.232 | 21 |
-| Japonês | 394 | 30.188 | 25.660 | 3.574 | 954 |
-| Chinês simplificado | 117 | 11.006 | 9.946 | 1.060 | 0 |
+| Idioma | Sets | Cartas únicas | Arte confirmada | Prováveis | Inconclusivas | Não encontradas | Exclusivas |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Inglês | 183 | 23.047 | 18.673 | 1.121 | 2.747 | 485 | 21 |
+| Japonês | 394 | 30.188 | 24.158 | 1.502 | 3.574 | 635 | 319 |
+| Chinês simplificado | 117 | 11.006 | 9.606 | 340 | 963 | 97 | 0 |
 
-- 86% das cartas em inglês têm equivalente confirmado em japonês ou chinês simplificado.
-- A aba Correspondência tem 19.433 linhas: 19.100 com japonês, 7.598 com chinês simplificado, 7.265 com os dois.
-- O PokeData só tem chinês simplificado. Não há chinês tradicional no site.
+- 81% das cartas em inglês têm equivalente com arte confirmada em japonês ou chinês simplificado.
+- A aba Correspondência tem 18.345 linhas: 17.707 com japonês, 7.189 com chinês simplificado, 6.551 com os dois.
+- Das 3.490 referências em inglês do PR #53, 2.516 (72%) têm arte confirmada aqui.
+- O PokeData só tem chinês simplificado. Os 116 registros em chinês tradicional do PR #53 estão preservados na planilha.
 
 Detalhes, critérios e limitações: [docs/ENTREGA.md](docs/ENTREGA.md).
-Estado do projeto e próximos passos: [docs/ESTADO_DO_PROJETO.md](docs/ESTADO_DO_PROJETO.md).
+Estado do projeto, resposta à crítica do GPT e próximos passos: [docs/ESTADO_DO_PROJETO.md](docs/ESTADO_DO_PROJETO.md).
 
 ## Conteúdo da pasta
 
 | Caminho | O que é |
 | --- | --- |
-| `output/PokeData_catalogo_correspondencia.xlsx` | Planilha final, 10 abas, sem preços |
+| `output/PokeData_catalogo_correspondencia.xlsx` | Planilha final, 13 abas, sem preços |
 | `docs/ENTREGA.md` | Documento de entrega: método, números, inconclusivos, exclusivas |
 | `docs/ESTADO_DO_PROJETO.md` | O que foi feito, contagens verificadas, limitações, próximos passos |
+| `docs/comparacao_pr53.csv` | Os 388 registros confirmados do PR #53 comparados com esta rodada, sem preços |
 | `run_pipeline.sh` | Ordem completa de execução |
 | `*.py` | Scripts de cada etapa (tabela abaixo) |
 
@@ -63,10 +57,11 @@ bash ../run_pipeline.sh
 | 7 | `match.py` | candidatas e primeira comparação → `pairs_*.pkl` | 90 min |
 | 8 | `stage2_run.py` | segunda comparação → `s2_*.pkl` | 100 min |
 | 9 | `limitless_todo.py`, `fetch_limitless.py`, `limitless_pairs.py`, `stage2_pairs.py`, `limitless_classify.py` | checagem externa das cartas sem par → `lim_res.pkl` | 15 min |
-| 10 | `assemble.py` | classificação final → `result.pkl` | 3 min |
-| 11 | `lim_jp.py` | checagem externa das exclusivas japonesas → `lim_jp.pkl` | 5 min |
-| 12 | `build_xlsx.py` | planilha de entrega | 1 min |
+| 10 | `assemble.py` | classificação → `result.pkl` | 3 min |
+| 11 | `lim_jp.py`, depois `assemble.py` de novo | evidência externa das exclusivas japonesas → `lim_jp.pkl`; a segunda passada aplica | 8 min |
+| 12 | `build_xlsx.py` | planilha de entrega; com a planilha do PR #53 como segundo argumento, acrescenta a cobertura das referências e o chinês tradicional | 1 min |
 | — | `validate_lim.py`, `sheet.py` | validação por amostra e folhas de contato para conferência visual | — |
+| — | `compare_pr53.py` | compara a planilha do PR #53 com o resultado desta rodada → `comparacao_pr53.csv` | 1 min |
 
 \* Em uma máquina de 2 núcleos e 8 GB de memória. O total fica perto de 4 horas e 7 GB de disco.
 
@@ -74,21 +69,23 @@ Requisitos: Python 3.10 ou mais novo, `curl`, e os pacotes de `requirements.txt`
 
 ## Como a equivalência é decidida
 
-1. **Cartas únicas.** Registros do mesmo set, número e nome viram uma carta; Reverse Holo, 1st Edition e semelhantes são variantes.
+1. **Cartas únicas.** Registros do mesmo set, número e nome viram uma carta; Reverse Holo, 1st Edition e semelhantes são variantes. A comparação usa uma imagem por carta.
 2. **Candidatas.** Para cada carta, as 15 imagens mais parecidas no outro idioma e até 14 cartas de nome compatível.
-3. **Confirmação.** Pontos SIFT na área da arte, com alinhamento. Confirma com 12 pontos coincidentes ou mais dentro da arte e cores compatíveis.
+3. **Comparação.** Pontos SIFT na área da arte, com alinhamento e checagem de cor.
 4. **Versões recoloridas.** Rainbow, shiny e dourada compartilham o traço da arte normal. São separadas pela cor e descartadas quando há um par mais forte no mesmo set.
-5. **Pares fracos** (12 a 39 pontos) só valem se os dois sets já tiverem outros pares fortes entre si ou se a carta inteira também bater em baixa resolução. Na planilha aparecem como confiança média.
-6. **Exclusiva** só com indício positivo. "Não encontrei" vai para os inconclusivos.
+5. **Arte confirmada.** 40 pontos coincidentes ou mais dentro da arte, cores compatíveis e nome compatível entre os idiomas.
+6. **Provável.** Par aprovado pela imagem com 12 a 39 pontos, ou com nome divergente entre os idiomas. Fica fora da Correspondência, na aba Prováveis, com o motivo.
+7. **Exclusiva** só com fonte externa dizendo que não há impressão em outro idioma. "Não encontrada" é outro status e não quer dizer exclusiva.
 
 As regras estão em `rules.py` e `assemble.py`.
 
 ## Cuidados
 
-- **Termos de uso do PokeData.** O texto fica em página externa que não foi possível ler. Conferir antes de tornar o repositório público ou redistribuir a planilha.
+- **Termos de uso do PokeData.** Lidos em 04/10/2026 ([texto](https://www.iubenda.com/terms-and-conditions/81884871), versão de 12/12/2025). Proíbem copiar, baixar, compartilhar e publicar o conteúdo, salvo para uso pessoal e não comercial, com atribuição. Consequência prática: `output/` (planilha) e `docs/comparacao_pr53.csv` não devem ir para repositório público; scripts e documentação podem. Leitura sem valor de parecer jurídico.
+- **Arte confirmada é mesma ilustração.** Reverse Holo, 1st Edition, Unlimited, Shadowless e carimbos são variantes da mesma carta, e a versão não é conferida. A coluna Versão da Correspondência mostra as 13.270 linhas em que há variantes.
 - **Ritmo de acesso.** Os scripts usam poucas conexões e pausas. Não aumentar.
 - **Preços.** Nenhum arquivo daqui contém preços.
-- **Confiança média.** As 1.370 linhas com menos de 40 pontos pedem conferência visual antes de uso em venda. Em 112 pares conferidos lado a lado, os 2 erros estavam nessa faixa.
+- **Prováveis.** Os 4.111 pares da aba Prováveis pedem conferência visual. Em 112 pares vistos lado a lado antes da reclassificação, os 2 erros tinham menos de 40 pontos; entre os de nome divergente há registros do PokeData com nome ou imagem de outra carta.
 
 ## Fontes
 

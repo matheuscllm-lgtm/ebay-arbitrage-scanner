@@ -1,6 +1,9 @@
-"""Etapa 10 — classifica cada carta única: equivalente confirmado, inconclusiva ou exclusiva.
+"""Etapa 10 — classifica cada carta única: arte confirmada, provável, inconclusiva, não encontrada.
 
-Entrada: pairs_*.pkl, s2_*.pkl, lim_res.pkl, limitless_jobs.json, catalog.pkl   Saída: result.pkl
+"Arte confirmada" quer dizer mesma ilustração. Edição, acabamento e carimbo não são conferidos aqui.
+Roda duas vezes: antes e depois de lim_jp.py, que consulta listas externas de impressões japonesas.
+
+Entrada: pairs_*.pkl, s2_*.pkl, lim_res.pkl, limitless_jobs.json, catalog.pkl, lim_jp.pkl (se existir)   Saída: result.pkl
 """
 import pickle, json, re, os
 from collections import defaultdict, Counter
@@ -8,6 +11,7 @@ from datetime import datetime
 from common import *
 import rules
 from coarse import coarse
+from identity_policy import add_bridge_candidates, overall_status
 
 rows, uinfo = pickle.load(open('catalog.pkl', 'rb'))
 sets, cards = load(); units = art_units(cards)
@@ -22,9 +26,10 @@ BASIC = re.compile(r'^(basic)?(grass|fire|water|lightning|psychic|fighting|darkn
 def is_energy(k): return bool(BASIC.match(k[2]))
 
 # ---------------------------------------------------------------- pairwise evidence
-CONF = {}; GRAY = {}
+CONF = {}; GRAY = {}; DIRECT_EN_CH = set()
 for tag in ('EN_JA', 'EN_CH', 'CH_JA'):
     pairs = pickle.load(open(f'pairs_{tag}.pkl', 'rb')); s2 = pickle.load(open(f's2_{tag}.pkl', 'rb'))
+    if tag == 'EN_CH': DIRECT_EN_CH = set(s2)
     conf, gray, npr = rules.classify(pairs, s2, BAD)
     # coarse whole-image fallback for same-name pairs that SIFT could not settle (textured full arts, foil scans)
     hasB = {b for c in conf.values() for b in c}
@@ -61,7 +66,9 @@ if os.path.exists('limitless_jobs.json'):
             if r['status'] != 200: LIM[k] = dict(kind='sem página'); continue
             tk = key(r['title'].split(' - ')[0])
             if not (tk and (tk in k[2] or k[2] in tk or tk[:6] == k[2][:6])): LIM[k] = dict(kind='sem página'); continue
-            if not r['jp']: LIM[k] = dict(kind='sem impressão japonesa'); continue
+            if not r['jp']:
+                LIM[k] = dict(kind='sem impressão japonesa' if r.get('jp_section_valid') is True else 'seção japonesa não validada')
+                continue
             inside = []; outside = []
             for code, num, sname in r['jp']:
                 n = re.search(r'(\d+)', num)
@@ -96,40 +103,73 @@ for tag in CONF:
         c = CONF[tag][a]
         if is_energy(a) and len(c) > 1:
             best = rank(a, c)[0]; CONF[tag][a] = {best: c[best]}
-REV = {t: defaultdict(dict) for t in CONF}; REVG = {t: defaultdict(dict) for t in GRAY}
+
+# ---------------------------------------------------------------- faixas: arte confirmada x provável
+# Um par aprovado pelas regras de imagem só conta como "arte confirmada" com 40 pontos coincidentes ou mais
+# e nomes compatíveis. Os demais ficam como "provável", com o motivo registrado.
+M_PTS = 'menos de 40 pontos coincidentes na arte'
+M_NOME = 'imagem coincide, mas o nome diverge entre os idiomas no PokeData (tradução diferente ou erro da fonte)'
+M_ESP = 'imagem coincide, mas um dos idiomas traz o nome de outro Pokémon (erro de nome ou de imagem no PokeData)'
+M_VIA = 'ligada só por meio da carta japonesa, com nome divergente'
+def motivo(a, b, v):
+    if v[1] == 0:
+        da, db = uinfo[a].get('_dex'), uinfo[b].get('_dex')
+        return M_ESP if (da and db and da != db) else M_NOME
+    if v[0].get('n_in', 0) < 40: return M_PTS
+    return ''
+PROV = {t: defaultdict(dict) for t in CONF}
 for t in CONF:
-    for a, c in CONF[t].items():
-        for b, v in c.items(): REV[t][b][a] = v
-for t in GRAY:
-    for a, c in GRAY[t].items():
-        for b, v in c.items(): REVG[t][b][a] = v
-# EN -> CN through the Japanese card
+    for a in list(CONF[t]):
+        for b in list(CONF[t][a]):
+            v = CONF[t][a][b]; m = motivo(a, b, v)
+            if m:
+                PROV[t][a][b] = (v[0], v[1], v[2], m); del CONF[t][a][b]
+        if not CONF[t][a]: del CONF[t][a]
+    print(t, 'arte confirmada:', sum(len(v) for v in CONF[t].values()), 'pares | provável:', Counter(v[3] for d in PROV[t].values() for v in d.values()))
+
+def revd(D):
+    out = {t: defaultdict(dict) for t in D}
+    for t in D:
+        for a, c in D[t].items():
+            for b, v in c.items(): out[t][b][a] = v
+    return out
+REV = revd(CONF); REVP = revd(PROV); REVG = revd(GRAY)
+
+# EN -> CN por meio da carta japonesa: as duas ligações precisam ser "arte confirmada" e não pode haver
+# comparação direta EN-CN (se houve e ficou fraca, vale o resultado direto)
+TOK = {}
+def tok(k):
+    if k not in TOK: TOK[k] = set(tokens(units[k][0]['_base']))
+    return TOK[k]
+def name_compat(a, b):
+    if a[2] == b[2]: return 2
+    ta, tb = tok(a), tok(b)
+    if not ta or not tb: return 0
+    if ta <= tb or tb <= ta: return 1
+    return 1 if len(ta & tb) / len(ta | tb) >= 0.6 else 0
 VIA = defaultdict(dict)
-def strong(v): return v[0].get('n_in', 0) >= 40
-for a, c in CONF['EN_JA'].items():
-    for j, v1 in c.items():
-        if not strong(v1): continue
-        for cn, v2 in REV['CH_JA'].get(j, {}).items():
-            if strong(v2) and cn not in CONF['EN_CH'].get(a, {}): VIA[a][cn] = j
+# Preserve the output schema, but indirect links are never confirmations.
+add_bridge_candidates(CONF, REV, PROV, GRAY, DIRECT_EN_CH)
+REVP = revd(PROV)
+REVVIA = defaultdict(dict)
+for a, c in VIA.items():
+    for cn, j in c.items(): REVVIA[cn][a] = j
 
 def partners(k, T):
-    """(confirmed dict, gray dict) of unit k towards language T"""
+    """(arte confirmada, provável, candidatas abaixo do limite) da carta k no idioma T"""
     L = LANG[k]
     if L == 'ENGLISH':
-        if T == 'JAPANESE': return CONF['EN_JA'].get(k, {}), GRAY['EN_JA'].get(k, {})
+        if T == 'JAPANESE': return CONF['EN_JA'].get(k, {}), PROV['EN_JA'].get(k, {}), GRAY['EN_JA'].get(k, {})
         d = dict(CONF['EN_CH'].get(k, {}))
-        for cn, j in VIA.get(k, {}).items(): d.setdefault(cn, 'via')
-        return d, GRAY['EN_CH'].get(k, {})
+        for cn in VIA.get(k, {}): d.setdefault(cn, 'via')
+        return d, PROV['EN_CH'].get(k, {}), GRAY['EN_CH'].get(k, {})
     if L == 'JAPANESE':
-        if T == 'ENGLISH': return REV['EN_JA'].get(k, {}), REVG['EN_JA'].get(k, {})
-        return REV['CH_JA'].get(k, {}), REVG['CH_JA'].get(k, {})
-    if T == 'JAPANESE': return CONF['CH_JA'].get(k, {}), GRAY['CH_JA'].get(k, {})
+        if T == 'ENGLISH': return REV['EN_JA'].get(k, {}), REVP['EN_JA'].get(k, {}), REVG['EN_JA'].get(k, {})
+        return REV['CH_JA'].get(k, {}), REVP['CH_JA'].get(k, {}), REVG['CH_JA'].get(k, {})
+    if T == 'JAPANESE': return CONF['CH_JA'].get(k, {}), PROV['CH_JA'].get(k, {}), GRAY['CH_JA'].get(k, {})
     d = dict(REV['EN_CH'].get(k, {}))
-    for j, v2 in CONF['CH_JA'].get(k, {}).items():
-        if not strong(v2): continue
-        for e, v1 in REV['EN_JA'].get(j, {}).items():
-            if strong(v1): d.setdefault(e, 'via')
-    return d, REVG['EN_CH'].get(k, {})
+    for e in REVVIA.get(k, {}): d.setdefault(e, 'via')
+    return d, REVP['EN_CH'].get(k, {}), REVG['EN_CH'].get(k, {})
 
 # cards of the same name that cannot be checked because PokeData has no image for them
 NOIMG = defaultdict(lambda: defaultdict(list))
@@ -145,53 +185,51 @@ def noimg_cands(k, T):
         if -400 <= dd <= hi: out.append(c)
     return out
 LATEST = {L: max(sdate((s['id'],)) for s in sets.values() if s['language'] == L) for L in ORDER}
-PRE_BW = {'Call of Legends', 'HeartGold SoulSilver', 'Platinum', 'Diamond & Pearl', 'EX Ruby & Sapphire', 'e-Card', 'Legendary Collection', 'Neo', 'Gym', 'Base'}
+
+# Listas externas são pistas de cobertura, nunca prova de exclusividade.
+LJP = pickle.load(open('lim_jp.pkl', 'rb')) if os.path.exists('lim_jp.pkl') else {}
+OK, PR, NE = 'arte confirmada', 'provável', 'não encontrada'
 
 STATUS = {}
 for k in units:
     L = LANG[k]; st = {}
     for T in ORDER:
         if T == L: continue
-        c, g = partners(k, T)
-        if c: st[T] = 'confirmado'
+        c, p, g = partners(k, T)
+        if c: st[T] = OK
+        elif p: st[T] = PR + ': ' + max(p.values(), key=lambda v: v[0].get('n_in', 0))[3]
         elif not has_img(k): st[T] = 'inconclusivo: carta sem imagem no PokeData'
         elif g:
             why = max(g.values(), key=lambda v: v[0].get('n_in', 0))[2]
             st[T] = 'inconclusivo: ' + ('mesma arte provável, versão ou impressão diferente' if why == 'versão diferente provável' else 'imagem parecida, abaixo do limite de confirmação')
         elif noimg_cands(k, T): st[T] = 'inconclusivo: candidata de mesmo nome sem imagem no PokeData'
         elif is_energy(k): st[T] = 'inconclusivo: energia básica, desenho repetido em muitas impressões'
-        else: st[T] = 'não encontrado'
+        else: st[T] = NE
     # language-specific refinements
-    if L == 'ENGLISH' and st['JAPANESE'] == 'não encontrado':
+    if L == 'ENGLISH' and st['JAPANESE'] == NE:
         lim = LIM.get(k)
         if lim and lim['kind'] == 'impressão japonesa':
             st['JAPANESE'] = 'inconclusivo: impressão japonesa existe fora do catálogo do PokeData' if not lim['inside'] else 'inconclusivo: mesma carta existe em japonês no PokeData, arte não confirmada'
         elif lim and lim['kind'] == 'sem impressão japonesa':
-            st['JAPANESE'] = 'exclusiva: sem impressão japonesa (Limitless)'
-        else:
-            st['JAPANESE'] = 'inconclusivo: não encontrada no PokeData, exclusividade não comprovada'
-    if L == 'JAPANESE' and st['ENGLISH'] == 'não encontrado' and (LATEST['ENGLISH'] - sdate(k)).days < 150:
+            st['JAPANESE'] = 'inconclusivo: Limitless não lista impressão japonesa; exclusividade não comprovada'
+        elif lim and lim['kind'] == 'seção japonesa não validada':
+            st['JAPANESE'] = 'inconclusivo: seção de impressões japonesas ausente ou ilegível'
+    if L == 'JAPANESE' and st['ENGLISH'] == NE and (LATEST['ENGLISH'] - sdate(k)).days < 150:
         st['ENGLISH'] = 'inconclusivo: set recente, versão em inglês pode ainda não ter saído'
-    if L == 'CHINESE' and st['JAPANESE'] == 'não encontrado':
-        st['JAPANESE'] = 'inconclusivo: não encontrada no PokeData, exclusividade não comprovada'
-    # overall bucket
-    vals = list(st.values())
-    if any(v == 'confirmado' for v in vals): ov = 'confirmado'
-    elif L == 'ENGLISH':
-        ov = 'exclusiva' if (st['JAPANESE'].startswith('exclusiva') and st['CHINESE'] == 'não encontrado') else 'inconclusivo'
-    elif L == 'JAPANESE':
-        ov = 'exclusiva' if all(v == 'não encontrado' for v in vals) else 'inconclusivo'
-    else:
-        ov = 'inconclusivo'
-    st['geral'] = ov
+    # overall bucket. "Não encontrada" não é "exclusiva": exclusiva exige fonte externa dizendo que não há outra impressão.
+    vals = list(st.values()); crit = ''
+    ov = overall_status(vals)
+    if L == 'JAPANESE' and k in LJP and not LJP[k]:
+        crit = 'Limitless sem impressão internacional listada; exclusividade não comprovada'
+    st['geral'] = ov; st['criterio'] = crit
     STATUS[k] = st
 
-pickle.dump(dict(CONF={t: dict(v) for t, v in CONF.items()}, GRAY={t: dict(v) for t, v in GRAY.items()}, VIA=dict(VIA), STATUS=STATUS, LIM=LIM), open('result.pkl', 'wb'))
+pickle.dump(dict(CONF={t: dict(v) for t, v in CONF.items()}, PROV={t: dict(v) for t, v in PROV.items()}, GRAY={t: dict(v) for t, v in GRAY.items()}, VIA=dict(VIA), STATUS=STATUS, LIM=LIM), open('result.pkl', 'wb'))
 c = Counter((LANG[k], st['geral']) for k, st in STATUS.items())
 for x in sorted(c): print(x, c[x])
 c = Counter()
 for k, st in STATUS.items():
-    if st['geral'] != 'confirmado':
+    if st['geral'] != OK:
         for T, v in st.items():
-            if T != 'geral': c[(LANG[k][:2], T[:2], v)] += 1
+            if T in ORDER: c[(LANG[k][:2], T[:2], v)] += 1
 for x in sorted(c): print(x, c[x])

@@ -5,6 +5,7 @@ Guarda, por carta, as impressões japonesas listadas na página.   Saída: ext/l
 import json, re, os, time, html, requests, threading
 from concurrent.futures import ThreadPoolExecutor
 from common import *
+from limitless_parse import parse_prints
 sets, cards = load(); units = art_units(cards)
 T = json.load(open('limitless_todo.json')); code = {int(k): v for k, v in T['code'].items()}
 PROMO = {'Scarlet & Violet Promos': 'SVP', 'Sword & Shield Promo': 'SP', 'Sun & Moon Black Star Promo': 'SMP', 'XY Black Star Promos': 'XYP', 'Black and White Promos': 'BWP', 'Mega Evolution Promos': 'MEP'}
@@ -25,7 +26,10 @@ tl = threading.local()
 def get(job):
     (lc, num), ks = job
     out = f"ext/limitless/{lc}_{num}.json"
-    if os.path.exists(out): return
+    if os.path.exists(out):
+        try:
+            if json.load(open(out)).get('parse_version') == 2: return
+        except (ValueError, OSError): pass
     if not hasattr(tl, 's'): tl.s = requests.Session()
     for a in range(3):
         try:
@@ -35,13 +39,13 @@ def get(job):
         time.sleep(2 + 2 * a)
     else:
         return
-    res = dict(status=r.status_code, title='', jp=[], intl=[])
+    res = dict(status=r.status_code, title='', jp=[], intl=[], jp_section_valid=False, parse_version=2)
     if r.status_code == 200:
         h = r.text
         t = re.search(r'<title>(.*?)</title>', h, re.S); res['title'] = html.unescape(t.group(1)).strip() if t else ''
-        i = h.find('JP. Prints'); j = h.find('</table>', i if i > 0 else 0)
-        if i > 0:
-            res['jp'] = [(a, b, html.unescape(c).strip()) for a, b, c in re.findall(r'href="/cards/jp/([^/"]+)/([^"/]+)"\s*>\s*([^<]+?)\s*<span', h[i:j])]
+        prints = parse_prints(h, japanese=True)
+        res['jp_section_valid'] = prints is not None
+        res['jp'] = prints or []
         i0 = h.find('prints-table') 
         res['has_prints_table'] = i0 > 0
     json.dump(res, open(out, 'w'), ensure_ascii=False)
