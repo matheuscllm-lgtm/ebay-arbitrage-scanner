@@ -48,6 +48,7 @@ bash ../run_pipeline.sh
 
 | Etapa | Script | Entrada → saída | Tempo* |
 | --- | --- | --- | --- |
+| 0 | `preflight.py` | checagem offline: dependências, disco, pasta não versionada, coleta anterior; falha interrompe | segundos |
 | 1 | `fetch_cards.py` | PokeData → `sets.json`, `cards/`, `all_cards.json` | 5 min |
 | 2 | `fetch_external.py`, `fetch_tcgdex.py` | pokemon-tcg-data, TCGdex, PokeAPI → `ext/` | 5 min |
 | 3 | `catalog.py` | catálogo com raridade, nome nativo, buscas do eBay → `catalog.pkl` | 2 min |

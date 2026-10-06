@@ -12,6 +12,8 @@ from collections import Counter
 from pathlib import Path
 from openpyxl import load_workbook
 
+from bridge_partial_ids import build_bridge, id_namespace_check
+
 ROOT = Path(__file__).resolve().parent
 
 
@@ -79,9 +81,11 @@ def audit():
         "languages": dict(Counter(r["Idioma"] for r in confirmed)),
         "pending_statuses": dict(Counter(r["Status"] for r in pending)),
         "orphan_ids": len({r["ID EN"] for r in confirmed + pending} - ids)}
-    catalog_ids = {r["ID PokeData"] for r in catalogs["EN"]}
-    report["partial"]["ids_found_in_full_catalog"] = len(ids & catalog_ids)
-    report["partial"]["ids_missing_in_full_catalog"] = len(ids - catalog_ids)
+    # `ID EN` is the partial base's row number (1..3490), not a PokeData ID:
+    # integer overlap is coincidence, so bridge by set + number + name instead.
+    report["partial"]["id_en_is_row_number"] = sorted(ids) == list(range(1, len(en) + 1))
+    report["partial"]["id_namespace"] = id_namespace_check(en, catalogs["EN"])
+    report["partial"]["metadata_bridge"] = dict(Counter(b["status"] for b in build_bridge(en, catalogs["EN"])))
     w.close()
     w = load_workbook(ROOT / "pokedata_sets_por_idioma.xlsx", read_only=True, data_only=True)
     report["standalone_sets"] = dict(Counter(r["Idioma"] for r in records(w, "Todos os sets")))

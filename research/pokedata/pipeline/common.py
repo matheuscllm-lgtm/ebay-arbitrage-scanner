@@ -50,6 +50,9 @@ def split_name(name):
     return re.sub(r'\s+', ' ', n).strip(), list(dict.fromkeys(tags[::-1]))
 
 def key(s):
+    # ♀/♂ são identidade (Nidoran♀ ≠ Nidoran♂) e somem no corte ASCII; viram 'f'/'m',
+    # a mesma convenção de catalog.py, então 'Nidoran F' == 'Nidoran♀' (cadastro duplo).
+    s = s.replace('\u2640', 'f').replace('\u2642', 'm')
     s = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode()
     s = s.lower().replace('&', 'and')
     return re.sub(r'[^a-z0-9]', '', s)

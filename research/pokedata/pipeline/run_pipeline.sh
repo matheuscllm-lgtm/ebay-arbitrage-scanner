@@ -7,6 +7,7 @@ R="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="${1:-PokeData_catalogo_correspondencia.xlsx}"
 PR53="${2:-}"   # opcional: caminho da planilha do PR #53
 
+python3 "$R/preflight.py" ${PR53:+"$PR53"}         # 0  checagem offline (dependências, disco, pasta não versionada, coleta)
 python3 "$R/fetch_cards.py"                       # 1  sets e cartas do PokeData
 python3 "$R/fetch_external.py"                    # 2  pokemon-tcg-data, TCGdex (sets), PokeAPI
 python3 "$R/fetch_tcgdex.py"                      # 2b TCGdex (cartas)

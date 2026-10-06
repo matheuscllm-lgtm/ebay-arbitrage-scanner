@@ -138,4 +138,8 @@ Não confundir snapshots antigos em inputs/ com a entrega revisada. Não integra
 arte confirmada como impressão confirmada. Os dois defeitos reproduzidos naquela revisão foram corrigidos em código; leia
 [`docs/POKEDATA_FIXES_20261005.md`](docs/POKEDATA_FIXES_20261005.md).
 Os 20 testes offline passaram, mas os dados ainda não foram reprocessados por imagem.
+Resolução de referências sem desempate às cegas, normalização de códigos (`reference_match.py`),
+ponte das 3.490 referências e conciliação dos 375 pares: `docs/POKEDATA_REVIEW.md` (rodada 3).
+Reprocessar só pelo roteiro [`docs/POKEDATA_REPROCESSAMENTO.md`](docs/POKEDATA_REPROCESSAMENTO.md),
+em ambiente privado, depois da decisão do operador sobre os termos de uso da fonte.
 
