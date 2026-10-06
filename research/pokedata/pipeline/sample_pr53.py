@@ -1,6 +1,6 @@
 """Apoio — folhas de contato para a revalidação visual pedida em docs/POKEDATA_REPROCESSAMENTO.md, §5.
 
-Uso (na pasta de trabalho): python ../sample_pr53.py <planilha do PR #53> <comparacao_pr53.csv> [n_provaveis] [semente]
+Uso, de dentro de pipeline/trabalho/ (a pasta de trabalho do roteiro): python ../sample_pr53.py <planilha do PR #53> <comparacao_pr53.csv> [n_provaveis] [semente]
 Saídas locais (não versionar): revalidacao_pr53.jpg (pares do PR #53 que ficaram "provável"/"inconclusiva"
 aqui, lado a lado com a candidata) e revalidacao_provaveis.jpg (amostra aleatória da aba Prováveis).
 """
@@ -14,7 +14,10 @@ from sheet import sheet
 src, comp = sys.argv[1], sys.argv[2]
 n_prov = int(sys.argv[3]) if len(sys.argv) > 3 else 48
 seed = int(sys.argv[4]) if len(sys.argv) > 4 else 20261006
-R = pickle.load(open('result.pkl', 'rb')); CONF, PROV, GRAY = R['CONF'], R['PROV'], R['GRAY']
+# result.pkl é intermediário gerado pelo próprio pipeline nesta máquina (assemble.py), não dado externo.
+with open('result.pkl', 'rb') as f:
+    R = pickle.load(f)
+CONF, PROV, GRAY = R['CONF'], R['PROV'], R['GRAY']
 sets, cards = load(); units = art_units(cards)
 LANG = {k: sets[k[0]]['language'] for k in units}
 en_by = defaultdict(list)
@@ -24,8 +27,9 @@ for k in units:
 def unit_code(u): return (set_norm(sets[u[0]]['code'] or ''), number_norm(u[1]))
 
 # 1) pares do PR #53 que não ficaram "igual": referência EN × candidata desta rodada
-wanted = {(r['id_en'], r['idioma'], r['codigo_pr53']): r['resultado'] for r in csv.DictReader(open(comp, encoding='utf-8-sig', newline=''))
-          if r['idioma'] in ('JP', 'CHS') and ('provável' in r['resultado'] or 'inconclusiva' in r['resultado'])}
+with open(comp, encoding='utf-8-sig', newline='') as f:
+    wanted = {(r['id_en'], r['idioma'], r['codigo_pr53']): r['resultado'] for r in csv.DictReader(f)
+              if r['idioma'] in ('JP', 'CHS') and ('provável' in r['resultado'] or 'inconclusiva' in r['resultado'])}
 ws = load_workbook(src, read_only=True, data_only=True)['Detalhes confirmados']
 hdr = None; pairs = []; labels = []
 for row in ws.iter_rows(min_row=4, values_only=True):

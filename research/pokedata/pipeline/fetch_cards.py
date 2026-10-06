@@ -82,7 +82,7 @@ def fetch_json(url, path, validator, download=curl, pause=time.sleep):
             except (OSError, ValueError, TypeError, KeyError) as exc:
                 error = str(exc)
                 errors += 1
-                pause(2 + errors * 3)
+                pause(2 + (errors - 1) * 3)  # 2, 5, 8, 11 s, como antes
         raise RuntimeError(f'Failed to collect {url}: {error}')
     finally:
         temporary.unlink(missing_ok=True)
@@ -110,6 +110,8 @@ def collect(root=Path('.'), fetch=fetch_json, pause=time.sleep):
             if report['status'] == 'failed':
                 pause(SERIAL_RETRY_PAUSE)
                 results[index] = get(sets[index])
+                if results[index][0]['status'] == 'failed' and 'HTTP 429' in results[index][0].get('error', ''):
+                    break  # a fonte continua limitando: não insistir set a set (cada um custaria ~8 min)
         manifest['sets'] = [report for report, _ in results]
         failed = [r['id'] for r in manifest['sets'] if r['status'] == 'failed']
         if failed:

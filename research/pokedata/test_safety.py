@@ -110,10 +110,38 @@ class CollectionTests(unittest.TestCase):
             self.assertGreaterEqual(min(pauses[:2]), 30)
 
     def test_rate_limit_eventually_gives_up(self):
+        """Cinco tentativas com as quatro esperas longas; depois desiste, sem laço infinito."""
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'cards.json'
+            calls = []; pauses = []
             with self.assertRaisesRegex(RuntimeError, 'HTTP 429'):
-                fetch_json('fixture', path, lambda v: validate_cards(v, 1), lambda u, p: '429', lambda _: None)
+                fetch_json('fixture', path, lambda v: validate_cards(v, 1), lambda u, p: calls.append(u) or '429', pauses.append)
+            self.assertEqual(len(calls), 5)
+            self.assertEqual(pauses, [30, 60, 120, 240])
+
+    def test_ordinary_error_schedule_unchanged(self):
+        """Erros comuns (HTTP 503 etc.) mantêm 4 tentativas e as esperas de 2, 5, 8 e 11 s."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'cards.json'
+            calls = []; pauses = []
+            with self.assertRaisesRegex(RuntimeError, 'HTTP 503'):
+                fetch_json('fixture', path, lambda v: validate_cards(v, 1), lambda u, p: calls.append(u) or '503', pauses.append)
+            self.assertEqual(len(calls), 4)
+            self.assertEqual(pauses, [2, 5, 8, 11])
+
+    def test_serial_retry_stops_at_first_persistent_rate_limit(self):
+        """Se o primeiro set refeito falha de novo por 429, a fonte continua limitando: não insistir nos demais."""
+        with tempfile.TemporaryDirectory() as tmp:
+            calls = collections.Counter()
+            def fetch(url, path, validator):
+                if url.endswith('/sets'): return [{'id': 1}, {'id': 2}, {'id': 3}], 'fixture'
+                calls[url] += 1
+                if url.endswith('set_id=1'): return [], 'fixture'
+                raise RuntimeError('Failed to collect: HTTP 429')
+            with self.assertRaisesRegex(RuntimeError, 'Incomplete collection'):
+                collect(Path(tmp), fetch, pause=lambda _: None)
+            self.assertEqual(sum(v for u, v in calls.items() if u.endswith('set_id=2')), 2)
+            self.assertEqual(sum(v for u, v in calls.items() if u.endswith('set_id=3')), 1)
 
     def test_failed_sets_retried_serially_before_giving_up(self):
         """Depois da passada paralela, os sets que falharam são refeitos um a um antes de declarar coleta incompleta."""
