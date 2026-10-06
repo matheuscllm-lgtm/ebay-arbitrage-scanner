@@ -4,9 +4,9 @@ import unittest
 from bridge_partial_ids import build_bridge, id_namespace_check, number_key
 
 
-def cat(pid, set_name, num, printed, name):
-    return {"ID PokeData": pid, "Set": set_name, "Número": num,
-            "Número impresso": printed, "Nome (PokeData)": name}
+def cat(pid, set_name, num, printed, name, set_id=1):
+    return {"ID PokeData": pid, "Set": set_name, "Número": num, "set_id": set_id,
+            "Número impresso": printed, "Nome (PokeData)": name, "Nome base": name}
 
 
 def ref(rid, name, code, set_name):
@@ -51,6 +51,16 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(out[0]["status"], "sem_match")
         alias = build_bridge([ref(7, "Nidoran M", "29", "Base Set")], catalog)
         self.assertEqual(alias[0]["ids_pokedata"], "29")
+
+    def test_double_listing_resolved_by_literal_number(self):
+        # Caso real: o catálogo cadastra a mesma carta como '4' e '004' (IDs 40609 e 82159).
+        catalog = [cat(40609, "Miscellaneous Promos", "4", "4", "Charizard Celebrations Metal Card"),
+                   cat(82159, "Miscellaneous Promos", "004", "004", "Charizard Celebrations Metal Card")]
+        out = build_bridge([ref(1235, "Charizard Celebrations Metal Card", "004", "Miscellaneous Promos"),
+                            ref(1236, "Charizard Celebrations Metal Card", "4", "Miscellaneous Promos")], catalog)
+        self.assertEqual([(o["status"], o["ids_pokedata"], o["cadastro_duplo"]) for o in out],
+                         [("unico_numero_literal", "82159", "40609;82159"),
+                          ("unico_numero_literal", "40609", "40609;82159")])
 
     def test_number_key(self):
         self.assertEqual(number_key("089"), "89")

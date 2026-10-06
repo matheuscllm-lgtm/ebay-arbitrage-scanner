@@ -11,6 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from common import *
+from reference_match import number_norm, resolve_reference
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'PokeData_catalogo_correspondencia.xlsx'
 PR53 = sys.argv[2] if len(sys.argv) > 2 else None
@@ -244,23 +245,20 @@ if PR53:
             if hdr is None: hdr = [str(h) for h in row]; continue
             if row[0] is not None: out.append(dict(zip(hdr, row)))
         return out
-    def numnorm(n):
-        n = str(n).strip(); m = re.fullmatch(r'0*(\d+)', n); return m.group(1) if m else n.upper()
-    by_rec = {}; by_num = defaultdict(list)
+    by_num = defaultdict(list)
     for r in rows:
         if r['_lang'] != 'ENGLISH': continue
-        by_rec[(r['set_nome'].lower(), numnorm(r['numero']), key(r['nome']))] = r
-        by_num[(r['set_nome'].lower(), numnorm(r['numero']))].append(r)
+        by_num[(r['set_nome'].lower(), number_norm(r['numero']))].append(r)
     def locate(d):
-        """registro deste catálogo que corresponde à referência do PR #53 (que é um registro do PokeData, com variante)"""
-        sn = str(d['Set EN']).lower(); nu = numnorm(d['Código EN']); nome = str(d['Carta inglesa — referência'])
-        r = by_rec.get((sn, nu, key(nome)))
-        if r: return r, True, 'registro exato'
-        cands = by_num.get((sn, nu), []); nk = key(split_name(nome)[0])
-        best = [x for x in cands if x['_uk'][2] == nk] or [x for x in cands if x['_uk'][2] in nk or nk in x['_uk'][2]]
-        if best: return main_row[best[0]['_uk']], False, 'mesma carta, registro aproximado'
-        if len({x['_uk'] for x in cands}) == 1: return main_row[cands[0]['_uk']], False, 'mesmo set e número, nome diferente'
-        return None, False, 'não localizado'
+        """registro deste catálogo que corresponde à referência do PR #53 (que é um registro do PokeData, com variante).
+        Sem desempate às cegas: mais de um candidato vira 'ambíguo'; nome contido ou diferente não localiza
+        (antes, o primeiro candidato era escolhido e herdava a situação de outra carta). Regras em reference_match.py."""
+        cands = [dict(id=x['pokedata_id'], nome=x['nome'], unidade=x['_uk'], numero=x['numero'], row=x)
+                 for x in by_num.get((str(d['Set EN']).lower(), number_norm(d['Código EN'])), [])]
+        uk, c, how = resolve_reference(d['Carta inglesa — referência'], d['Código EN'], cands)
+        if uk is None: return None, False, how
+        if c is not None: return c['row'], True, how
+        return main_row[uk], False, how
     def lado(k, T):
         c, pv, _ = partners(k, T)
         if EQ[k][T]:
@@ -272,7 +270,7 @@ if PR53:
         r, exato, how = locate(d)
         base = [d['ID EN'], d['Carta inglesa — referência'], d['Código EN'], d['Set EN'], how]
         fim = [d['Status JP'], d['Status simplificado'], d['Status tradicional']]
-        if r is None: cov.append(base + ['', '', 'não localizado', '', '', '', '', '', '', ''] + fim); continue
+        if r is None: cov.append(base + ['', '', how.split(':')[0], '', '', '', '', '', '', ''] + fim); continue
         k = r['_uk']; sj, cj, pj, xj = lado(k, 'JAPANESE'); sc, cc, pc, xc = lado(k, 'CHINESE')
         lados = [k] + [x for x in (xj, xc) if x]
         ver = '' if len(lados) == 1 else (V_UNICO if all(unico(x) for x in lados) else V_CONF)
@@ -396,7 +394,7 @@ if PR53:
     title(r2, 'Cobertura das referências em inglês do PR #53 (aba Cobertura PR53)')
     G1, J1, C1 = cv('Situação geral (esta rodada)'), cv('Situação JP (esta rodada)'), cv('Situação CN simplificado (esta rodada)')
     pq = [('Referências', f"=COUNTA({cv('ID EN (PR #53)')})-1"),
-          ('Não localizadas neste catálogo', f"=COUNTIF({cv('Localização neste catálogo')},\"não localizado\")"),
+          ('Não localizadas neste catálogo', f"=COUNTIF({cv('Localização neste catálogo')},\"não localizado*\")"),
           ('Com arte confirmada em japonês ou chinês simplificado', f"=COUNTIF({G1},\"{OK}\")"),
           ('— em japonês', f"=COUNTIF({J1},\"{OK}\")"),
           ('— em chinês simplificado', f"=COUNTIF({C1},\"{OK}\")"),
@@ -412,7 +410,8 @@ if PR53:
           ('Com confirmação em chinês tradicional no PR #53', f"=COUNTIF({cv('Status tradicional (PR #53)')},\"Confirmada\")"),
           ('Arte confirmada aqui em japonês, sem confirmação em japonês no PR #53', f"=COUNTIFS({J1},\"{OK}\",{cv('Status JP (PR #53)')},\"<>Confirmada\")"),
           ('Arte confirmada aqui em chinês simplificado, sem confirmação no PR #53', f"=COUNTIFS({C1},\"{OK}\",{cv('Status simplificado (PR #53)')},\"<>Confirmada\")"),
-          ('Registros em chinês tradicional preservados (aba CHT PR53)', "=COUNTA('CHT PR53'!$A:$A)-1")]
+          ('Registros em chinês tradicional preservados (aba CHT PR53)', "=COUNTA('CHT PR53'!$A:$A)-1"),
+          ('Ambíguas: mais de um registro possível, nenhum escolhido', f"=COUNTIF({cv('Localização neste catálogo')},\"ambíguo*\")")]
     for i, (a, f) in enumerate(pq, start=r2 + 1): ws0[f'A{i}'] = a; ws0[f'B{i}'] = f
     ws0[f'B{r2 + 10}'].number_format = '0.0%'
     r2 += len(pq) + 2
