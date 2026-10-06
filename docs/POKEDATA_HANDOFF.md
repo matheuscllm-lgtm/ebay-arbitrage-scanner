@@ -1,6 +1,6 @@
 # Catálogo de cartas — handoff da frente (nome fixo; atualizar a cada sessão)
 
-Última atualização: **06/10/2026**, sessão Claude da rodada 4 (reprocessamento executado na máquina privada). Este arquivo
+Última atualização: **06/10/2026**, depois do merge do #63 (GPT) e da revisão T12 (Claude). Aceite de 7 verificações: 7/7 sobre a rodada 4. Este arquivo
 substitui estados descritos em handoffs anteriores desta frente. Fonte de verdade: o código
 da branch e os documentos listados abaixo. Este texto é só o mapa.
 
@@ -21,6 +21,9 @@ com o operador decidindo.
 | PR [#57](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/57) (GPT) | **Mesclado** dentro do #54 (`840e482`) |
 | PR [#55](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/55) (outra sessão Claude) | Aberto, **superado**: só a conciliação foi portada (`reconcile_partial.py`). Fechamento: operador |
 | PR [#58](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/58) (GPT) | Aberto, **superado**: 28 de 32 arquivos idênticos ao já importado em `pipeline/` (`b7fabc8`). Fechamento: operador |
+| PR [#60](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/60) (Claude) | **Mesclado** (`24e83c1`): validação do handoff no Windows |
+| PR [#61](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/61) (Claude) | **Mesclado** (`87c8fb0`): rodada 4, reprocessamento executado na máquina privada |
+| PR [#63](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/63) (GPT) | **Mesclado** (`2aa6b68`): UTF-8 no pipeline, IDs validados, XLSX literal, aceite com 7 verificações, `POKEDATA_TERMOS.md` |
 | PR #52 | Outra frente (zh-pairs); sem relação |
 | Canal GPT ↔ Claude | Issue [#56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56). Último turno: [Claude, rodada 3](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6006748149). Pedidos ao GPT ainda sem resposta: **P56-8** e **P56-9** |
 
@@ -57,7 +60,7 @@ com o operador decidindo.
 - **Arte confirmada ≠ impressão confirmada** (edição, acabamento, carimbo). Nunca promover uma à outra.
 - `reference_match.py` é a fonte única de normalização. Um candidato só é escolhido se for único. Subproduto (`151C4` × `151C`) nunca conta como "igual". ♀/♂ viram `f`/`m` no `common.key`.
 - `identity.py` foi removido por ter sido superado. O #58 não entra (duplicata). Do #55 entrou só a conciliação.
-- **#53 → `main` é inválido** até: (1) o operador decidir sobre os termos de uso da fonte (o pacote afirma que proíbem publicar derivados; ver `pipeline/.gitignore`); (2) haver reprocessamento com o código corrigido.
+- **#53 → `main`:** (2) reprocessamento feito (rodada 4). (1) **Decisão do operador em 06/10:** a questão dos termos fica para um segundo momento; os anexos já públicos na branch **permanecem como estão** e o operador contata o provedor por e-mail (opção A de `POKEDATA_TERMOS.md`). O merge na `main` continua dependendo de palavra explícita do operador.
 - `research/pokedata/inputs/` fica preservado byte a byte (manifesto SHA-256). Os 116 CHT são preservados como vieram. CHS e CHT ficam separados.
 
 ## Números de referência (agregados; servem para conferir, não são entrega)
@@ -71,7 +74,7 @@ com o operador decidindo.
 
 ## Pendências (dono → o que bloqueia)
 
-1. **Operador:** decidir sobre os termos de uso da fonte e a visibilidade dos derivados já públicos na branch (ZIP e XLSX em `inputs/`). Bloqueia o #53 → `main` e qualquer nova publicação.
+1. **Operador:** termos de uso adiados (06/10): anexos ficam públicos por ora; e-mail ao provedor em andamento. Nenhum derivado novo (planilha, CSV, imagens) é publicado até a resposta.
 2. ~~Reprocessar~~ **Feito em 06/10** (rodada 4). Os intermediários (`trabalho/`, 7 GB) ficam na máquina do operador; para refazer, o roteiro continua valendo.
 3. **Operador:** conferir `trabalho/revalidacao_pr53.jpg` e `trabalho/revalidacao_provaveis.jpg` em resolução plena e, para as linhas que usar, a impressão (edição, acabamento, carimbo). As 2 divergências CHS de 04/10 viraram "provável com a mesma candidata"; os 5 subprodutos continuam como categoria própria.
 4. **GPT:** responder P56-8 (`resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega de 05/10?) e P56-9 (`audit_revision.py` precisa de um modo sem contagens fixas?).
