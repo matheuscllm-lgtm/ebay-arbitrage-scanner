@@ -133,7 +133,8 @@ reabrem sem evidência nova.
 ### 06/10/2026 — GPT (T5: identificação dos arquivos reenviados)
 
 - Partida de `origin/main` (`292434b`, #65 mesclado). Branch própria
-  `gpt/pokedata-t5-insumos`; PR documental para `main`, sem merge.
+  `gpt/pokedata-t5-insumos`; [PR #66](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/66)
+  documental para `main`, commit `e964d60`, sem merge.
 - Recebidos seis anexos nesta conversa: quatro ZIPs e duas planilhas. Os ZIPs têm o mesmo
   SHA-256 (`fe6a3589…`) e são idênticos ao pacote antigo já versionado. Seu catálogo tem dez
   abas, sem Cobertura PR53/CHT PR53; nenhum contém o CSV de comparação.
