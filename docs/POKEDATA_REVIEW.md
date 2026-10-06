@@ -427,3 +427,87 @@ imagens, descritores, `*.pkl` e `ext/` ficam na máquina do operador.
 2. Termos de uso da fonte e visibilidade dos derivados já na branch (`inputs/`): **operador** (insumo do GPT, T6 em `docs/COMUNICACAO_GPT_CLAUDE.md`).
 3. P56-8 sobre a entrega de 05/10: **GPT**. Nesta rodada, `resolve_reference` localizou as 3.490 referências sem ambiguidade.
 4. Revisão do `accept_run.py` (P56-9) e endurecimento do pipeline (encoding, caminhos, células com `=`): **GPT**.
+
+## Revisão GPT — T5 a T8 (2026-10-06)
+
+Base: `87c8fb0` em `docs/pokedata-claude-handoff` (PR #61 mesclado). Trabalho na branch
+`gpt/pokedata-t5-t8`, para revisão na branch da frente; sem merge. O #62 permanece uma
+entrega documental separada: seus registros de encerramento do Claude não foram substituídos.
+
+### T5 / P56-8 — cobertura demonstrada, cotejo privado pendente
+
+[Resposta na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010473984).
+Não encontrei perda demonstrada de registro aproximado legítimo. A função real conserva o
+fallback de nome-base único e retorna a unidade, `registro=None` e “mesma carta, registro
+aproximado”. `test_variant_resolves_to_unit_only` exercita esse comportamento; contenção de
+nome e múltiplas unidades não bastam. Não há nova evidência para mudar identidade/aliases.
+
+A rodada 4 informa 3.490 referências localizadas, todas exatas ou por número literal:
+zero ambíguas/não localizadas. Isso não compara os registros aproximados da entrega de 05/10.
+Nesta sessão não estão disponíveis `pokedata_crossref(2).zip`, seu XLSX/CSV privado nem a saída
+real de 06/10; só os relatórios e snapshots anteriores já versionados. Não reutilizei os
+anexos de 04/10 como se fossem o pacote revisado. **T5 segue pendente do cotejo privado**,
+com a resposta parcial e o limite explicitados.
+
+### T6 — termos oficiais e decisão operacional
+
+Entregue [POKEDATA_TERMOS.md](POKEDATA_TERMOS.md), com fontes, versão confirmada de 12/12/2025
+e opções concretas para T9. Corrigida a síntese do README/estado: a exceção pessoal e não
+comercial exige permissão explícita para aquele conteúdo e atribuição; os termos da API
+incorporados por referência também restringem redistribuição de dados do site/aplicativo.
+O #53 continua bloqueado para `main` enquanto o operador decide autorização, destino dos
+anexos e eventual entrega de código separado. Nenhum anexo/histórico foi alterado.
+
+### T7 — portabilidade e endurecimento
+
+- Adicionados **49 argumentos de encoding** ao I/O de texto em 23 scripts do pipeline,
+  incluindo `Path.read_text()`. Mantidos os formatos binários e o CSV UTF-8 com BOM.
+  `fetch_cards.py` ficou fora por instrução expressa; nele, Windows ainda exige
+  `PYTHONUTF8=1`, como na rodada 4. As funções/regras de identidade não foram modificadas.
+- `fetch_external.py` valida os IDs dos dois provedores antes de interpolar URL/caminho:
+  rejeita travessia, separadores, caminhos absolutos, escapes percentuais, nomes reservados
+  do Windows e IDs malformados. IDs válidos conservam grafia e recebem escape na URL.
+  O lote é validado antes de iniciar downloads de seus detalhes.
+- `build_xlsx.py` grava dados iniciados por `=`, `+`, `-`, `@` como string com o escape
+  nativo `quotePrefix`. Inclui eras recebidas no Leia-me. Nenhum apóstrofo é acrescentado
+  ao valor, preservando o cotejo de referências/CHT; fórmulas internas continuam ativas.
+- Regressões sem rede/pickle: leitura Unicode sob default cp1252, declaração de encoding,
+  IDs válidos/inválidos e XLSX salvo/reaberto com inspeção XML (só a fórmula interna
+  deliberada vira `<f>`). `openpyxl` entrou nas dependências dos testes de pesquisa para o CI.
+
+### T8 / P56-9 — aceite adequado com limites explícitos
+
+[Resposta na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010487464).
+`audit_revision.py` continua histórico da entrega de 05/10; novas execuções usam
+`accept_run.py`, sem necessidade de mais um modo no auditor antigo.
+
+| Item de §3 do roteiro | Revisão / verificação |
+|---|---|
+| Coleta completa | Exige `complete=true` e nenhum set explicitamente falho. Não vincula criptograficamente o manifesto ao catálogo/planilha. |
+| Ausência de `exclusiva` automática | Corrigida a lacuna: examina todos os registros, inclusive variantes não principais, além da aba Exclusivas. |
+| Referências preservadas | Compara multiconjunto ID/nome/número/set com a base fornecida e exige IDs únicos; sem 3.490 hardcoded. |
+| Ambíguas/não localizadas no Leia-me | Nova conferência: valor correto ou fórmula COUNTIF correta para a coluna de localização. Reporta IDs que exigem análise humana; `rc=0` não decide esses casos. |
+| CHT preservado | Compara ID e dez campos com os registros CHT da base, incluindo identidade, acabamento, status, método e fonte; sem 116 hardcoded. |
+| Comparação PR53 | Preserva as chaves e multiplicidade dos registros; resume categorias. Cotejo de resultados com 04/10 continua humano, registrado na rodada 4. |
+| Correspondência | Exige lado confirmado em toda linha e verifica JP + CHS − ambos. Causas da mudança de 18.345 para 18.723 linhas (+378) continuam a explicação reportada pelo Claude, não prova produzida pelo script. |
+
+O aceite agora tem **sete checks**. A evidência real 6/6 da rodada 4 permanece histórica;
+esta sessão não aplicou o aceite expandido aos derivados privados. O roteiro inclui o
+comando para o operador executá-lo sem nova coleta. Fórmulas são verificadas estruturalmente,
+sem recálculo nem certificação de caches antigos. Arte, impressão e termos não são
+certificados pelo aceite.
+
+### Validação e limites desta sessão
+
+- Dependências instaladas em venv do workspace: requisitos do scanner, testes de pesquisa e `openpyxl`.
+- `python -m unittest discover -s research/pokedata -p 'test_*.py'`: **71 OK** (61 anteriores + 10 regressões).
+- `python -m pytest -q`: **1181 passed** (quatro avisos preexistentes de `datetime.utcnow`).
+- Fixture de integração chama o aceite real em XLSX/CSV sintéticos temporários: sete checks
+  passam; remover o total de ambíguas no Leia-me gera `rc=1`.
+- Persistem ResourceWarnings de arquivos sem fechamento explícito no pipeline legado;
+  o endurecimento desta rodada não refatora o gerenciamento de todos os arquivos.
+- Sem coleta, leitura de pickle privado, regeneração de dados reais ou nova revalidação
+  visual. Nenhum preço, XLSX, CSV, imagem ou cache novo foi versionado.
+
+Próxima vez: Claude revisa o PR de T6–T8; operador disponibiliza o insumo privado para T5,
+decide T9, confere as folhas e resolve T10. Sem acompanhamento automático.

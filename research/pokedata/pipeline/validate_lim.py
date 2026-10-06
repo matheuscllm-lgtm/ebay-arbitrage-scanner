@@ -5,7 +5,7 @@ from datetime import datetime
 from common import *
 sets, cards = load(); units = art_units(cards)
 R = pickle.load(open('result.pkl', 'rb')); CONF = R['CONF']
-T = json.load(open('limitless_todo.json')); code = {int(k): v for k, v in T['code'].items()}
+T = json.load(open('limitless_todo.json', encoding="utf-8")); code = {int(k): v for k, v in T['code'].items()}
 PROMO = {'Scarlet & Violet Promos': 'SVP', 'Sword & Shield Promo': 'SP', 'Sun & Moon Black Star Promo': 'SMP', 'XY Black Star Promos': 'XYP', 'Black and White Promos': 'BWP', 'Mega Evolution Promos': 'MEP'}
 ERAS = {'Black & White', 'XY', 'Sun & Moon', 'Sword & Shield', 'Scarlet & Violet', 'Mega Evolution'}
 def sdate(k): return datetime.strptime(sets[k[0]]['release_date'][5:16], '%d %b %Y')
@@ -24,7 +24,7 @@ os.makedirs('ext/limitless', exist_ok=True)
 s_ = requests.Session(); res = Counter(); bad = []
 for a, lc, num in sm:
     out = f"ext/limitless/v_{lc}_{num}.json"
-    if os.path.exists(out): r = json.load(open(out))
+    if os.path.exists(out): r = json.load(open(out, encoding="utf-8"))
     else:
         try: q = s_.get(f"https://limitlesstcg.com/cards/{lc}/{num}", timeout=40)
         except Exception: res['fetch error'] += 1; continue
@@ -33,7 +33,7 @@ for a, lc, num in sm:
             h = q.text; t = re.search(r'<title>(.*?)</title>', h, re.S); r['title'] = html.unescape(t.group(1)).strip() if t else ''
             i = h.find('JP. Prints'); j = h.find('</table>', i if i > 0 else 0)
             if i > 0: r['jp'] = [(x, y, html.unescape(z).strip()) for x, y, z in re.findall(r'href="/cards/jp/([^/"]+)/([^"/]+)"\s*>\s*([^<]+?)\s*<span', h[i:j])]
-        json.dump(r, open(out, 'w')); time.sleep(0.3)
+        json.dump(r, open(out, 'w', encoding="utf-8")); time.sleep(0.3)
     if r['status'] != 200: res['no page'] += 1; continue
     tk = key(r['title'].split(' - ')[0])
     if not (tk and (tk in a[2] or a[2] in tk or tk[:6] == a[2][:6])): res['page is another card'] += 1; continue

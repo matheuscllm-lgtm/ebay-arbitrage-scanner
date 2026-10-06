@@ -12,10 +12,10 @@ from collections import defaultdict
 from common import *
 
 sets, cards = load(); units = art_units(cards)
-rep = json.load(open('unit_rep.json'))
+rep = json.load(open('unit_rep.json', encoding="utf-8"))
 ids = {}; G = []
 for sh in (0, 1):
-    for n, c in enumerate(json.load(open(f'feat_ids_{sh}.json'))): ids[c] = (sh, n)
+    for n, c in enumerate(json.load(open(f'feat_ids_{sh}.json', encoding="utf-8"))): ids[c] = (sh, n)
     G.append(np.load(f'feat_g_{sh}.npy'))
 
 groups = defaultdict(list)
@@ -25,5 +25,5 @@ for k in units:
         sh, n = ids[c]
         groups[G[sh][n][:64].round(2).tobytes()].append(k)
 bad = [k for v in groups.values() if len({x[2] for x in v}) >= 4 for k in v]
-json.dump([list(k) for k in bad], open('cardback_units.json', 'w'))
+json.dump([list(k) for k in bad], open('cardback_units.json', 'w', encoding="utf-8"))
 print('cartas com imagem-marcador:', len(bad))

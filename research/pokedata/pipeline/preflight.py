@@ -83,7 +83,7 @@ def run(workdir, pr53=None, min_free_gb=MIN_FREE_GB):
             missing.append(name)
     manifest_path = workdir / 'collection_manifest.json'
     try:
-        manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else None
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else None
     except (OSError, ValueError):
         manifest = {'complete': None}  # manifesto ilegível conta como coleta incompleta
     in_repo = _git('rev-parse', '--is-inside-work-tree', cwd=workdir)

@@ -82,7 +82,7 @@ for r in rows:
     if r['variante']: tags_by_unit[r['_uk']].append(r['variante'])
 def variants(k): return ', '.join(dict.fromkeys(tags_by_unit.get(k, [])))
 # registro cuja imagem entrou na comparação (um por carta única); os outros registros da carta são variantes não comparadas
-rep = json.load(open('unit_rep.json'))
+rep = json.load(open('unit_rep.json', encoding="utf-8"))
 def rep_row(k):
     cid = rep.get(f"{k[0]}|{k[1]}|{k[2]}")
     for r in recs_by_unit[k]:
@@ -110,11 +110,27 @@ def ukey(k): return (LANGS.index(LANG[k]), -ERA_ORDER[(LANG[k], sets[k[0]]['seri
 wb = Workbook()
 wb._named_styles['Normal'].font = Font(name='Arial', size=10)
 HF = Font(name='Arial', size=10, bold=True, color='FFFFFF'); HFILL = PatternFill('solid', fgColor='1F3864')
+def literal_cell(ws, row, column, value):
+    """Conteúdo recebido fica literal; fórmulas internas são escritas separadamente.
+
+    quotePrefix é o escape nativo do XLSX. Não acrescenta apóstrofo ao dado:
+    preserva referências/CHT e impede que '=…' seja serializado como fórmula.
+    """
+    cell = ws.cell(row=row, column=column, value=value)
+    if isinstance(value, str) and value.startswith(('=', '+', '-', '@')):
+        cell.data_type = 's'
+        cell.quotePrefix = True
+    return cell
+
 def sheet(name, header, data, widths=None, freeze='A2'):
     ws = wb.create_sheet(name)
     ws.append(header)
     for c in ws[1]: c.font = HF; c.fill = HFILL; c.alignment = Alignment(vertical='center', wrap_text=True)
-    for row in data: ws.append(row)
+    for row_number, row in enumerate(data, 2):
+        ws.append(row)
+        for column, value in enumerate(row, 1):
+            if isinstance(value, str) and value.startswith(('=', '+', '-', '@')):
+                literal_cell(ws, row_number, column, value)
     ws.freeze_panes = freeze
     ws.auto_filter.ref = f"A1:{get_column_letter(len(header))}{max(len(data) + 1, 2)}"
     for i, h in enumerate(header, 1):
@@ -206,7 +222,7 @@ for j in sorted([k for k in units if LANG[k] == 'JAPANESE'], key=ukey):
 INC_H = ['Idioma', 'Era', 'Set', 'Código', 'Número', 'Nome', 'Situação geral', 'Situação em inglês', 'Situação em japonês', 'Situação em chinês simplificado', 'Candidata mais próxima', 'Pontos coincidentes', 'Semelhança da arte (0–1)', 'Impressões japonesas segundo o Limitless', 'Busca eBay']
 EXC_H = ['Idioma', 'Era', 'Set', 'Código', 'Lançamento', 'Número', 'Nome', 'Nome no idioma original', 'Raridade', 'Variantes', 'Critério', 'Cartas de mesmo nome comparadas (EN)', 'Cartas de mesmo nome comparadas (JP)', 'Cartas de mesmo nome comparadas (CN)', 'Busca eBay']
 HASIMG = {int(f[:-4]) for f in os.listdir('img') if f.endswith('.jpg')}
-BAD = {tuple(k) for k in json.load(open('cardback_units.json'))}
+BAD = {tuple(k) for k in json.load(open('cardback_units.json', encoding="utf-8"))}
 BYNAME = defaultdict(lambda: defaultdict(int))
 for k in units:
     if rep.get(f"{k[0]}|{k[1]}|{k[2]}") in HASIMG and k not in BAD: BYNAME[LANG[k]][k[2]] += 1
@@ -310,7 +326,7 @@ sheet('Prováveis', PRV_H, prv, {'Par': 28, 'Set (A)': 30, 'Nome (A)': 28, 'Set 
 sheet('JP-CN sem inglês', JC_H, jc, {'Set (JP)': 30, 'Busca eBay (JP)': 42, 'Set (CN)': 30, 'Busca eBay (CN)': 42, 'Situação em inglês': 40})
 sheet('Inconclusivos', INC_H, inc, {'Set': 34, 'Nome': 28, 'Situação geral': 16, 'Situação em inglês': 44, 'Situação em japonês': 44, 'Situação em chinês simplificado': 44, 'Candidata mais próxima': 40, 'Impressões japonesas segundo o Limitless': 60, 'Busca eBay': 44})
 sheet('Exclusivas', EXC_H, exc, {'Set': 34, 'Nome': 28, 'Critério': 70, 'Busca eBay': 44})
-tw = json.load(open('ext/tcgdex_sets_zh-tw.json')); jpcodes = {key(s['code']): s for s in sets.values() if s['language'] == 'JAPANESE' and s['code']}
+tw = json.load(open('ext/tcgdex_sets_zh-tw.json', encoding="utf-8")); jpcodes = {key(s['code']): s for s in sets.values() if s['language'] == 'JAPANESE' and s['code']}
 twr = []
 for t in tw:
     if t['id'].upper().startswith('CS'): continue
@@ -379,7 +395,7 @@ eras = [e for (l, e), d in sorted(ERA_ORDER.items(), key=lambda kv: -kv[1].times
 sh = 'Catálogo EN'; E_, J_, C_ = COL['Era'], COL['Equivalente JP'], COL['Equivalente CN simplificado']
 for i, e in enumerate(eras):
     rr = r1 + 2 + i
-    ws0.cell(row=rr, column=1, value=e)
+    literal_cell(ws0, rr, 1, e)
     ws0.cell(row=rr, column=2, value=f"=COUNTIFS('{sh}'!${E_}:${E_},A{rr},'{sh}'!${U_}:${U_},1)")
     ws0.cell(row=rr, column=3, value=f"=COUNTIFS('{sh}'!${E_}:${E_},A{rr},'{sh}'!${U_}:${U_},1,'{sh}'!${J_}:${J_},\"{OK}\")")
     ws0.cell(row=rr, column=4, value=f"=COUNTIFS('{sh}'!${E_}:${E_},A{rr},'{sh}'!${U_}:${U_},1,'{sh}'!${C_}:${C_},\"{OK}\")")

@@ -23,7 +23,7 @@ s_ = requests.Session(); out = {}; c = Counter()
 for k in todo:
     lc = lcode(sets[k[0]]['code']); num = str(int(re.search(r'(\d+)$', k[1]).group(1)))
     f = f"ext/limitless/jp_{lc.replace('/', '_')}_{num}.json"
-    r = json.load(open(f)) if os.path.exists(f) else {}
+    r = json.load(open(f, encoding="utf-8")) if os.path.exists(f) else {}
     if r.get('parse_version') != 2:
         r = dict(status=0, title='', intl=[], intl_section_valid=False, parse_version=2)
         for cand in (lc, lc.upper(), lc.lower()):
@@ -37,7 +37,7 @@ for k in todo:
                 r['intl'] = prints or []
                 break
             time.sleep(0.2)
-        json.dump(r, open(f, 'w')); time.sleep(0.3)
+        json.dump(r, open(f, 'w', encoding="utf-8")); time.sleep(0.3)
     if r['status'] != 200: c['sem página'] += 1; continue
     if not r.get('intl_section_valid'): c['seção internacional ausente ou ilegível'] += 1; continue
     t0 = r['title'].split(' - ')[0]; tk = key(t0)

@@ -1,7 +1,7 @@
 """Apoio — monta folhas de contato (pares lado a lado) para conferência visual."""
 import json, sys
 from PIL import Image, ImageDraw
-rep = json.load(open('unit_rep.json'))
+rep = json.load(open('unit_rep.json', encoding="utf-8"))
 def cid(k): return rep[f"{k[0]}|{k[1]}|{k[2]}"]
 def sheet(pairs, out, labels=None, cols=4, h=300):
     w = int(h * 368 / 512)

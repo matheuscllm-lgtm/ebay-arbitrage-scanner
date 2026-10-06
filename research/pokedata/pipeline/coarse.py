@@ -1,6 +1,6 @@
 """Semelhança global da carta inteira em baixa resolução: usada como apoio para artes texturizadas."""
 import numpy as np, cv2, json
-rep = json.load(open('unit_rep.json'))
+rep = json.load(open('unit_rep.json', encoding="utf-8"))
 _cache = {}
 def small(k):
     cid = rep[f"{k[0]}|{k[1]}|{k[2]}"]

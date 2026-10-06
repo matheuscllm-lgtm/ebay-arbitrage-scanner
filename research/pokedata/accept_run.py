@@ -11,6 +11,7 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path
+from openpyxl.utils import get_column_letter
 
 REF_FIELDS = ('Carta inglesa — referência', 'Código EN', 'Set EN')
 # (campo na base parcial, campo na aba CHT PR53)
@@ -35,7 +36,7 @@ def check_manifest(manifest):
 def check_exclusives(catalogs, exclusives):
     """Ausência não prova exclusividade (identity_policy.overall_status): nenhum status 'exclusiva' automático."""
     auto = sum(r.get('Situação geral') == 'exclusiva'
-               for rows in catalogs.values() for r in rows if r.get('Carta única') == 1)
+               for rows in catalogs.values() for r in rows)
     info = {'exclusivas': auto, 'aba_exclusivas': len(exclusives),
             'criterios': dict(Counter(r.get('Critério') for r in exclusives))}
     return auto == 0 and not exclusives, info
@@ -55,6 +56,32 @@ def check_coverage(rows, original_refs):
             'ambiguas': [r['ID EN (PR #53)'] for r in rows if loc(r).startswith('ambíguo')],
             'nao_localizadas': [r['ID EN (PR #53)'] for r in rows if loc(r).startswith('não localizado')]}
     ok = len(rows) == len(original_refs) == len(set(ids)) and mine == theirs
+    return ok, info
+
+
+def check_readme_counts(readme_rows, coverage_rows, coverage_header):
+    """§3: ambíguas/não localizadas constam no Leia-me, por valor ou fórmula correta.
+
+    Fórmulas são conferidas estruturalmente, sem exigir recálculo por Excel/LibreOffice.
+    Isso não certifica o valor exibido num cache de cálculo antigo.
+    """
+    column = get_column_letter(coverage_header.index('Localização neste catálogo') + 1)
+    requirements = (
+        ('Não localizadas neste catálogo', 'não localizado'),
+        ('Ambíguas: mais de um registro possível, nenhum escolhido', 'ambíguo'),
+    )
+    info = {}
+    ok = True
+    for label, prefix in requirements:
+        expected = sum(str(r.get('Localização neste catálogo') or '').startswith(prefix) for r in coverage_rows)
+        cells = [r[1] for r in readme_rows if len(r) >= 2 and r[0] == label]
+        formula = f'=COUNTIF(\'Cobertura PR53\'!${column}:${column},"{prefix}*")'
+        value = cells[0] if len(cells) == 1 else None
+        matched = len(cells) == 1 and (value == formula or
+                  (isinstance(value, (int, float)) and not isinstance(value, bool) and value == expected))
+        info[prefix] = {'esperado': expected, 'ok': matched,
+                        'modo': 'fórmula sem recálculo' if value == formula else 'valor'}
+        ok = ok and matched
     return ok, info
 
 
@@ -98,16 +125,21 @@ def main(workdir, catalog_path, pr53_path, comparison_path):
     manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else None
     new = load_workbook(catalog_path, read_only=True, data_only=True)
     old = load_workbook(pr53_path, read_only=True, data_only=True)
+    formulas = load_workbook(catalog_path, read_only=True, data_only=False)
     try:
         catalogs = {lang: table(new['Catálogo ' + lang]) for lang in ('EN', 'JP', 'CN')}
         original_refs = table(old['Cobertura EN'], 4)
         original_pairs = table(old['Detalhes confirmados'], 4)
         with open(comparison_path, encoding='utf-8-sig', newline='') as stream:
             compared = list(csv.DictReader(stream))
+        coverage = table(new['Cobertura PR53'])
         checks = {
             'coleta': check_manifest(manifest),
             'exclusivas': check_exclusives(catalogs, table(new['Exclusivas'])),
-            'cobertura_pr53': check_coverage(table(new['Cobertura PR53']), original_refs),
+            'cobertura_pr53': check_coverage(coverage, original_refs),
+            'leia_me_localizacao': check_readme_counts(
+                list(formulas['Leia-me'].iter_rows(values_only=True)), coverage,
+                next(formulas['Cobertura PR53'].iter_rows(values_only=True))),
             'cht_pr53': check_cht(table(new['CHT PR53']), original_pairs),
             'comparacao_pr53': check_comparison(compared, original_pairs),
             'correspondencia': check_correspondence(table(new['Correspondência'])),
@@ -115,6 +147,7 @@ def main(workdir, catalog_path, pr53_path, comparison_path):
     finally:
         new.close()
         old.close()
+        formulas.close()
     report = {name: {'ok': ok, **info} for name, (ok, info) in checks.items()}
     report['catalogo'] = {lang: dict(Counter(r.get('Situação geral') for r in rows if r.get('Carta única') == 1))
                           for lang, rows in catalogs.items()}

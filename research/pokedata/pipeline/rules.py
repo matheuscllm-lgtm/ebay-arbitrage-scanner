@@ -1,9 +1,9 @@
 """Regras de decisão: quando um par é confirmado, quando vai para os inconclusivos e quando é descartado como versão recolorida."""
 import json, numpy as np
-rep = json.load(open('unit_rep.json'))
+rep = json.load(open('unit_rep.json', encoding="utf-8"))
 _ids = {}; _G = []
 for sh in (0, 1):
-    for n, c in enumerate(json.load(open(f'feat_ids_{sh}.json'))): _ids[c] = (sh, n)
+    for n, c in enumerate(json.load(open(f'feat_ids_{sh}.json', encoding="utf-8"))): _ids[c] = (sh, n)
     _G.append(np.load(f'feat_g_{sh}.npy'))
 def _g(k):
     sh, n = _ids[rep[f"{k[0]}|{k[1]}|{k[2]}"]]; return _G[sh][n]

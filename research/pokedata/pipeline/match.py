@@ -16,7 +16,7 @@ def sdate(s): return datetime.strptime(s['release_date'][5:16], '%d %b %Y')
 # features
 ids = []; Gs = []; SP = []; SD = []; SO = []; where = {}
 for sh in (0, 1):
-    i = json.load(open(f'feat_ids_{sh}.json')); o = np.load(f'feat_o_{sh}.npy')
+    i = json.load(open(f'feat_ids_{sh}.json', encoding="utf-8")); o = np.load(f'feat_o_{sh}.npy')
     for n, cid in enumerate(i): where[cid] = (sh, n)
     Gs.append(np.load(f'feat_g_{sh}.npy')); SP.append(np.load(f'feat_p_{sh}.npy', mmap_mode='r')); SD.append(np.load(f'feat_d_{sh}.npy', mmap_mode='r')); SO.append(o)
 def sift(cid):

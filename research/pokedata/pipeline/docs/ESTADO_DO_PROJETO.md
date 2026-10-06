@@ -84,7 +84,7 @@ Validação:
 - **Raridade.** O PokeData não publica. Japonês tem raridade em 35% dos registros; chinês simplificado não tem.
 - **Não encontradas sem fonte.** As 1.217 cartas não encontradas não têm fonte externa que diga se são exclusivas; antes de 2011 não há nenhuma.
 - **Exclusividade pelo Limitless.** O Limitless registra impressões da carta, não de uma arte específica.
-- **Termos de uso do PokeData** ([texto](https://www.iubenda.com/terms-and-conditions/81884871), versão de 12/12/2025, lidos em 04/10/2026): proíbem copiar, baixar, compartilhar e publicar o conteúdo, salvo para uso pessoal e não comercial, com atribuição. A planilha e os dados extraídos não devem ir para repositório público. Leitura sem valor de parecer jurídico.
+- **Termos de uso do PokeData** ([texto](https://www.iubenda.com/terms-and-conditions/81884871), versão de 12/12/2025): releitura em 06/10 esclareceu que a exceção pessoal/não comercial exige permissão explícita para o conteúdo e atribuição. Os [termos da API](https://www.pokedata.io/api-terms), incorporados por referência, proíbem redistribuir dados da API, site e aplicativo. Dados detalhados continuam privados; anexos já publicados aguardam decisão do operador. Ver [T6](../../../../docs/POKEDATA_TERMOS.md). Sem parecer jurídico.
 
 ## Relação com o PR #53 (trabalho do GPT)
 

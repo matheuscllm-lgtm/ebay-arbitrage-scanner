@@ -15,9 +15,9 @@ from identity_policy import add_bridge_candidates, overall_status
 
 rows, uinfo = pickle.load(open('catalog.pkl', 'rb'))
 sets, cards = load(); units = art_units(cards)
-rep = json.load(open('unit_rep.json'))
+rep = json.load(open('unit_rep.json', encoding="utf-8"))
 HAS = {int(f[:-4]) for f in os.listdir('img') if f.endswith('.jpg')}
-BAD = {tuple(k) for k in json.load(open('cardback_units.json'))}
+BAD = {tuple(k) for k in json.load(open('cardback_units.json', encoding="utf-8"))}
 def has_img(k):
     c = rep.get(f"{k[0]}|{k[1]}|{k[2]}"); return c is not None and c in HAS and k not in BAD
 def sdate(k): return datetime.strptime(sets[k[0]]['release_date'][5:16], '%d %b %Y')
@@ -47,7 +47,7 @@ for tag in ('EN_JA', 'EN_CH', 'CH_JA'):
 # ---------------------------------------------------------------- Limitless (EN -> JP, BW era onward)
 LIM = {}
 if os.path.exists('limitless_jobs.json'):
-    J = json.load(open('limitless_jobs.json'))
+    J = json.load(open('limitless_jobs.json', encoding="utf-8"))
     def nk(c): return key(c.replace('+', 'p'))
     jpsets = defaultdict(list)
     for s in sets.values():
@@ -60,7 +60,7 @@ if os.path.exists('limitless_jobs.json'):
     for name, ks in J.items():
         p = f'ext/limitless/{name}.json'
         if not os.path.exists(p): continue
-        r = json.load(open(p))
+        r = json.load(open(p, encoding="utf-8"))
         for k in ks:
             k = tuple(k)
             if r['status'] != 200: LIM[k] = dict(kind='sem página'); continue

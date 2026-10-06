@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 from common import *
 
 sets, cards = load(); units = art_units(cards)
-J = json.load(open('limitless_jobs.json'))
+J = json.load(open('limitless_jobs.json', encoding="utf-8"))
 def nk(c): return key(c.replace('+', 'p'))
 jpsets = defaultdict(list)
 for s in sets.values():
@@ -25,7 +25,7 @@ c = Counter(); todo = []
 for name, ks in J.items():
     p = f'ext/limitless/{name}.json'
     if not os.path.exists(p): continue
-    r = json.load(open(p))
+    r = json.load(open(p, encoding="utf-8"))
     if r['status'] != 200 or not r['jp']: continue
     tk = key(r['title'].split(' - ')[0]); k0 = ks[0]
     if not (tk and (tk in k0[2] or k0[2] in tk or tk[:6] == k0[2][:6])): continue   # página de outra carta
