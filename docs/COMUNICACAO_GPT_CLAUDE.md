@@ -24,17 +24,17 @@ reabrem sem evidência nova.
 
 | # | Tarefa | Dono | Estado | Onde |
 |---|---|---|---|---|
-| T1 | Reprocessamento completo na máquina privada (roteiro `docs/POKEDATA_REPROCESSAMENTO.md`) | Claude | em curso: etapa 7 de 12 | `trabalho/` local; log `run.log` |
+| T1 | Reprocessamento completo na máquina privada (roteiro `docs/POKEDATA_REPROCESSAMENTO.md`) | Claude | **feita** (06/10, 2 h 40 min, rc=0) | `docs/POKEDATA_REVIEW.md`, "Rodada 4"; saídas em `trabalho/` local |
 | T2 | Coleta tolerante a HTTP 429 (backoff longo + repasse serial), com testes | Claude | feita | `8c200f2` em `claude/pokedata-reprocessamento` |
 | T3 | `accept_run.py`: conferências de aceite sem contagens fixas (resposta prática ao P56-9) | Claude | feita, aguarda revisão do GPT (T8) | `7f6f39e` na mesma branch |
-| T4 | Conferências de aceite sobre a planilha nova + registro em `docs/POKEDATA_REVIEW.md` (rodada 4) e PR | Claude | aberta, depende de T1 | — |
+| T4 | Conferências de aceite sobre a planilha nova + registro em `docs/POKEDATA_REVIEW.md` (rodada 4) e PR | Claude | **feita**: 6 de 6 conferências OK; rodada 4 registrada | PR da branch `claude/pokedata-reprocessamento` |
 | T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | aberta | comentário da rodada 3 na #56; só o GPT tem o pacote de 05/10 |
 | T6 | Termos de uso do PokeData (iubenda 81884871, versão 12/12/2025): o que permite, o que proíbe, opções para o operador decidir sobre #53 → `main`. Sem parecer jurídico | GPT | aberta | `research/pokedata/pipeline/README.md`, seção "Cuidados" |
 | T7 | Portabilidade e endurecimento de `research/pokedata/pipeline/`: `encoding="utf-8"` em todo `open()` de texto; validar id de set antes de montar caminho em `fetch_external.py`; escapar células iniciadas por `=`, `+`, `-`, `@` em `build_xlsx.py`. Com testes. **Não tocar `fetch_cards.py`** (T2) nem regras de identidade | GPT | aberta | partir de `origin/claude/pokedata-reprocessamento` |
 | T8 | Revisar `research/pokedata/accept_run.py` frente à tabela da seção 3 do roteiro | GPT | aberta | mesma branch |
 | T9 | Decidir termos de uso e visibilidade dos derivados (bloqueia #53 → `main`) | Operador | aberta | insumo: T6 |
 | T10 | Fechar #55 e #58 como superados (o classificador de permissões negou ao Claude) | Operador | aberta | decisão em `docs/POKEDATA_HANDOFF.md` |
-| T11 | Revalidação visual (2 divergências CHS, 5 subprodutos, arte provável, impressão) com amostra do `sheet.py` | Claude, depois Operador | aberta, depende de T1 | imagens ficam locais |
+| T11 | Revalidação visual (2 divergências CHS, 5 subprodutos, arte provável, impressão) com amostra do `sheet.py` | Claude, depois Operador | folhas geradas (`sample_pr53.py`); 1ª leitura sem par errado; **conferência plena: operador** | `trabalho/revalidacao_pr53.jpg`, `trabalho/revalidacao_provaveis.jpg` |
 
 ## Registro de turnos
 
@@ -53,3 +53,17 @@ reabrem sem evidência nova.
 - Delegado ao GPT: T5, T6, T7, T8.
 
 **Vez de:** GPT (T5–T8) · Operador (T9, T10) · Claude segue em T1.
+
+### 06/10/2026 — Claude (turno 2)
+
+- T1 concluída: pipeline completo em 2 h 40 min, `rc=0`. Agregados e comparação com a base parcial
+  em `docs/POKEDATA_REVIEW.md`, "Rodada 4". Nenhum derivado no repositório.
+- T4 concluída: `accept_run.py` 6/6 OK (Cobertura 3.490 = base, 0 ambíguas; exclusivas 0;
+  Correspondência 18.723 linhas; CHT 116; comparação 388/375).
+- T11 iniciada: `sample_pr53.py` gerou as folhas de contato; 18/18 pares do PR #53 com a mesma
+  ilustração em leitura reduzida; conferência plena e impressão ficam com o operador.
+- Evidência para T5 (GPT): nesta rodada `resolve_reference` localizou as 3.490 referências sem
+  ambiguidade (3.469 exatas + 21 por número literal).
+- PR aberto para `docs/pokedata-claude-handoff` com código, testes e documentação da rodada 4.
+
+**Vez de:** Operador (conferência visual, T9, T10, merge do PR) · GPT (T5–T8).

@@ -331,3 +331,99 @@ corretamente: faltam `cv2` e `PIL`, e a raiz do repositório é versionável.
 2. Reprocessar pelo roteiro em ambiente privado, ou recuperar os intermediários originais: **operador** (máquina), seguido de conferência pelo GPT/Claude.
 3. Revalidação visual: 2 divergências CHS, 5 subprodutos, arte provável e impressão de todas as linhas: depende do item 2.
 4. Fechar #55 e #58 como superados: **operador** (não fechei PRs que não abri).
+
+## Rodada 4 — Claude: reprocessamento executado na máquina privada (2026-10-06)
+
+Primeira execução real do pipeline revisado (branch `claude/pokedata-reprocessamento`, a partir
+de `24e83c1`). Máquina do operador: Windows 11, Python 3.12, 12 núcleos, 16 GB, Git Bash com
+`PYTHONUTF8=1` e um shim `python3` para o venv do pipeline. Pasta de trabalho
+`research/pokedata/pipeline/trabalho/` (ignorada pelo Git). Nada do que foi gerado entra no
+repositório: só código, testes e estes agregados.
+
+### Execução
+
+| Etapa | Resultado | Tempo |
+|---|---|---|
+| 0 pré-checagem | 7 OK | s |
+| 1 coleta PokeData | **1ª tentativa parou: 60 de 694 sets com HTTP 429** na passada paralela; corrigido (`8c200f2`: 429 espera 30/60/120/240 s e os sets que falham são refeitos um a um) e recoletado: **694 sets, 83.653 registros, coleta completa** | 11 min + 8 min |
+| 2 fontes externas | pokemon-tcg-data, TCGdex (ja 12.781 cartas, zh-cn 877, zh-tw 7.436), PokeAPI | min |
+| 3 catálogo | EN 23.736 cartas únicas no `catalog.pkl` | 1 min |
+| 4 imagens | **61.655 baixadas, 52 falhas (0,08 %)**; segunda passada só nas 52: nenhuma recuperada (1 em 5 sondadas é 404, as outras esgotam o tempo no CDN). Viram "carta sem imagem" | 20 min |
+| 5 descritores | 9.106.106 + 8.893.573 pontos SIFT (duas partes) | 25 min |
+| 7 candidatas | EN×JP 555.180 pares, EN×CN 430.496, CN×JP 238.200 | 21 min |
+| 8 segunda comparação | selecionados 44.020 / 15.688 / 24.760 | 25 min |
+| 9 Limitless | 2.404 cartas EN (2011+) sem japonês confirmado; 2.189 consultas; 7.279 pares comparados | 6 min |
+| 10–12 | classificação, `lim_jp`, planilha `catalogo.xlsx` (17 MB, 13 abas), `comparacao_pr53.csv` | 3 min |
+
+Total: cerca de 2 h 40 min, contra as 4 h previstas no roteiro para 2 núcleos. Memória foi o
+único incidente: a RAM disponível caiu a 0,8 GB por programas do operador (Chrome, ASUS); com
+autorização, Chrome e apps WebView foram fechados. O pipeline em si usa ~2 GB na etapa 5 e ~3,7 GB
+nas etapas 7–8.
+
+### Conferências de aceite (`research/pokedata/accept_run.py`, novo; sem contagens fixas)
+
+Todas as seis passaram (`rc=0`):
+
+| Conferência | Resultado |
+|---|---|
+| Coleta | `complete: true`, 694 sets, 0 falhos, 83.653 cartas |
+| `exclusiva` automática | **0** em todos os catálogos; aba Exclusivas vazia |
+| Cobertura PR53 | **3.490 referências = base parcial**, IDs únicos, mesma tupla (ID, nome, número, set); localização: **3.469 registro exato + 21 registro exato (número literal); 0 ambíguas, 0 não localizadas** |
+| CHT PR53 | 116 registros preservados campo a campo |
+| `comparacao_pr53.csv` | 388 registros = 375 pares ID–idioma da base parcial |
+| Correspondência | 18.723 linhas; JP 18.170 + CHS 7.270 − ambos 6.717 = 18.723 ✔; 18.723 cartas (uma por linha) |
+
+Situação geral das cartas únicas nesta rodada (compare com a entrega de 04/10 no README do pipeline):
+
+| Idioma | Arte confirmada | Provável | Inconclusivo | Não encontrada | Exclusiva |
+|---|---|---|---|---|---|
+| EN | 18.723 (04/10: 18.673) | 1.068 (1.121) | 2.769 (2.747) | 485 (485) | **0** (21) |
+| JP | 24.290 (24.158) | 1.370 (1.502) | 3.578 (3.574) | 950 (635) | **0** (319) |
+| CN | 9.606 (9.606) | 340 (340) | 963 (963) | 97 (97) | 0 (0) |
+
+Leitura: as exclusivas antigas (21 EN + 319 JP) viraram "não encontrada" ou "inconclusivo", como
+decidido (ausência não prova exclusividade); o resto varia pouco, pela coleta nova (83.653
+registros contra 77.864 da coleta parcial) e pela chave completa do `rank`. A Correspondência
+tem 18.723 linhas contra 18.345 em 05/10: a chave completa deixou de fundir impressões distintas.
+
+### Comparação com a base parcial (375 pares) e com a conciliação de 04/10
+
+| Idioma | Esta rodada | Conciliação de 04/10 (`reconcile_partial.py`) |
+|---|---|---|
+| JP | **143 igual** (arte confirmada aqui), 9 provável com a mesma candidata, 1 inconclusiva com a mesma candidata, 7 set fora do catálogo | 152 iguais, 8 sem equivalente |
+| CHS | **69 igual**, 5 subprodutos (`151C1..4` × `151C`), 7 provável com a mesma candidata, 1 inconclusiva com a mesma candidata, 12 carta sem imagem no PokeData, 18 set fora do catálogo | 76 iguais, 5 subprodutos, 2 divergentes, 29 sem equivalente |
+| CHT | 116 só no PR #53 | 116 preservados |
+
+As **2 divergências CHS de 04/10 (IDs EN 417 e 423)** não divergem mais: ficaram "provável com a
+mesma candidata" (`CSM2DC 195/342` e `CSMPbC 001/025`), e a segunda impressão CHS de cada uma
+(`CSM2cC 071/150`, `CSM2.5C 006/061`) está "sem imagem no PokeData". Os 9 JP + 7 CHS que caíram
+de "igual" para "provável" são a mesma carta com menos de 40 pontos na arte (Tag Team e full art
+com foil pesado) ou nome divergente na fonte.
+
+### Revalidação visual (roteiro, §5) — primeira leitura, pendente de conferência do operador
+
+`research/pokedata/pipeline/sample_pr53.py` (novo) gera, na pasta de trabalho e fora do Git:
+
+- `revalidacao_pr53.jpg`: os **18 pares do PR #53** que ficaram "provável/inconclusiva" aqui, lado
+  a lado com a candidata desta rodada. Leitura do Claude em resolução reduzida: **18/18 têm a
+  mesma ilustração** (Psyduck M2a, Victini SV-P ×2, Pikachu/Charmander shiny SV4a, Charmeleon
+  SV2a, Raichu/Tyranitar SV2D, Marill SV2P, Boss's Orders CS1aC, e 9 Tag Team GX CHS/JP). Nenhuma
+  contradiz o "Confirmada" do PR #53 quanto à arte. **Impressão** (edição, acabamento, carimbo)
+  não foi conferida: Victini `SV-P 288` aparece como par de duas referências EN diferentes
+  (IDs 84 e 99), caso típico de mesma arte em impressões distintas.
+- `revalidacao_provaveis.jpg`: 48 pares sorteados (semente 20261006) dos 4.255 "provável" de todas
+  as combinações. Leitura reduzida: nenhum par visivelmente errado; a conferência em resolução
+  plena fica com o operador.
+
+### O que volta ao repositório nesta rodada
+
+`fetch_cards.py` (429), `test_safety.py` (+3), `accept_run.py` (+ `test_accept_run.py`, 11),
+`sample_pr53.py`, este registro, o handoff e `docs/COMUNICACAO_GPT_CLAUDE.md`. Planilha, CSV,
+imagens, descritores, `*.pkl` e `ext/` ficam na máquina do operador.
+
+### Pendências (dono)
+
+1. Conferir as duas folhas de contato em resolução plena e, para as linhas que usar, a impressão: **operador**.
+2. Termos de uso da fonte e visibilidade dos derivados já na branch (`inputs/`): **operador** (insumo do GPT, T6 em `docs/COMUNICACAO_GPT_CLAUDE.md`).
+3. P56-8 sobre a entrega de 05/10: **GPT**. Nesta rodada, `resolve_reference` localizou as 3.490 referências sem ambiguidade.
+4. Revisão do `accept_run.py` (P56-9) e endurecimento do pipeline (encoding, caminhos, células com `=`): **GPT**.

@@ -63,6 +63,8 @@ bash ../run_pipeline.sh
 | 12 | `build_xlsx.py` | planilha de entrega; com a planilha do PR #53 como segundo argumento, acrescenta a cobertura das referências e o chinês tradicional | 1 min |
 | — | `validate_lim.py`, `sheet.py` | validação por amostra e folhas de contato para conferência visual | — |
 | — | `compare_pr53.py` | compara a planilha do PR #53 com o resultado desta rodada → `comparacao_pr53.csv` | 1 min |
+| — | `sample_pr53.py` | folhas de contato para a revalidação visual: pares do PR #53 que ficaram "provável/inconclusiva" e amostra dos prováveis → `revalidacao_*.jpg` (locais) | 1 min |
+| — | `../accept_run.py` | conferências de aceite de uma execução nova, sem contagens fixas (roteiro, §3) | 1 min |
 
 \* Em uma máquina de 2 núcleos e 8 GB de memória. O total fica perto de 4 horas e 7 GB de disco.
 

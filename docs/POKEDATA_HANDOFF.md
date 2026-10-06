@@ -1,6 +1,6 @@
 # Catálogo de cartas — handoff da frente (nome fixo; atualizar a cada sessão)
 
-Última atualização: **06/10/2026**, sessão Claude de validação do handoff, depois da rodada 3. Este arquivo
+Última atualização: **06/10/2026**, sessão Claude da rodada 4 (reprocessamento executado na máquina privada). Este arquivo
 substitui estados descritos em handoffs anteriores desta frente. Fonte de verdade: o código
 da branch e os documentos listados abaixo. Este texto é só o mapa.
 
@@ -44,8 +44,10 @@ com o operador decidindo.
 | Coleta robusta: manifesto, cache validado (GPT) | ✔ | ✔ | ✔ | não |
 | Pré-checagem (`pipeline/preflight.py`, etapa 0) | ✔ | ✔ | ✔ (6 testes) | rodou e bloqueou corretamente neste container |
 | Testes de pesquisa no CI (com `numpy`) | ✔ | ✔ | CI verde, 45 testes no log | — |
-| Reprocessamento | ✔ (roteiro) | — | — | **não executado** |
-| Revalidação visual (arte × impressão) | — | — | — | não |
+| Reprocessamento | ✔ (roteiro) | ✔ | — | **executado em 06/10** na máquina do operador (Windows): coleta completa (694 sets, 83.653 registros), `catalogo.xlsx` e `comparacao_pr53.csv` gerados; detalhes em `POKEDATA_REVIEW.md`, "Rodada 4" |
+| Conferências de aceite sem contagens fixas (`accept_run.py`) | ✔ | ✔ | ✔ (11 testes) | 6 de 6 OK sobre a planilha de 06/10 |
+| Coleta tolerante a HTTP 429 (`fetch_cards.py`) | ✔ | ✔ | ✔ (3 testes) | recuperou os 60 sets que falharam na 1ª tentativa |
+| Revalidação visual (arte × impressão) | ✔ (`sample_pr53.py`) | ✔ | — | folhas de contato geradas (18 pares do PR #53 + 48 prováveis); 1ª leitura do Claude sem par errado; **conferência plena e impressão: operador** |
 
 ## Decisões fechadas: não reabrir sem evidência nova
 
@@ -63,14 +65,15 @@ com o operador decidindo.
 - Base parcial: 3.490 referências; 388 registros confirmados; 375 pares ID–idioma; 116 CHT.
 - Ponte: **3.469 `unico` + 21 `unico_numero_literal`**, 0 sem match. Das 1.785 coincidências numéricas de ID, só 2 são a mesma carta.
 - Conciliação com o snapshot de 04/10: **JP 152 iguais e 8 sem equivalente**; **CHS 76 iguais, 5 subprodutos, 2 divergentes (IDs EN 417 e 423) e 29 sem equivalente**; CHT 116 preservados.
-- Testes: `unittest` de pesquisa **45 OK**; `pytest` **1181 passed**.
+- Testes: `unittest` de pesquisa **59 OK** (45 + 3 do 429 + 11 do aceite); `pytest` **1181 passed**.
+- Rodada 4 (06/10, execução real): Cobertura PR53 **3.490 = base parcial, 0 ambíguas, 0 não localizadas**; Correspondência **18.723** linhas (JP 18.170, CHS 7.270, ambos 6.717); exclusivas **0**; comparação com a base parcial: **JP 143 igual + 9 provável + 1 inconclusiva + 7 set fora; CHS 69 igual + 5 subprodutos + 7 provável + 1 inconclusiva + 12 sem imagem + 18 set fora**; os IDs 417 e 423 deixaram de divergir (provável com a mesma candidata).
 - Conferido em 06/10 numa máquina Windows (Python 3.12): ponte, conciliação, `pytest` e `audit_inputs.py` batem com os valores acima.
 
 ## Pendências (dono → o que bloqueia)
 
 1. **Operador:** decidir sobre os termos de uso da fonte e a visibilidade dos derivados já públicos na branch (ZIP e XLSX em `inputs/`). Bloqueia o #53 → `main` e qualquer nova publicação.
-2. **Operador:** reprocessar em máquina privada pelo roteiro, ou recuperar os intermediários da execução original (`*.pkl`, `ext/limitless`, imagens). Bloqueia a validação real e a medição das 75 exclusivas antigas.
-3. **Depois do item 2:** revalidação visual (2 divergências CHS, 5 subprodutos, arte provável, impressão de todas as linhas).
+2. ~~Reprocessar~~ **Feito em 06/10** (rodada 4). Os intermediários (`trabalho/`, 7 GB) ficam na máquina do operador; para refazer, o roteiro continua valendo.
+3. **Operador:** conferir `trabalho/revalidacao_pr53.jpg` e `trabalho/revalidacao_provaveis.jpg` em resolução plena e, para as linhas que usar, a impressão (edição, acabamento, carimbo). As 2 divergências CHS de 04/10 viraram "provável com a mesma candidata"; os 5 subprodutos continuam como categoria própria.
 4. **GPT:** responder P56-8 (`resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega de 05/10?) e P56-9 (`audit_revision.py` precisa de um modo sem contagens fixas?).
 5. **Operador:** fechar #55 e #58 como superados.
 6. **Operador:** protocolo "bastão" GPT ↔ Claude, **proposto e não aprovado**. Uma issue por frente, com o estado no corpo; cada comentário é um turno com formato fixo e termina com "Vez de: GPT | Claude | Operador"; o operador só repassa a vez.
@@ -88,6 +91,8 @@ com o operador decidindo.
 - **Windows (pago em 06/10):** com `core.autocrlf=true`, o checkout convertia `inputs/manifest.json` e `inputs/ENTREGA_CATALOGO_ORIGINAL.md` para CRLF e `audit_inputs.py` falhava na conferência de bytes. O `.gitattributes` da raiz (`research/pokedata/inputs/** -text`, `*.sh text eol=lf`) resolve; num checkout anterior a ele, apague esses dois arquivos e rode `git checkout -- research/pokedata/inputs research/pokedata/pipeline/run_pipeline.sh`. Leitura de texto sem `encoding="utf-8"` quebra com cp1252: corrigido nos testes e no `audit_inputs.py`, **não** nos scripts de `pipeline/` (dezenas de `open()` sem encoding). Os testes que executam `run_pipeline.sh` são pulados no Windows porque o `bash` que o Python encontra no PATH é o lançador do WSL. Reprocessar no Windows só via WSL ou Linux, como o roteiro já diz.
 
 ## Como retomar
+
+Canal de trabalho com o GPT: `docs/COMUNICACAO_GPT_CLAUDE.md` (quadro de tarefas + registro de turnos; atualizar a cada turno).
 
 ```bash
 cd ebay-arbitrage-scanner
