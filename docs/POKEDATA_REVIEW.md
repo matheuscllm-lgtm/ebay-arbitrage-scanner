@@ -552,3 +552,24 @@ arquivos versionados; inventário dos ZIPs e nomes das abas do XLSX conferidos p
 de metadados e `openpyxl`. Sem executar scripts recebidos, abrir pickle, coletar, alterar
 identidade ou inspecionar/imprimir preços. Nenhum anexo novo foi versionado. Só documentação
 mudou; as suítes de código não foram repetidas nesta rodada.
+
+### Complemento T5 — busca no GitHub a pedido do operador
+
+O operador indicou que a planilha pudesse ter sido enviada ao GitHub, em vez desta conversa.
+Foi examinado o histórico alcançável de todas as branches remotas e heads de PRs disponíveis,
+inclusive PRs fechados e arquivos removidos ainda presentes nos commits. Também foram lidos
+os corpos/comentários públicos de issues/PRs e a lista de releases. **A entrega revisada não
+foi localizada, nem um link para seu download.** O inventário de planilhas/pacotes só encontrou
+os snapshots antigos já conhecidos. Essa conclusão cobre este repositório e seu histórico
+acessível; não presume acesso a uploads de outras conversas ou refs que o GitHub não expõe.
+
+Registros públicos relevantes:
+
+- [GPT na #56: entrega recebida, ZIP não publicado](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-5989271311).
+- [Revisão do #53: novo XLSX e CSV ficaram fora do Git](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/53#issuecomment-5989743243).
+- [Pacote público no #58: nova planilha, CSV e ZIP completo não adicionados](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-5989516547).
+
+Os comentários demonstram recebimento numa sessão anterior do GPT, mas não indicam a conversa
+que recebeu o upload nem um caminho para recuperar o arquivo. T5 permanece bloqueada para
+cotejo histórico; nenhum resultado de perda foi inferido. [Conclusão da busca na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6012539615).
+Nenhum dado privado ou metadado novo do pacote foi incluído neste complemento.

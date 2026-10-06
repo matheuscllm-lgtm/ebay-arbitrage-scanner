@@ -80,6 +80,7 @@ com o operador decidindo.
 2. ~~Reprocessar~~ **Feito em 06/10** (rodada 4). Os intermediários (`trabalho/`, 7 GB) ficam na máquina do operador; para refazer, o roteiro continua valendo.
 3. ~~Conferência visual~~ **Feita em 06/10** (18/18 + 48/48). Para as linhas que forem usadas comercialmente, a impressão (edição, acabamento, carimbo) continua exigindo a carta física ou outra fonte.
 4. **Operador → GPT, T5/P56-8:** os quatro ZIPs reenviados em 06/10 são idênticos ao snapshot antigo (`fe6a3589…`), sem Cobertura PR53. Fornecer a entrega revisada de 05/10 (`84986e8a…`) ou seu XLSX com essa aba; para cotejo direto, também o catálogo privado da rodada 4. P56-9 já respondido em T8. Identificação completa em `POKEDATA_REVIEW.md`.
+   A [busca no histórico acessível do GitHub](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6012539615) não localizou a entrega revisada; os comentários antigos registram que o XLSX/CSV novos ficaram fora do Git.
 5. ~~Fechar #55 e #58~~ **Feito em 06/10**, a pedido do operador.
 6. **Operador:** protocolo "bastão" GPT ↔ Claude, **proposto e não aprovado**. Uma issue por frente, com o estado no corpo; cada comentário é um turno com formato fixo e termina com "Vez de: GPT | Claude | Operador"; o operador só repassa a vez.
 

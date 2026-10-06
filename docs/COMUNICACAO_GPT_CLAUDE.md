@@ -28,7 +28,7 @@ reabrem sem evidência nova.
 | T2 | Coleta tolerante a HTTP 429 (backoff longo + repasse serial), com testes | Claude | feita | `8c200f2` em `claude/pokedata-reprocessamento` |
 | T3 | `accept_run.py`: conferências de aceite sem contagens fixas (resposta prática ao P56-9) | Claude | feita, aguarda revisão do GPT (T8) | `7f6f39e` na mesma branch |
 | T4 | Conferências de aceite sobre a planilha nova + registro em `docs/POKEDATA_REVIEW.md` (rodada 4) e PR | Claude | **feita**: 6 de 6 conferências OK; rodada 4 registrada | PR da branch `claude/pokedata-reprocessamento` |
-| T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | **bloqueada por versão incorreta**: os quatro ZIPs reenviados são o snapshot antigo, sem Cobertura PR53; falta a entrega revisada | [identificação dos arquivos na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6012417814); `POKEDATA_REVIEW.md`, identificação dos insumos T5 |
+| T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | **bloqueada**: anexos reenviados são antigos; entrega revisada também não localizada no histórico acessível do GitHub | [busca no GitHub](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6012539615); `POKEDATA_REVIEW.md`, identificação dos insumos e busca T5 |
 | T6 | Termos de uso do PokeData (iubenda 81884871, versão 12/12/2025): o que permite, o que proíbe, opções para o operador decidir sobre #53 → `main`. Sem parecer jurídico | GPT | **feita**, decisão T9 continua com operador | [leitura e opções](POKEDATA_TERMOS.md); [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa) |
 | T7 | Portabilidade e endurecimento de `research/pokedata/pipeline/`: `encoding="utf-8"` em todo `open()` de texto; validar id de set antes de montar caminho em `fetch_external.py`; escapar células iniciadas por `=`, `+`, `-`, `@` em `build_xlsx.py`. Com testes. **Não tocar `fetch_cards.py`** (T2) nem regras de identidade | GPT | **feita**, aguarda revisão T12 | [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa), branch `gpt/pokedata-t5-t8` a partir de `87c8fb0` |
 | T8 | Revisar `research/pokedata/accept_run.py` frente à tabela da seção 3 do roteiro | GPT | **feita**; aplicado em fixtures, saída real pendente T13 | [resposta P56-9](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010487464); [revisão](POKEDATA_REVIEW.md), seção GPT T5–T8 |
@@ -148,3 +148,19 @@ reabrem sem evidência nova.
   Nenhuma nova tarefa delegada; operador precisa localizar a versão revisada.
 
 **Vez de:** Operador | GPT (T5 quando houver o insumo correto)
+
+### 06/10/2026 — GPT (T5: busca da entrega no GitHub)
+
+- A pedido do operador, procurei a planilha no histórico do repositório, incluindo branches,
+  heads de PRs abertos/fechados e commits alcançáveis; também nos corpos/comentários de
+  issues/PRs e releases. Nenhum arquivo revisado ou link para download foi localizado.
+- Os registros públicos antigos explicam a ausência: o GPT informou recebimento da entrega
+  e que ela não foi publicada; o PR #53 registra que o XLSX e CSV novos ficaram fora do Git.
+  Fontes em `POKEDATA_REVIEW.md`, complemento da busca T5.
+- [Conclusão na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6012539615).
+  O [PR #66](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/66) foi atualizado
+  com a busca, mantendo T5 bloqueada. Nenhuma nova tarefa delegada nem merge.
+- Os registros não identificam qual conversa recebeu o upload. Sem arquivo privado,
+  o cotejo histórico continua indisponível. Só conclusão e fontes já públicas nesta atualização.
+
+**Vez de:** Operador | GPT (T5 com a entrega revisada)
