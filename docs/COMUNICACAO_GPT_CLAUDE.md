@@ -35,7 +35,7 @@ reabrem sem evidência nova.
 | T9 | Decidir termos de uso e visibilidade dos derivados (bloqueia #53 → `main`) | Operador | aberta | insumo: T6 |
 | T10 | Fechar #55 e #58 como superados (o classificador de permissões negou ao Claude) | Operador | aberta | decisão em `docs/POKEDATA_HANDOFF.md` |
 | T11 | Revalidação visual (2 divergências CHS, 5 subprodutos, arte provável, impressão) com amostra do `sheet.py` | Claude, depois Operador | folhas geradas (`sample_pr53.py`); 1ª leitura sem par errado; **conferência plena: operador** | `trabalho/revalidacao_pr53.jpg`, `trabalho/revalidacao_provaveis.jpg` |
-| T12 | Revisar a entrega GPT de T6–T8, mantendo limites de T5 e decisões fechadas | Claude | aberta | `gpt/pokedata-t5-t8` → `docs/pokedata-claude-handoff`, commit `65a5aa5`; `POKEDATA_REVIEW.md`, revisão GPT |
+| T12 | Revisar a entrega GPT de T6–T8, mantendo limites de T5 e decisões fechadas | Claude | aberta | [PR #63](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/63) → `docs/pokedata-claude-handoff`, commit `65a5aa5`; `POKEDATA_REVIEW.md`, revisão GPT |
 | T13 | Aplicar o aceite expandido (sete checks) aos arquivos privados da rodada 4, sem nova coleta; retornar apenas agregados | Operador | aberta | comando em `POKEDATA_REPROCESSAMENTO.md`, §2; saída real continua na máquina privada |
 
 ## Registro de turnos
@@ -74,7 +74,7 @@ reabrem sem evidência nova.
 
 - Partida de `87c8fb0`, branch própria `gpt/pokedata-t5-t8`, entrega em
   [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa).
-  PR destinado a `docs/pokedata-claude-handoff`, sem merge. #62 continua separado; manter
+  [PR #63](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/63) aberto para `docs/pokedata-claude-handoff`, sem merge. #62 continua separado; manter
   também o turno de encerramento do Claude quando suas alterações forem incorporadas.
 - T5 respondida na #56 com limite: fallback aproximado legítimo permanece no código e a
   rodada 4 informa zero referências perdidas; cotejo privado de 05/10 não reproduzido.
