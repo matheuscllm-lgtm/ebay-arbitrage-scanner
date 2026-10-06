@@ -60,7 +60,7 @@ com o operador decidindo.
 - **Arte confirmada ≠ impressão confirmada** (edição, acabamento, carimbo). Nunca promover uma à outra.
 - `reference_match.py` é a fonte única de normalização. Um candidato só é escolhido se for único. Subproduto (`151C4` × `151C`) nunca conta como "igual". ♀/♂ viram `f`/`m` no `common.key`.
 - `identity.py` foi removido por ter sido superado. O #58 não entra (duplicata). Do #55 entrou só a conciliação.
-- **#53 → `main` é inválido** até: (1) o operador decidir sobre os termos de uso da fonte (o pacote afirma que proíbem publicar derivados; ver `pipeline/.gitignore`); (2) haver reprocessamento com o código corrigido.
+- **#53 → `main`:** (2) reprocessamento feito (rodada 4). (1) **Decisão do operador em 06/10:** a questão dos termos fica para um segundo momento; os anexos já públicos na branch **permanecem como estão** e o operador contata o provedor por e-mail (opção A de `POKEDATA_TERMOS.md`). O merge na `main` continua dependendo de palavra explícita do operador.
 - `research/pokedata/inputs/` fica preservado byte a byte (manifesto SHA-256). Os 116 CHT são preservados como vieram. CHS e CHT ficam separados.
 
 ## Números de referência (agregados; servem para conferir, não são entrega)
@@ -74,7 +74,7 @@ com o operador decidindo.
 
 ## Pendências (dono → o que bloqueia)
 
-1. **Operador:** decidir sobre os termos de uso da fonte e a visibilidade dos derivados já públicos na branch (ZIP e XLSX em `inputs/`). Bloqueia o #53 → `main` e qualquer nova publicação.
+1. **Operador:** termos de uso adiados (06/10): anexos ficam públicos por ora; e-mail ao provedor em andamento. Nenhum derivado novo (planilha, CSV, imagens) é publicado até a resposta.
 2. ~~Reprocessar~~ **Feito em 06/10** (rodada 4). Os intermediários (`trabalho/`, 7 GB) ficam na máquina do operador; para refazer, o roteiro continua valendo.
 3. **Operador:** conferir `trabalho/revalidacao_pr53.jpg` e `trabalho/revalidacao_provaveis.jpg` em resolução plena e, para as linhas que usar, a impressão (edição, acabamento, carimbo). As 2 divergências CHS de 04/10 viraram "provável com a mesma candidata"; os 5 subprodutos continuam como categoria própria.
 4. **GPT:** responder P56-8 (`resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega de 05/10?) e P56-9 (`audit_revision.py` precisa de um modo sem contagens fixas?).
