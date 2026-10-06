@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 BASE = 'https://www.pokedata.io/api'
+RATE_LIMIT_BACKOFF = (30, 60, 120, 240)  # HTTP 429: a fonte pede calma; bem mais que os 2-11 s dos erros comuns
+SERIAL_RETRY_PAUSE = 5                   # entre sets refeitos um a um depois da passada paralela
 
 
 def atomic_json(path, value):
@@ -58,10 +60,18 @@ def fetch_json(url, path, validator, download=curl, pause=time.sleep):
         pass
     temporary = path.with_suffix(path.suffix + '.download')
     error = 'unknown error'
+    errors = limits = 0
     try:
-        for attempt in range(4):
+        while errors < 4 and limits <= len(RATE_LIMIT_BACKOFF):
             try:
                 code = download(url, temporary)
+                if code == '429':
+                    # Limite de ritmo, não falha definitiva: espera longa e crescente, sem contar como erro comum.
+                    error = 'HTTP 429'
+                    limits += 1
+                    if limits <= len(RATE_LIMIT_BACKOFF):
+                        pause(RATE_LIMIT_BACKOFF[limits - 1])
+                    continue
                 if code != '200':
                     raise ValueError(f'HTTP {code}')
                 value = json.loads(temporary.read_text())
@@ -71,13 +81,14 @@ def fetch_json(url, path, validator, download=curl, pause=time.sleep):
                 return value, 'downloaded'
             except (OSError, ValueError, TypeError, KeyError) as exc:
                 error = str(exc)
-                pause(2 + attempt * 3)
+                errors += 1
+                pause(2 + (errors - 1) * 3)  # 2, 5, 8, 11 s, como antes
         raise RuntimeError(f'Failed to collect {url}: {error}')
     finally:
         temporary.unlink(missing_ok=True)
 
 
-def collect(root=Path('.'), fetch=fetch_json):
+def collect(root=Path('.'), fetch=fetch_json, pause=time.sleep):
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
     manifest = {'started_at': datetime.now(timezone.utc).isoformat(), 'complete': False, 'sets': [], 'error': None}
@@ -94,6 +105,13 @@ def collect(root=Path('.'), fetch=fetch_json):
                 return {'id': sid, 'status': 'failed', 'error': str(exc)}, []
         with ThreadPoolExecutor(3) as executor:
             results = list(executor.map(get, sets))
+        # Segunda passada, um set por vez e com pausa: o que falhou em paralelo costuma ser limite de ritmo.
+        for index, (report, _) in enumerate(results):
+            if report['status'] == 'failed':
+                pause(SERIAL_RETRY_PAUSE)
+                results[index] = get(sets[index])
+                if results[index][0]['status'] == 'failed' and 'HTTP 429' in results[index][0].get('error', ''):
+                    break  # a fonte continua limitando: não insistir set a set (cada um custaria ~8 min)
         manifest['sets'] = [report for report, _ in results]
         failed = [r['id'] for r in manifest['sets'] if r['status'] == 'failed']
         if failed:
