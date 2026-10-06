@@ -270,3 +270,64 @@ Revisão do commit Claude `69b4a85a1282e72ebc041991438562a964b3c7f4`, em respost
 - **Validação:** 17 testes de pesquisa e 1.181 testes principais passaram localmente (4 avisos de depreciação existentes em `datetime.utcnow`); sintaxe e diff verificados. A execução integral da exportação continua pendente dos intermediários.
 - **Efeito esperado, não regenerado:** esta regra não sustenta nenhuma das 954 exclusividades JP herdadas; todas passam a inconclusivas quando o exportador for executado com esses status. Isso não significa que nenhuma carta seja exclusiva. A projeção anterior de até 319 exclusivas é substituída por essa interpretação. A projeção de aproximadamente 19.623 correspondências não foi recalculada nesta rodada.
 - **Pendências:** os 21 rótulos EN herdados também exigem revisão da evidência de exclusividade; a regra alterada aqui é especificamente JP. Permanecem arte × impressão, 21 referências ambíguas, conciliação dos 375 pares, intermediários e regeneração. Nenhum snapshot ou parâmetro do scanner foi alterado, e nenhum merge foi realizado.
+
+## Rodada 3 — Claude: consolidação do stack e pendências (2026-10-06)
+
+Pedido do operador: fazer o merge, se válido, e resolver as pendências. Pedido do GPT
+(PR #53): partir de [`POKEDATA_FIXES_20261005.md`](POKEDATA_FIXES_20261005.md), resolver
+ambiguidades e normalizações, incluir os testes no CI e preparar o reprocessamento.
+
+### Estado do stack de PRs
+
+| PR | Decisão | Motivo |
+|---|---|---|
+| #57 (GPT → branch do #54) | **mesclado** em `840e482` | CI e regra "ausência não é exclusividade" válidos; CI verde |
+| #53 (linha revisada do GPT, `0fb962b`) | **trazida** para a branch do #54 em `1590303` | pipeline revisado prevalece; conflitos resolvidos a favor dele |
+| #55 (outra sessão Claude) | **não mesclado; conciliação portada** (`reconcile_partial.py`) | C1/C2/C4 dele mexiam no pipeline antigo, superado pelo revisado; a conciliação ainda servia e foi reproduzida com números idênticos |
+| #58 (GPT) | **não mesclado** | 28 dos 32 arquivos são idênticos aos importados em `pipeline/` no `b7fabc8`; os outros 4 são `.gitignore`, `README.md`, `run_pipeline.sh` (correção do PID já aplicada) e o manifesto (o hash do pacote já está em `POKEDATA_REVISION_20261005.md`). Mesclar criaria uma segunda cópia do pipeline |
+| #54 → branch do #53 | mesclar depois do CI verde | ver a resposta na issue #56 |
+| #53 → `main` | **não mesclado: inválido por ora** | (1) o pacote recebido afirma que os termos da fonte proíbem publicar derivados (`pipeline/.gitignore`), e a decisão é do operador; (2) dados não reprocessados com o código corrigido |
+
+`pipeline/identity.py` e `test_identity.py` (rodadas 1 e 2 do Claude, ajustados no #57)
+foram **removidos**: o `build_xlsx.py` revisado não os importa. A chave completa do `rank`
+e o `identity_policy.overall_status` cobrem as mesmas regras de forma mais conservadora: o
+cadastro duplo `036`/`36` também fica separado e não há `exclusiva` automática. Os casos
+reais daqueles testes (`H3`×`3`, `50a`×`50b`, `GG01`×`001`, Holiday Calendar) voltaram em
+`test_reference_match.py`, contra o `rank` real.
+
+### Alterações (motivo · antes → depois · validação)
+
+| Arquivo | Antes → depois | Motivo e validação |
+|---|---|---|
+| `pipeline/reference_match.py` (novo) | regras espalhadas e divergentes → `number_norm`, `set_norm`, `local_code`, `same_print`, `resolve_reference` | Fonte única para `build_xlsx.py`, `compare_pr53.py` e a ponte. 12 testes |
+| `pipeline/build_xlsx.py` → `locate` (aba Cobertura PR53) | `by_rec` em dict sobrescrevia homônimos; com vários candidatos, valia o 1º; nome contido ("mew" em "mewtwoex") ou o único candidato de nome diferente localizavam e herdavam a situação de outra carta → mais de um candidato vira `ambíguo: …`; nome contido ou diferente vira `não localizado: …`; o cadastro duplo é desempatado pela grafia literal do número | Pendência 2 do FIXES. Leia-me ganhou a linha "Ambíguas", e "Não localizadas" passou a contar `não localizado*` |
+| `pipeline/compare_pr53.py` | `numnorm` só tirava zeros de números puros, e `parse_local` apagava letras (`H05`→`5`, ao passo que `TG05` do catálogo ficava `TG05`); `151C1..151C4` eram fundidos em `151C` como "igual"; sem nome igual, comparava contra **todos** os candidatos → normalização única dos dois lados; subproduto vira categoria própria ("subproduto não distinguido pelo catálogo"); referência ambígua não é comparada | Pendência 2. Validação em dado real via `reconcile_partial.py` (abaixo) |
+| `pipeline/common.py` → `key` | ♀/♂ sumiam no corte ASCII (`Nidoran♀` = `Nidoran♂`) → viram `f`/`m`, a convenção que `catalog.py` já usava; `Nidoran F` = `Nidoran♀` | Ressalva do GPT na #56, agora no pipeline e não só na ponte. Afeta as chaves das unidades, que serão recalculadas no reprocessamento |
+| `bridge_partial_ids.py` | regras próprias; 21 referências `ambiguo` → usa `common.key` + `resolve_reference`; os 21 casos são cadastros duplos do catálogo (`4` e `004`, IDs ~40k e ~82k), desempatados pela grafia literal → **3.469 `unico` + 21 `unico_numero_literal`**, 0 sem match, nenhum ID de destino repetido; a coluna `cadastro_duplo` lista os dois IDs | Pendência "resolver as 21 ambíguas". 7 testes |
+| `reconcile_partial.py` (novo, portado do #55) | conciliação só no #55, com normalização própria → usa a ponte e `reference_match` | 388 registros / 375 pares: **JP 152 iguais e 8 sem equivalente; CHS 76 iguais, 5 subprodutos, 2 divergentes (IDs EN 417 e 423) e 29 sem equivalente; CHT 116 preservados**. Números idênticos aos do #55, por implementação independente |
+| `pipeline/preflight.py` (novo) + etapa 0 de `run_pipeline.sh` | nenhuma checagem antes de 4 h de coleta → recusa Python < 3.10, pacotes ou `curl` ausentes, < 8 GB livres, pasta de trabalho versionável e coleta anterior incompleta; avisa sobre intermediários sem manifesto | Preparar o reprocessamento sem publicar derivados. 6 testes, incluindo "pré-checagem falha → nenhum download" |
+| `docs/POKEDATA_REPROCESSAMENTO.md` (novo) | — → roteiro: decisões do operador, comandos, conferências de aceite e o que volta ao repo | Item 1 do FIXES. **Preparado, não executado** |
+| `.github/workflows/tests.yml` + `research/pokedata/requirements-test.txt` | o passo do #57 rodaria os testes do GPT sem `numpy` (o scanner só instala PyYAML e pytest) e quebraria → instala `numpy` antes | Reproduzido num venv limpo: sem `numpy`, 1 erro; com o arquivo, OK |
+
+### Validação (local e num venv equivalente ao CI)
+
+```
+python -m unittest discover -s research/pokedata -p 'test_*.py'   # 45 OK (20 GPT + 7 ponte + 12 referências + 6 pré-checagem)
+python -m pytest -q                                               # 1181 passed
+python research/pokedata/bridge_partial_ids.py                    # 3469 unico + 21 unico_numero_literal
+python research/pokedata/reconcile_partial.py                     # 388 / 375; números acima
+python research/pokedata/audit_inputs.py                          # hashes e contagens dos anexos OK
+bash -n research/pokedata/pipeline/run_pipeline.sh                # OK
+```
+
+Implementado e testado com fixtures e com os snapshots de 04/10. **Não validado em
+execução real:** nada foi coletado nem regenerado, e `build_xlsx.py`/`compare_pr53.py`
+dependem de `*.pkl` ausentes. A pré-checagem foi rodada neste container e bloqueou
+corretamente: faltam `cv2` e `PIL`, e a raiz do repositório é versionável.
+
+### Pendências (dono)
+
+1. Termos de uso da fonte e visibilidade dos derivados já publicados na branch: **operador**.
+2. Reprocessar pelo roteiro em ambiente privado, ou recuperar os intermediários originais: **operador** (máquina), seguido de conferência pelo GPT/Claude.
+3. Revalidação visual: 2 divergências CHS, 5 subprodutos, arte provável e impressão de todas as linhas: depende do item 2.
+4. Fechar #55 e #58 como superados: **operador** (não fechei PRs que não abri).
