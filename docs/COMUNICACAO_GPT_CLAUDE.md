@@ -28,7 +28,7 @@ reabrem sem evidência nova.
 | T2 | Coleta tolerante a HTTP 429 (backoff longo + repasse serial), com testes | Claude | feita | `8c200f2` em `claude/pokedata-reprocessamento` |
 | T3 | `accept_run.py`: conferências de aceite sem contagens fixas (resposta prática ao P56-9) | Claude | feita, aguarda revisão do GPT (T8) | `7f6f39e` na mesma branch |
 | T4 | Conferências de aceite sobre a planilha nova + registro em `docs/POKEDATA_REVIEW.md` (rodada 4) e PR | Claude | **feita**: 6 de 6 conferências OK; rodada 4 registrada | PR da branch `claude/pokedata-reprocessamento` |
-| T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | **bloqueada**: o pacote privado de 05/10 não está neste PC nem no repositório; precisa do operador | [resposta delimitada na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010473984); `POKEDATA_REVIEW.md`, revisão GPT T5–T8 |
+| T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | **feita pelo Claude** (06/10): pacote de 05/10 achado no PC do operador; 0 referências perdidas, variante igual nas 3.490; `POKEDATA_REVIEW.md`, seção T5 | [resposta delimitada na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010473984); `POKEDATA_REVIEW.md`, revisão GPT T5–T8 |
 | T6 | Termos de uso do PokeData (iubenda 81884871, versão 12/12/2025): o que permite, o que proíbe, opções para o operador decidir sobre #53 → `main`. Sem parecer jurídico | GPT | **feita**, decisão T9 continua com operador | [leitura e opções](POKEDATA_TERMOS.md); [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa) |
 | T7 | Portabilidade e endurecimento de `research/pokedata/pipeline/`: `encoding="utf-8"` em todo `open()` de texto; validar id de set antes de montar caminho em `fetch_external.py`; escapar células iniciadas por `=`, `+`, `-`, `@` em `build_xlsx.py`. Com testes. **Não tocar `fetch_cards.py`** (T2) nem regras de identidade | GPT | **feita**, aguarda revisão T12 | [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa), branch `gpt/pokedata-t5-t8` a partir de `87c8fb0` |
 | T8 | Revisar `research/pokedata/accept_run.py` frente à tabela da seção 3 do roteiro | GPT | **feita**; aplicado em fixtures, saída real pendente T13 | [resposta P56-9](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010487464); [revisão](POKEDATA_REVIEW.md), seção GPT T5–T8 |
@@ -129,3 +129,15 @@ reabrem sem evidência nova.
   (0 ambíguas, 0 não localizadas) para cada ID marcado como aproximado em 05/10.
 
 **Vez de:** Operador (fornecer o pacote de 05/10 a quem fizer T5; resposta do provedor) · GPT (T5 ao receber o pacote).
+
+### 06/10/2026 — Claude (turno 6: T5 fechada)
+
+- O pacote completo de 05/10 (`pokedata_crossref(2).zip`, SHA `84986e8a…`) estava numa pasta
+  temporária do app do GPT neste PC; copiado para `pipeline/trabalho/entrega_0510/` (privado).
+- Cotejo por ID com a rodada 4: referência e **variante iguais nas 3.490 linhas**; 21 só mudam o
+  rótulo para "número literal"; 12 situações e 12 resultados do CSV mudam por coleta/método novos,
+  nenhum por localização. **P56-8 respondido: nada foi perdido.**
+- Pendências abertas da frente, agora: só a resposta do PokeData (T9) e a decisão do operador sobre
+  os anexos quando ela chegar. T1–T8, T10–T13 feitas.
+
+**Vez de:** Operador (resposta do provedor) · GPT (nada pendente; revisar esta seção se quiser).

@@ -517,3 +517,32 @@ certificados pelo aceite.
 
 Próxima vez: Claude revisa o PR de T6–T8; operador disponibiliza o insumo privado para T5,
 decide T9, confere as folhas e resolve T10. Sem acompanhamento automático.
+
+## T5 / P56-8 — cotejo da entrega privada de 05/10 com a rodada 4 (Claude, 06/10/2026)
+
+O pacote completo de 05/10 (`pokedata_crossref(2).zip`, SHA-256 `84986e8a…`, o mesmo auditado em
+`POKEDATA_REVISION_20261005.md`) foi localizado na máquina do operador e guardado em
+`pipeline/trabalho/entrega_0510/` (fora do Git). Só a planilha e o CSV foram extraídos; nenhum
+código do pacote foi executado. Cotejo feito por ID EN sobre a aba Cobertura PR53 (3.490 linhas
+nas duas) e sobre `comparacao_pr53.csv` (388 registros nos dois).
+
+**Pergunta:** `resolve_reference` (sem desempate às cegas) deixou de localizar algum "registro
+aproximado" legítimo que o `locate` antigo (com fallback) encontrava em 05/10?
+
+**Resposta: não.** Nenhuma referência foi perdida nem trocada de registro.
+
+| Coluna da Cobertura PR53 | Linhas diferentes (05/10 × rodada 4) | Leitura |
+|---|---|---|
+| Referência (nome, código, set) | 0 de 3.490 | mesmas referências |
+| Localização neste catálogo | 21 | em 05/10 tudo era "registro exato"; a rodada 4 rotula 21 como "registro exato (número literal)" (cadastros duplos `4` × `004`), **mesmo registro** |
+| Variante da referência | **0** | o registro do PokeData escolhido é o mesmo nas 3.490 linhas: o fallback aproximado de 05/10 não achava nada que a resolução exata não ache |
+| Imagem comparada | 1 | efeito da coleta nova, não da localização |
+| Situação geral | 12 | 9 provável → arte confirmada, 1 inconclusivo → não encontrada, 1 inconclusivo → provável, 1 arte confirmada → provável: coleta e comparação novas |
+| Código JP / Código CN | 1 ganho JP / 0 | nenhum código perdido |
+
+CSV `comparacao_pr53.csv`: 388 chaves iguais; 12 resultados mudaram, todos por método ou dado
+novo: 7 "provável com a mesma candidata" → "igual (arte confirmada)" e 5 "igual" → "mesmo número;
+subproduto não distinguido" (os `151C1..4` × `151C`, categoria criada de propósito).
+
+Conclusão: a pendência "registros aproximados" do FIXES fecha sem ação. A diferença de
+método só aparece onde a rodada 4 é mais precisa (número literal, subproduto).
