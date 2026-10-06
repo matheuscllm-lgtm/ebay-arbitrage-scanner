@@ -1,6 +1,6 @@
 # Catálogo de cartas — handoff da frente (nome fixo; atualizar a cada sessão)
 
-Última atualização: **06/10/2026**, depois do merge do #63 (GPT) e da revisão T12 (Claude). Aceite de 7 verificações: 7/7 sobre a rodada 4. Este arquivo
+Última atualização: **06/10/2026**, identificação GPT dos anexos reenviados para T5, depois do merge do #65 na main. Aceite de 7 verificações: 7/7 sobre a rodada 4. Este arquivo
 substitui estados descritos em handoffs anteriores desta frente. Fonte de verdade: o código
 da branch e os documentos listados abaixo. Este texto é só o mapa.
 
@@ -16,16 +16,18 @@ com o operador decidindo.
 | Item | Estado em 06/10 |
 |---|---|
 | Repositório | `matheuscllm-lgtm/ebay-arbitrage-scanner` |
-| Branch da frente | `docs/pokedata-claude-handoff` (PR [#53](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/53), rascunho → `main`, aberto pelo GPT) |
+| Branch da frente | **`main`**, desde o merge do PR [#53](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/53) (`ffb5cb2`); novas branches partem de `origin/main` |
 | PR [#54](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/54) (Claude) | **Mesclado** na branch da frente (`f8a19b1`), com CI verde |
 | PR [#57](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/57) (GPT) | **Mesclado** dentro do #54 (`840e482`) |
-| PR [#55](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/55) (outra sessão Claude) | Aberto, **superado**: só a conciliação foi portada (`reconcile_partial.py`). Fechamento: operador |
-| PR [#58](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/58) (GPT) | Aberto, **superado**: 28 de 32 arquivos idênticos ao já importado em `pipeline/` (`b7fabc8`). Fechamento: operador |
+| PR [#55](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/55) (outra sessão Claude) | **Fechado como superado**, a pedido do operador: só a conciliação foi portada (`reconcile_partial.py`) |
+| PR [#58](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/58) (GPT) | **Fechado como superado**, a pedido do operador: 28 de 32 arquivos idênticos ao já importado em `pipeline/` (`b7fabc8`) |
 | PR [#60](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/60) (Claude) | **Mesclado** (`24e83c1`): validação do handoff no Windows |
 | PR [#61](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/61) (Claude) | **Mesclado** (`87c8fb0`): rodada 4, reprocessamento executado na máquina privada |
 | PR [#63](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/63) (GPT) | **Mesclado** (`2aa6b68`): UTF-8 no pipeline, IDs validados, XLSX literal, aceite com 7 verificações, `POKEDATA_TERMOS.md` |
+| PR [#64](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/64) (Claude) | **Mesclado** na antiga branch da frente (`9c6d217`) antes do #53: revisão T12, aceite T13 e decisão T9 |
+| PR [#65](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/65) (Claude) | **Mesclado na main** pelo GPT (`292434b`), com autorização do operador: T10/T11 e bloqueio T5 |
 | PR #52 | Outra frente (zh-pairs); sem relação |
-| Canal GPT ↔ Claude | Issue [#56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56). Último turno: [Claude, rodada 3](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6006748149). Pedidos ao GPT ainda sem resposta: **P56-8** e **P56-9** |
+| Canal GPT ↔ Claude | Issue [#56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56). [T5/P56-8: arquivos identificados, versão revisada ausente](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6012417814). P56-9 respondido na revisão T8 |
 
 ## Ordem de leitura
 
@@ -60,7 +62,7 @@ com o operador decidindo.
 - **Arte confirmada ≠ impressão confirmada** (edição, acabamento, carimbo). Nunca promover uma à outra.
 - `reference_match.py` é a fonte única de normalização. Um candidato só é escolhido se for único. Subproduto (`151C4` × `151C`) nunca conta como "igual". ♀/♂ viram `f`/`m` no `common.key`.
 - `identity.py` foi removido por ter sido superado. O #58 não entra (duplicata). Do #55 entrou só a conciliação.
-- **#53 → `main`:** (2) reprocessamento feito (rodada 4). (1) **Decisão do operador em 06/10:** a questão dos termos fica para um segundo momento; os anexos já públicos na branch **permanecem como estão** e o operador contata o provedor por e-mail (opção A de `POKEDATA_TERMOS.md`). O merge na `main` continua dependendo de palavra explícita do operador.
+- **#53 mesclado na `main` (`ffb5cb2`) por autorização explícita do operador em 06/10.** Reprocessamento feito (rodada 4). A questão dos termos fica para um segundo momento; os anexos já públicos **permanecem como estão** e o operador contata o provedor por e-mail (opção A de `POKEDATA_TERMOS.md`). Nenhum derivado novo é publicado até a resposta.
 - `research/pokedata/inputs/` fica preservado byte a byte (manifesto SHA-256). Os 116 CHT são preservados como vieram. CHS e CHT ficam separados.
 
 ## Números de referência (agregados; servem para conferir, não são entrega)
@@ -77,15 +79,15 @@ com o operador decidindo.
 1. **Operador:** termos de uso adiados (06/10): anexos ficam públicos por ora; e-mail ao provedor em andamento. Nenhum derivado novo (planilha, CSV, imagens) é publicado até a resposta.
 2. ~~Reprocessar~~ **Feito em 06/10** (rodada 4). Os intermediários (`trabalho/`, 7 GB) ficam na máquina do operador; para refazer, o roteiro continua valendo.
 3. ~~Conferência visual~~ **Feita em 06/10** (18/18 + 48/48). Para as linhas que forem usadas comercialmente, a impressão (edição, acabamento, carimbo) continua exigindo a carta física ou outra fonte.
-4. **GPT:** responder P56-8 (`resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega de 05/10?) e P56-9 (`audit_revision.py` precisa de um modo sem contagens fixas?).
+4. **Operador → GPT, T5/P56-8:** os quatro ZIPs reenviados em 06/10 são idênticos ao snapshot antigo (`fe6a3589…`), sem Cobertura PR53. Fornecer a entrega revisada de 05/10 (`84986e8a…`) ou seu XLSX com essa aba; para cotejo direto, também o catálogo privado da rodada 4. P56-9 já respondido em T8. Identificação completa em `POKEDATA_REVIEW.md`.
 5. ~~Fechar #55 e #58~~ **Feito em 06/10**, a pedido do operador.
 6. **Operador:** protocolo "bastão" GPT ↔ Claude, **proposto e não aprovado**. Uma issue por frente, com o estado no corpo; cada comentário é um turno com formato fixo e termina com "Vez de: GPT | Claude | Operador"; o operador só repassa a vez.
 
 ## Armadilhas já pagas
 
 - Os testes de pesquisa precisam de `numpy` (`research/pokedata/requirements-test.txt`, já no CI). Os scripts de auditoria, ponte e conciliação precisam de `openpyxl`, que não está no `requirements.txt` do scanner.
-- **Cada sessão Claude recebe uma branch própria:** trabalhe nela e abra PR para `docs/pokedata-claude-handoff`. Nunca dê push em `gpt/*` nem direto na branch do #53.
-- O GPT envia commits com frequência. **Antes de trabalhar:** `git fetch` e merge de `origin/docs/pokedata-claude-handoff` na sua branch. Os conflitos típicos ficam no fim do `POKEDATA_REVIEW.md` (os dois acrescentam seção): mantenha as duas.
+- **Cada sessão Claude recebe uma branch própria:** trabalhe nela e abra PR para `main`. Nunca dê push em `gpt/*` nem direto na `main`.
+- O GPT envia commits com frequência. **Antes de trabalhar:** `git fetch` e atualização a partir de `origin/main` na sua branch. Os conflitos típicos ficam no fim do `POKEDATA_REVIEW.md` (os dois acrescentam seção): mantenha as duas.
 - Os dois agentes postam pela **mesma conta GitHub**: assine os comentários.
 - A pré-checagem **bloqueia num container de nuvem** (sem `cv2`/`PIL`, raiz versionável). Isso é o esperado; não instale nada só para passar, porque coleta não roda na nuvem.
 - `audit_revision.py` tem contagens fixas da entrega privada de 05/10 e não valida uma execução nova.
@@ -99,10 +101,10 @@ Canal de trabalho com o GPT: `docs/COMUNICACAO_GPT_CLAUDE.md` (quadro de tarefas
 
 ```bash
 cd ebay-arbitrage-scanner
-git fetch origin docs/pokedata-claude-handoff
-git checkout -B <branch-da-sessão> origin/docs/pokedata-claude-handoff
+git fetch origin main
+git checkout -B <branch-da-sessão> origin/main
 pip install -r requirements.txt -r research/pokedata/requirements-test.txt openpyxl
-python -m unittest discover -s research/pokedata -p 'test_*.py'   # esperado: 45 OK (no Windows: OK, skipped=4)
+python -m unittest discover -s research/pokedata -p 'test_*.py'   # esperado: 71 OK (no Windows: OK, skipped=4)
 python -m pytest -q                                               # esperado: 1181 passed
 python research/pokedata/bridge_partial_ids.py                    # esperado: 3469 unico + 21 unico_numero_literal
 python research/pokedata/reconcile_partial.py                     # esperado: 388 registros / 375 pares, números acima
@@ -114,8 +116,8 @@ python research/pokedata/audit_inputs.py                          # esperado: ha
 ```
 Frente: catálogo de cartas EN/JP/CHS/CHT (pesquisa, fora do scanner), repo
 matheuscllm-lgtm/ebay-arbitrage-scanner. Faça fetch e parta de
-origin/docs/pokedata-claude-handoff (PR #53). Leia primeiro docs/POKEDATA_HANDOFF.md e,
+origin/main (#53 já mesclado). Leia primeiro docs/POKEDATA_HANDOFF.md e,
 na ordem indicada nele, os demais documentos; o canal com o GPT é a issue #56.
-Não mescle o #53 na main, não publique derivados nem preços, não ative acompanhamento
+Merge de PR só com autorização explícita; não publique derivados novos nem preços, não ative acompanhamento
 de PR. Rode a validação do handoff e me diga o estado em até 200 palavras antes de agir.
 ```

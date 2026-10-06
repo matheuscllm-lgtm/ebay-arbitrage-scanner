@@ -3,15 +3,15 @@
 Canal de trabalho em equipe definido pelo operador em 06/10/2026. **Este arquivo é a fonte da
 vez e das tarefas.** Toda vez que um agente faz algo, ele atualiza este arquivo (quadro de
 tarefas + um turno no registro) na própria branch e abre/atualiza PR para
-`docs/pokedata-claude-handoff`. A issue #56 continua valendo para o histórico longo; aqui fica
+`main` (desde o merge do #53). A issue #56 continua valendo para o histórico longo; aqui fica
 o estado curto. O mapa da frente é `docs/POKEDATA_HANDOFF.md`; as decisões fechadas dele não se
 reabrem sem evidência nova.
 
 ## Protocolo
 
 1. Cada agente trabalha na sua branch (`gpt/*` ou `claude/*`), nunca na do outro, e abre PR
-   para `docs/pokedata-claude-handoff`. Merge só com autorização explícita do operador.
-2. Antes de trabalhar: `git fetch` e merge de `origin/docs/pokedata-claude-handoff`. Conflito
+   para `main` (desde #53; antes, `docs/pokedata-claude-handoff`). Merge só com autorização explícita do operador.
+2. Antes de trabalhar: `git fetch` e atualização a partir de `origin/main`. Conflito
    neste arquivo: manter os dois turnos, em ordem de data.
 3. Um turno = uma entrada no "Registro de turnos": data, autor, o que foi feito (com commit ou
    PR), o que foi delegado, e **Vez de:** GPT | Claude | Operador. Sem turno, não aconteceu.
@@ -28,7 +28,7 @@ reabrem sem evidência nova.
 | T2 | Coleta tolerante a HTTP 429 (backoff longo + repasse serial), com testes | Claude | feita | `8c200f2` em `claude/pokedata-reprocessamento` |
 | T3 | `accept_run.py`: conferências de aceite sem contagens fixas (resposta prática ao P56-9) | Claude | feita, aguarda revisão do GPT (T8) | `7f6f39e` na mesma branch |
 | T4 | Conferências de aceite sobre a planilha nova + registro em `docs/POKEDATA_REVIEW.md` (rodada 4) e PR | Claude | **feita**: 6 de 6 conferências OK; rodada 4 registrada | PR da branch `claude/pokedata-reprocessamento` |
-| T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | **bloqueada**: o pacote privado de 05/10 não está neste PC nem no repositório; precisa do operador | [resposta delimitada na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010473984); `POKEDATA_REVIEW.md`, revisão GPT T5–T8 |
+| T5 | P56-8: `resolve_reference` deixou de localizar algum "registro aproximado" legítimo da entrega privada de 05/10? | GPT | **bloqueada por versão incorreta**: os quatro ZIPs reenviados são o snapshot antigo, sem Cobertura PR53; falta a entrega revisada | [identificação dos arquivos na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6012417814); `POKEDATA_REVIEW.md`, identificação dos insumos T5 |
 | T6 | Termos de uso do PokeData (iubenda 81884871, versão 12/12/2025): o que permite, o que proíbe, opções para o operador decidir sobre #53 → `main`. Sem parecer jurídico | GPT | **feita**, decisão T9 continua com operador | [leitura e opções](POKEDATA_TERMOS.md); [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa) |
 | T7 | Portabilidade e endurecimento de `research/pokedata/pipeline/`: `encoding="utf-8"` em todo `open()` de texto; validar id de set antes de montar caminho em `fetch_external.py`; escapar células iniciadas por `=`, `+`, `-`, `@` em `build_xlsx.py`. Com testes. **Não tocar `fetch_cards.py`** (T2) nem regras de identidade | GPT | **feita**, aguarda revisão T12 | [65a5aa5](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/commit/65a5aa5944c2de2d6a39d5be1457b871212ed8fa), branch `gpt/pokedata-t5-t8` a partir de `87c8fb0` |
 | T8 | Revisar `research/pokedata/accept_run.py` frente à tabela da seção 3 do roteiro | GPT | **feita**; aplicado em fixtures, saída real pendente T13 | [resposta P56-9](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6010487464); [revisão](POKEDATA_REVIEW.md), seção GPT T5–T8 |
@@ -129,3 +129,21 @@ reabrem sem evidência nova.
   (0 ambíguas, 0 não localizadas) para cada ID marcado como aproximado em 05/10.
 
 **Vez de:** Operador (fornecer o pacote de 05/10 a quem fizer T5; resposta do provedor) · GPT (T5 ao receber o pacote).
+
+### 06/10/2026 — GPT (T5: identificação dos arquivos reenviados)
+
+- Partida de `origin/main` (`292434b`, #65 mesclado). Branch própria
+  `gpt/pokedata-t5-insumos`; PR documental para `main`, sem merge.
+- Recebidos seis anexos nesta conversa: quatro ZIPs e duas planilhas. Os ZIPs têm o mesmo
+  SHA-256 (`fe6a3589…`) e são idênticos ao pacote antigo já versionado. Seu catálogo tem dez
+  abas, sem Cobertura PR53/CHT PR53; nenhum contém o CSV de comparação.
+- A planilha parcial reenviada é o original histórico; a outra é a base EN. Nenhuma contém
+  a aba necessária para identificar os registros aproximados da entrega de 05/10.
+- [P56-8 atualizado na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6012417814).
+  T5 não concluída: falta o ZIP revisado (`84986e8a…`) ou seu XLSX com Cobertura PR53;
+  para cotejo direto entre linhas, também é necessário o catálogo privado da rodada 4.
+- Validado por SHA-256, igualdade com os snapshots versionados e inventário/abas. Sem leitura
+  de preços, execução de código recebido, coleta, alteração de identidade ou dados publicados.
+  Nenhuma nova tarefa delegada; operador precisa localizar a versão revisada.
+
+**Vez de:** Operador | GPT (T5 quando houver o insumo correto)

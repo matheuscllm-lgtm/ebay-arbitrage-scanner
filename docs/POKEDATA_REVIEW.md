@@ -517,3 +517,38 @@ certificados pelo aceite.
 
 Próxima vez: Claude revisa o PR de T6–T8; operador disponibiliza o insumo privado para T5,
 decide T9, confere as folhas e resolve T10. Sem acompanhamento automático.
+
+## GPT — identificação dos insumos reenviados para T5 (2026-10-06)
+
+Base `origin/main`, `292434b` (#65 mesclado). O operador reenviou seis anexos nesta conversa;
+foi conferida sua identidade/estrutura, sem publicar os arquivos ou dados detalhados.
+[Resposta na #56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6012417814).
+
+| Insumo recebido | Resultado verificado |
+|---|---|
+| Quatro ZIPs: `pokedata_crossref.zip`, `(1)`, `(2)` e `(3)` | Todos idênticos byte a byte, 12.556.626 bytes, SHA-256 `fe6a3589be1ef04416024abbc73efc3bd0585ef452c5d03cf0ab27046373df1b`; iguais ao ZIP antigo de `inputs/`. |
+| Catálogo dentro dos ZIPs | Mesmo XLSX nos quatro, SHA-256 `77441e4584aff000c0ca3c83170df99b4bb128efdb6fc50fa81ebdfadab18fdb`; dez abas, sem `Cobertura PR53` nem `CHT PR53`. Os ZIPs não contêm CSV de comparação nem pickle. |
+| Planilha parcial reenviada | Igual ao original histórico `research/pokedata/PokeData_correspondencias_JP_CHS_CHT_parcial.xlsx`, SHA-256 `c3bf41a5b20f09d4546ed0bcc309783ba078b84b99513645fc300bb753f8d513`. Suas seis abas não incluem `Cobertura PR53`. Não é a entrega revisada. |
+| Outra planilha | Base EN com quatro abas, sem `Cobertura PR53`; não identifica os casos aproximados do catálogo revisado. |
+
+A entrega privada de 05/10 documentada em `POKEDATA_REVISION_20261005.md` tem SHA-256
+`84986e8a42615be92d0b522034445ded2224b6b87dd469de0122850b4f6ad724`, contém a planilha revisada
+e `docs/comparacao_pr53.csv`. **Nenhum dos quatro ZIPs recebidos agora corresponde a ela.**
+O número entre parênteses no nome é insuficiente para identificar a versão.
+
+**T5 segue bloqueada para o cotejo histórico**, agora por versão incorreta do insumo recebido.
+Não é possível enumerar os registros marcados como aproximados em 05/10 nas abas enviadas,
+pois a aba pertinente está ausente. A informação agregada da rodada 4 (3.490 localizadas,
+zero ambíguas/não localizadas) e o fallback testado do resolver não substituem essa enumeração.
+
+Próximo insumo: ZIP da versão revisada ou seu XLSX com `Cobertura PR53` e `CHT PR53`;
+para comparação direta linha a linha com a execução nova, também `catalogo.xlsx` da rodada 4.
+Com as duas versões: conferir as chaves ID/nome/número/set, selecionar as referências antigas
+com localização aproximada e cotejar sua localização atual. Reportar somente contagens,
+conclusões e limites, sem expor os dados privados.
+
+Validação desta identificação: SHA-256 dos quatro ZIPs e da planilha parcial comparados aos
+arquivos versionados; inventário dos ZIPs e nomes das abas do XLSX conferidos por leitura
+de metadados e `openpyxl`. Sem executar scripts recebidos, abrir pickle, coletar, alterar
+identidade ou inspecionar/imprimir preços. Nenhum anexo novo foi versionado. Só documentação
+mudou; as suítes de código não foram repetidas nesta rodada.
