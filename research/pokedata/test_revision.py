@@ -9,7 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent / 'pipeline'
 
 def load_function(filename, name, namespace=None):
-    tree = ast.parse((ROOT / filename).read_text())
+    tree = ast.parse((ROOT / filename).read_text(encoding="utf-8"))
     node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
     scope = namespace or {}
     exec(compile(ast.Module(body=[node], type_ignores=[]), filename, 'exec'), scope)

@@ -40,6 +40,7 @@ class PreflightRuleTests(unittest.TestCase):
         self.assertEqual(check_pr53(__file__)[0], "OK")
 
 
+@unittest.skipIf(os.name == "nt", "exige bash POSIX: no Windows, o `bash` do PATH do Python é o lançador do WSL")
 class PreflightGateTests(unittest.TestCase):
     def test_failed_preflight_stops_before_any_download(self):
         with tempfile.TemporaryDirectory() as directory:

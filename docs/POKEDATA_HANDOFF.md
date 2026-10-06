@@ -1,6 +1,6 @@
 # Catálogo de cartas — handoff da frente (nome fixo; atualizar a cada sessão)
 
-Última atualização: **06/10/2026**, sessão Claude encerrada depois da rodada 3. Este arquivo
+Última atualização: **06/10/2026**, sessão Claude de validação do handoff, depois da rodada 3. Este arquivo
 substitui estados descritos em handoffs anteriores desta frente. Fonte de verdade: o código
 da branch e os documentos listados abaixo. Este texto é só o mapa.
 
@@ -64,6 +64,7 @@ com o operador decidindo.
 - Ponte: **3.469 `unico` + 21 `unico_numero_literal`**, 0 sem match. Das 1.785 coincidências numéricas de ID, só 2 são a mesma carta.
 - Conciliação com o snapshot de 04/10: **JP 152 iguais e 8 sem equivalente**; **CHS 76 iguais, 5 subprodutos, 2 divergentes (IDs EN 417 e 423) e 29 sem equivalente**; CHT 116 preservados.
 - Testes: `unittest` de pesquisa **45 OK**; `pytest` **1181 passed**.
+- Conferido em 06/10 numa máquina Windows (Python 3.12): ponte, conciliação, `pytest` e `audit_inputs.py` batem com os valores acima.
 
 ## Pendências (dono → o que bloqueia)
 
@@ -84,6 +85,7 @@ com o operador decidindo.
 - `audit_revision.py` tem contagens fixas da entrega privada de 05/10 e não valida uma execução nova.
 - O sistema pode criar assinatura de PR sozinho: **cancele** (regra do operador de 12/09). Merge só com autorização explícita do operador.
 - Nada de preço, resultado ou derivado no GitHub (`DELIVERY_CHAT.md`). Respostas no chat em até 200 palavras (`CLAUDE.md`).
+- **Windows (pago em 06/10):** com `core.autocrlf=true`, o checkout convertia `inputs/manifest.json` e `inputs/ENTREGA_CATALOGO_ORIGINAL.md` para CRLF e `audit_inputs.py` falhava na conferência de bytes. O `.gitattributes` da raiz (`research/pokedata/inputs/** -text`, `*.sh text eol=lf`) resolve; num checkout anterior a ele, apague esses dois arquivos e rode `git checkout -- research/pokedata/inputs research/pokedata/pipeline/run_pipeline.sh`. Leitura de texto sem `encoding="utf-8"` quebra com cp1252: corrigido nos testes e no `audit_inputs.py`, **não** nos scripts de `pipeline/` (dezenas de `open()` sem encoding). Os testes que executam `run_pipeline.sh` são pulados no Windows porque o `bash` que o Python encontra no PATH é o lançador do WSL. Reprocessar no Windows só via WSL ou Linux, como o roteiro já diz.
 
 ## Como retomar
 
@@ -92,7 +94,7 @@ cd ebay-arbitrage-scanner
 git fetch origin docs/pokedata-claude-handoff
 git checkout -B <branch-da-sessão> origin/docs/pokedata-claude-handoff
 pip install -r requirements.txt -r research/pokedata/requirements-test.txt openpyxl
-python -m unittest discover -s research/pokedata -p 'test_*.py'   # esperado: 45 OK
+python -m unittest discover -s research/pokedata -p 'test_*.py'   # esperado: 45 OK (no Windows: OK, skipped=4)
 python -m pytest -q                                               # esperado: 1181 passed
 python research/pokedata/bridge_partial_ids.py                    # esperado: 3469 unico + 21 unico_numero_literal
 python research/pokedata/reconcile_partial.py                     # esperado: 388 registros / 375 pares, números acima

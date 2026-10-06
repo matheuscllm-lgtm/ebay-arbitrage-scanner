@@ -8,6 +8,7 @@ import unittest
 PIPELINE = Path(__file__).resolve().parent / "pipeline/run_pipeline.sh"
 
 
+@unittest.skipIf(os.name == "nt", "exige bash POSIX: no Windows, o `bash` do PATH do Python é o lançador do WSL")
 class PipelineFailureTests(unittest.TestCase):
     def run_stubbed(self, failed_shard):
         with tempfile.TemporaryDirectory() as directory:
