@@ -1,5 +1,7 @@
 # Catálogo de cartas — anexos para revisão
 
+> Retomando a frente? Comece por [docs/POKEDATA_HANDOFF.md](../../docs/POKEDATA_HANDOFF.md).
+
 > Estado vigente: [revisão de 05/10/2026](../../docs/POKEDATA_REVISION_20261005.md). A pasta pipeline/ contém os scripts revisados; inputs/ preserva snapshots antigos, não a planilha revisada. Não executar coletas ou integrar ao scanner enquanto persistirem os bloqueadores.
 
 Entrada canônica desta revisão: [docs/POKEDATA_REVIEW.md](../../docs/POKEDATA_REVIEW.md).

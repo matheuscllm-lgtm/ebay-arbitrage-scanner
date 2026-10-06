@@ -112,6 +112,8 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
 
 ## Catálogo de cartas e correspondências entre idiomas (2026-10-04)
 
+**Ao retomar esta frente, leia primeiro [`docs/POKEDATA_HANDOFF.md`](docs/POKEDATA_HANDOFF.md)** (estado, decisões fechadas, pendências e como retomar).
+
 - Apresentação (operador, 2026-10-04): usar títulos descritivos do nosso catálogo,
   sem nome de provedor como marca do projeto. Preservar fontes, URLs, créditos,
   IDs e proveniência; esta decisão não autoriza apagar atribuições técnicas.
