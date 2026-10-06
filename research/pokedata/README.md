@@ -1,0 +1,24 @@
+# Catálogo de cartas — anexos para revisão
+
+> Retomando a frente? Comece por [docs/POKEDATA_HANDOFF.md](../../docs/POKEDATA_HANDOFF.md).
+
+> Estado vigente: [revisão de 05/10/2026](../../docs/POKEDATA_REVISION_20261005.md). A pasta pipeline/ contém os scripts revisados; inputs/ preserva snapshots antigos, não a planilha revisada. Não executar coletas ou integrar ao scanner enquanto persistirem os bloqueadores.
+
+Entrada canônica desta revisão: [docs/POKEDATA_REVIEW.md](../../docs/POKEDATA_REVIEW.md).
+Contexto anterior: [docs/POKEDATA_PROJECT_STATE.md](../../docs/POKEDATA_PROJECT_STATE.md).
+
+Os cinco anexos recebidos foram preservados; nomes originais, destinos e SHA-256 estão em [inputs/manifest.json](inputs/manifest.json).
+A planilha completa está dentro de `inputs/pokedata_crossref.zip`, no membro `pokedata_crossref/output/PokeData_catalogo_correspondencia.xlsx`, com bytes idênticos ao anexo separado. A parcial com CHT do PR anterior continua em `PokeData_correspondencias_JP_CHS_CHT_parcial.xlsx`; o anexo parcial desta rodada está em `inputs/`. Os universos e critérios são diferentes e não foram fundidos.
+
+O XLSX completo é disponibilizado pelo ZIP porque seu envio avulso em base64 excede o limite de 16 MiB da conexão GitHub. A auditoria lê o membro do ZIP diretamente e confere o hash do anexo original. Seus scripts estão expandidos em `pipeline/` para revisão por linha. Documentos dentro dessa pasta e em `inputs/` são registros da entrega anterior; conflitos devem ser avaliados conforme a revisão acima.
+
+```bash
+python research/pokedata/audit_inputs.py
+pip install -r research/pokedata/requirements-test.txt            # numpy, para um teste do detector de marcadores
+python -m unittest discover -s research/pokedata -p 'test_*.py'   # pipeline, ponte, referências, pré-checagem (também no CI)
+python research/pokedata/bridge_partial_ids.py   # ponte parcial -> catálogo; -o arquivo.csv (gitignored)
+python research/pokedata/reconcile_partial.py    # 388 registros / 375 pares × snapshot de 04/10; -o arquivo.csv (gitignored)
+```
+
+As verificações são offline. Não executar `pipeline/run_pipeline.sh` para uma simples revisão: ele baixa fontes e processa o catálogo completo. Reprocessar só pelo roteiro [docs/POKEDATA_REPROCESSAMENTO.md](../../docs/POKEDATA_REPROCESSAMENTO.md), em ambiente privado. O pipeline não está integrado ao scanner.
+

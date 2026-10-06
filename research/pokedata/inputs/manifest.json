@@ -1,0 +1,34 @@
+[
+  {
+    "original": "PokeData_catalogo_correspondencia (1).xlsx",
+    "path": "PokeData_catalogo_correspondencia.xlsx",
+    "bytes": 13667896,
+    "sha256": "77441e4584aff000c0ca3c83170df99b4bb128efdb6fc50fa81ebdfadab18fdb",
+    "archive": "inputs/pokedata_crossref.zip",
+    "member": "pokedata_crossref/output/PokeData_catalogo_correspondencia.xlsx"
+  },
+  {
+    "original": "pokedata_sets_por_idioma.xlsx",
+    "path": "pokedata_sets_por_idioma.xlsx",
+    "bytes": 41269,
+    "sha256": "844ed3b497852747ec12da8a06774f5868297646bf54ea3d6b508923785272dc"
+  },
+  {
+    "original": "PokeData_correspondencias_JP_CHS_CHT_parcial.xlsx",
+    "path": "inputs/PokeData_correspondencias_JP_CHS_CHT_parcial_recebido.xlsx",
+    "bytes": 1210293,
+    "sha256": "85907fedc09cfcc57a66cda579630b78e1adc0df9aed59df124c79328eeafeaa"
+  },
+  {
+    "original": "pokedata_crossref.zip",
+    "path": "inputs/pokedata_crossref.zip",
+    "bytes": 12556626,
+    "sha256": "fe6a3589be1ef04416024abbc73efc3bd0585ef452c5d03cf0ab27046373df1b"
+  },
+  {
+    "original": "PokeData — Catálogo EN JP CN e correspondência entre idiomas.md",
+    "path": "inputs/ENTREGA_CATALOGO_ORIGINAL.md",
+    "bytes": 19029,
+    "sha256": "bd412672485c1754da2a08252d669986a33807e958c815af2c6015ec227ba68a"
+  }
+]

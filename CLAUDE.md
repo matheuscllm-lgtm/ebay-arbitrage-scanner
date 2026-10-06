@@ -65,6 +65,13 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
 
 ## Repositório e operação
 
+- Justificativa entre agentes (operador, 2026-10-04): toda alteração deve registrar
+  no PR ou documento de revisão o motivo, a evidência do problema, os arquivos
+  afetados, o comportamento anterior e novo, a validação executada e as pendências.
+  Indicar explicitamente ao Claude o que foi apenas proposto, implementado ou
+  efetivamente testado. Preservar as decisões anteriores e explicar divergências
+  para evitar que outro agente desfaça uma mudança por falta de contexto.
+
 - Fluxo padrão: branch + PR, nunca push direto em main.
 - Repositório independente dos scanners irmãos; não mudar seus parâmetros aqui.
 - Não versionar credenciais ou dados de scans. `data/` e `results/` são locais.
@@ -102,3 +109,39 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
   Regenerar o catálogo só em tarefa de catálogo; nunca chutar par ambíguo.
 - Orientações antigas em comandos/skills históricos não podem reativar raw,
   retirar custos ou substituir as regras desta versão. Consulte o README atual.
+
+## Catálogo de cartas e correspondências entre idiomas (2026-10-04)
+
+**Ao retomar esta frente, leia primeiro [`docs/POKEDATA_HANDOFF.md`](docs/POKEDATA_HANDOFF.md)** (estado, decisões fechadas, pendências e como retomar).
+
+- Apresentação (operador, 2026-10-04): usar títulos descritivos do nosso catálogo,
+  sem nome de provedor como marca do projeto. Preservar fontes, URLs, créditos,
+  IDs e proveniência; esta decisão não autoriza apagar atribuições técnicas.
+
+Novos anexos e revisão conjunta: leia também
+[`docs/POKEDATA_REVIEW.md`](docs/POKEDATA_REVIEW.md). Ele registra os cinco arquivos,
+os achados bloqueadores de integração, os testes offline e a tarefa independente
+para Claude. Não confundir confirmação de arte com confirmação de impressão.
+
+Para continuar a base EN / JP / CHS / CHT, leia primeiro
+[`docs/POKEDATA_PROJECT_STATE.md`](docs/POKEDATA_PROJECT_STATE.md).
+Use a planilha versionada indicada nesse documento, incluída por autorização explícita do operador. O corte raw > US$40
+seleciona referências de pesquisa e não altera a política de compra do scanner.
+Preserve status herdados com rastreabilidade e distinga contagens conferidas de
+correspondências efetivamente revalidadas. Não inferir exclusividade de uma busca vazia.
+
+## Atualização da revisão — 05/10/2026
+
+Leia [`docs/POKEDATA_REVISION_20261005.md`](docs/POKEDATA_REVISION_20261005.md)
+e [`research/pokedata/pipeline/docs/ESTADO_DO_PROJETO.md`](research/pokedata/pipeline/docs/ESTADO_DO_PROJETO.md).
+A revisão técnica mais recente prevalece sobre alegações históricas de conclusão.
+Somente scripts/documentação novos foram importados; a planilha revisada é privada.
+Não confundir snapshots antigos em inputs/ com a entrega revisada. Não integrar
+arte confirmada como impressão confirmada. Os dois defeitos reproduzidos naquela revisão foram corrigidos em código; leia
+[`docs/POKEDATA_FIXES_20261005.md`](docs/POKEDATA_FIXES_20261005.md).
+Os 20 testes offline passaram, mas os dados ainda não foram reprocessados por imagem.
+Resolução de referências sem desempate às cegas, normalização de códigos (`reference_match.py`),
+ponte das 3.490 referências e conciliação dos 375 pares: `docs/POKEDATA_REVIEW.md` (rodada 3).
+Reprocessar só pelo roteiro [`docs/POKEDATA_REPROCESSAMENTO.md`](docs/POKEDATA_REPROCESSAMENTO.md),
+em ambiente privado, depois da decisão do operador sobre os termos de uso da fonte.
+
