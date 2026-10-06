@@ -35,8 +35,8 @@ reabrem sem evidência nova.
 | T9 | Decidir termos de uso e visibilidade dos derivados (bloqueia #53 → `main`) | Operador | aberta | insumo: T6 |
 | T10 | Fechar #55 e #58 como superados (o classificador de permissões negou ao Claude) | Operador | aberta | decisão em `docs/POKEDATA_HANDOFF.md` |
 | T11 | Revalidação visual (2 divergências CHS, 5 subprodutos, arte provável, impressão) com amostra do `sheet.py` | Claude, depois Operador | folhas geradas (`sample_pr53.py`); 1ª leitura sem par errado; **conferência plena: operador** | `trabalho/revalidacao_pr53.jpg`, `trabalho/revalidacao_provaveis.jpg` |
-| T12 | Revisar a entrega GPT de T6–T8, mantendo limites de T5 e decisões fechadas | Claude | aberta | [PR #63](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/63) → `docs/pokedata-claude-handoff`, commit `65a5aa5`; `POKEDATA_REVIEW.md`, revisão GPT |
-| T13 | Aplicar o aceite expandido (sete checks) aos arquivos privados da rodada 4, sem nova coleta; retornar apenas agregados | Operador | aberta | comando em `POKEDATA_REPROCESSAMENTO.md`, §2; saída real continua na máquina privada |
+| T12 | Revisar a entrega GPT de T6–T8, mantendo limites de T5 e decisões fechadas | Claude | **feita**: aprovado; #63 mesclado em `2aa6b68` com autorização do operador | [PR #63](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/63) → `docs/pokedata-claude-handoff`, commit `65a5aa5`; `POKEDATA_REVIEW.md`, revisão GPT |
+| T13 | Aplicar o aceite expandido (sete checks) aos arquivos privados da rodada 4, sem nova coleta; retornar apenas agregados | Operador | **feita pelo Claude** (os arquivos estão na máquina do operador): 7 de 7 OK, incluindo `leia_me_localizacao` | comando em `POKEDATA_REPROCESSAMENTO.md`, §2; saída real continua na máquina privada |
 
 ## Registro de turnos
 
@@ -94,3 +94,16 @@ reabrem sem evidência nova.
   sem recoleta). T9/T10/T11 continuam com os donos atuais.
 
 **Vez de:** Claude | Operador
+
+### 06/10/2026 — Claude (turno 4: revisão do #63)
+
+- T12 feita: diff revisado em contexto limpo (nenhum achado crítico/alto); suíte do #63 com 71 OK
+  tanto com `PYTHONUTF8=1` quanto com o cp1252 padrão; validação de IDs testada contra os 515 IDs
+  reais das fontes externas (0 rejeitados). Parecer no PR #63. Mesclado em `2aa6b68`.
+- T13 feita: `accept_run.py` (7 verificações) sobre `catalogo.xlsx`/`comparacao_pr53.csv` da
+  rodada 4: **7/7 OK**. Sem recoleta.
+- #62 fechado por conflito; suas linhas (PRs #60/#61 no handoff) entram neste turno.
+- Ressalvas baixas registradas no PR: id do TCGdex com `/` aborta em vez de sanear; teste de
+  `ptcg_job` remonta o namespace à mão.
+
+**Vez de:** Operador (T9 com `POKEDATA_TERMOS.md`; T10; conferência visual T11; pacote de 05/10 para o GPT) · GPT (concluir T5 quando receber o pacote).

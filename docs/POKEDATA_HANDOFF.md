@@ -1,6 +1,6 @@
 # Catálogo de cartas — handoff da frente (nome fixo; atualizar a cada sessão)
 
-Última atualização: **06/10/2026**, sessão Claude da rodada 4 (reprocessamento executado na máquina privada). Este arquivo
+Última atualização: **06/10/2026**, depois do merge do #63 (GPT) e da revisão T12 (Claude). Aceite de 7 verificações: 7/7 sobre a rodada 4. Este arquivo
 substitui estados descritos em handoffs anteriores desta frente. Fonte de verdade: o código
 da branch e os documentos listados abaixo. Este texto é só o mapa.
 
@@ -21,6 +21,9 @@ com o operador decidindo.
 | PR [#57](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/57) (GPT) | **Mesclado** dentro do #54 (`840e482`) |
 | PR [#55](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/55) (outra sessão Claude) | Aberto, **superado**: só a conciliação foi portada (`reconcile_partial.py`). Fechamento: operador |
 | PR [#58](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/58) (GPT) | Aberto, **superado**: 28 de 32 arquivos idênticos ao já importado em `pipeline/` (`b7fabc8`). Fechamento: operador |
+| PR [#60](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/60) (Claude) | **Mesclado** (`24e83c1`): validação do handoff no Windows |
+| PR [#61](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/61) (Claude) | **Mesclado** (`87c8fb0`): rodada 4, reprocessamento executado na máquina privada |
+| PR [#63](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/pull/63) (GPT) | **Mesclado** (`2aa6b68`): UTF-8 no pipeline, IDs validados, XLSX literal, aceite com 7 verificações, `POKEDATA_TERMOS.md` |
 | PR #52 | Outra frente (zh-pairs); sem relação |
 | Canal GPT ↔ Claude | Issue [#56](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56). Último turno: [Claude, rodada 3](https://github.com/matheuscllm-lgtm/ebay-arbitrage-scanner/issues/56#issuecomment-6006748149). Pedidos ao GPT ainda sem resposta: **P56-8** e **P56-9** |
 
