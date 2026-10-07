@@ -43,6 +43,7 @@ DEFAULT_PARAMS = {
     "min_pairs_per_set": 20,  # sets chineses com menos pares no catálogo não são baixados
     "max_pages_per_set": 8,   # guarda: 8 × 150 = 1.200 cartas
     "max_ebay_calls": 300,
+    "min_seller_feedback": 5,  # operador 07/10: anúncio com título certo, foto de outra carta e vendedor com 0 avaliações
     "ebay_limit": 50,
     "max_consecutive_ebay_errors": 3,
 }
@@ -316,20 +317,37 @@ def offer_query(row: dict) -> str:
     return f"{core} {_cn_number_token(row['cn_no'])} (chinese,chn,simplified,中文,简体)"
 
 
+_PROMO_CODE_RE = re.compile(r"\b(?:sv|sm|s)-p\b|(?<=/)(?:sv|sm|s)p\b|\b(?:sv|sm)p\b", re.I)   # "132/S-P", "24/SVP", "SV-P"
+_PROMO_WORD_RE = re.compile(r"\bpromos?\b", re.I)
+_PROMO_ROW_CODES = {"svp", "smp", "sp"}
+
+
 def _title_code_conflicts(title: str, cn_code: str) -> bool:
-    """Título cita um código de set simplificado (CSV9C, CS4aC, CBB4C…) diferente do da linha."""
+    """Título cita um set diferente do da linha: código simplificado (CSV9C, CS4aC, CBB4C…),
+    código de promo ("132/S-P", "SV-P" — o caso real de 07/10 era um promo tradicional 132/S-P
+    oferecido como Charizard V CS5aC 132) ou a palavra "promo" numa linha que não é promo."""
+    row = zh_identity.norm_code(cn_code)
     m = zh_identity._TITLE_CODE_RE.search(title)
-    if not m:
-        return False
-    return zh_identity._title_code(m.group(1)) != zh_identity.norm_code(cn_code)
+    if m and zh_identity._title_code(m.group(1)) != row:
+        return True
+    row_promo = row.replace("-", "")
+    pm = _PROMO_CODE_RE.search(title)
+    if pm and pm.group(0).replace("-", "").lower() != row_promo:
+        return True
+    if _PROMO_WORD_RE.search(title) and row_promo not in _PROMO_ROW_CODES:
+        return True
+    return False
 
 
-def pick_offer(listings, row: dict) -> dict | None:
+def pick_offer(listings, row: dict, min_seller_feedback: int | None = None) -> dict | None:
     """Anúncio mais barato (item + frete conhecido) que seja: chinês (simplificado ou só
     "Chinese"), carta SOLTA (``grade_from_title`` = raw: nenhuma certificadora citada), com
     o nome-base como frase + sufixo coerente e o número chinês no título, sem código de set
-    conflitante, sem lote/réplica. Frete desconhecido não vira zero: fica ``None`` e a
-    razão sai marcada. None = nenhum serve."""
+    conflitante (inclusive promo), sem lote/réplica, de vendedor com pelo menos
+    ``min_seller_feedback`` avaliações quando o dado existe. Frete desconhecido não vira zero:
+    fica ``None`` e a razão sai marcada. None = nenhum serve."""
+    if min_seller_feedback is None:
+        min_seller_feedback = DEFAULT_PARAMS["min_seller_feedback"]
     base_words, suffix = _name_parts(row["en_name"])
     num_re = _number_re(row["cn_no"])
     best = None
@@ -350,13 +368,17 @@ def pick_offer(listings, row: dict) -> dict | None:
             continue
         if _title_code_conflicts(title, row.get("cn_code") or ""):
             continue
+        feedback = getattr(l, "seller_feedback_score", None)
+        if feedback is not None and int(feedback) < min_seller_feedback:
+            continue
         shipping = getattr(l, "shipping", None)
         shipping = float(shipping) if shipping is not None else None
         key = float(price) + (shipping or 0.0)
         cand = {"price": float(price), "shipping": shipping,
                 "total": (float(price) + shipping) if shipping is not None else None,
                 "url": l.url, "title": title, "country": getattr(l, "country", "") or "",
-                "language": "simplificado" if lang == "ZH-HANS" else "chinês (não especificado)"}
+                "language": "simplificado" if lang == "ZH-HANS" else "chinês (não especificado)",
+                "seller_feedback": int(feedback) if feedback is not None else None}
         if best is None or key < best_key:
             best, best_key = cand, key
     return best
@@ -403,6 +425,8 @@ def _row_md(i: int, r: dict) -> str:
     if o:
         ship = _usd(o["shipping"]) if o.get("shipping") is not None else "frete n/d"
         offer = f"{_usd(o['price'])} + {ship} ({o['language']})"
+        if o.get("seller_feedback") is not None:
+            offer += f" · vendedor {o['seller_feedback']} aval."
         if o.get("total"):
             offer_ratio = f"{r['en_market'] / o['total']:.1f}×"
         else:

@@ -283,6 +283,50 @@ def test_pick_offer_rejects_other_card_with_same_words_or_number(row, title):
     assert zh_gap.pick_offer([_listing(title, 3.0)], row) is None
 
 
+@pytest.mark.parametrize("row,title", [
+    # Casos reais de 07/10 apontados pelo operador: o anúncio era de OUTRA carta
+    ({"en_name": "Charizard V", "cn_no": "132", "en_no": "154", "cn_code": "CS5aC"},
+     "Pokemon Promo 132/S-P Charizard V Chinese Holo Mint Card Charizard V"),      # promo tradicional 132/S-P
+    ({"en_name": "Charizard V", "cn_no": "132", "en_no": "154", "cn_code": "CS5aC"},
+     "Charizard V 132 SV-P Chinese Holo"),                                           # código de promo solto
+    ({"en_name": "Charizard V", "cn_no": "132", "en_no": "154", "cn_code": "CS5aC"},
+     "Pokemon Chinese Promo Charizard V 132 Holo"),                                  # "promo" e a linha não é promo
+])
+def test_pick_offer_rejects_promo_of_another_set(row, title):
+    assert zh_gap.pick_offer([_listing(title, 14.99)], row) is None
+
+
+def test_pick_offer_accepts_promo_for_promo_row():
+    row = {"en_name": "Magikarp", "cn_no": "24", "en_no": "203", "cn_code": "SV-P"}
+    assert zh_gap.pick_offer([_listing("Pokemon Chinese Promo Magikarp 24/SV-P Holo NM", 80.0)], row) is not None
+    assert zh_gap.pick_offer([_listing("Magikarp SVP 024 Simplified Chinese promo", 80.0)], row) is not None
+
+
+def test_pick_offer_skips_new_seller_and_reports_feedback():
+    # Caso real de 07/10: título certo ("Mew ex 151C #191/151"), foto de outra carta, vendedor com 0
+    # avaliações. Título não denuncia; a única pista é o vendedor. Sem o dado (testes antigos) passa.
+    row = {"en_name": "Mew ex", "cn_no": "191", "en_no": "232", "cn_code": "151C"}
+    scam = _listing("2025 Pokemon TCG S-Chinese Mew ex 151C #191/151 SAR Full Art", 133.0, 3.99)
+    scam.seller_feedback_score = 0
+    ok = _listing("Pokemon S-Chinese Mew ex 151C 191/151 SAR NM", 180.0, 0.0, "https://www.ebay.com/itm/9")
+    ok.seller_feedback_score = 412
+    o = zh_gap.pick_offer([scam, ok], row)
+    assert o["url"] == "https://www.ebay.com/itm/9" and o["seller_feedback"] == 412
+    assert zh_gap.pick_offer([scam], row) is None
+    scam.seller_feedback_score = zh_gap.DEFAULT_PARAMS["min_seller_feedback"]
+    assert zh_gap.pick_offer([scam], row) is not None
+    assert zh_gap.DEFAULT_PARAMS["min_seller_feedback"] == 5
+
+
+def test_row_md_shows_seller_feedback():
+    r = {"en_name": "Mew ex", "en_no": "232", "en_set": "S", "en_rar": "SIR", "cn_no": "191", "cn_code": "151C",
+         "zh_title": "Mew ex #191", "match": "exata", "en_market": 800.0, "zh_ungraded": 200.0, "zh_psa10": None,
+         "ratio": 4.0, "discount": 0.75, "en_url": "https://e", "zh_url": "https://z",
+         "offer": {"price": 180.0, "shipping": 0.0, "total": 180.0, "url": "https://o", "title": "t",
+                   "country": "CN", "language": "simplificado", "seller_feedback": 412}}
+    assert "vendedor 412 aval." in zh_gap._row_md(1, r)
+
+
 def test_pick_offer_accepts_phrase_with_suffix_anywhere():
     row = {"en_name": "Zapdos ex", "cn_no": "190", "en_no": "202", "cn_code": "151C"}
     assert zh_gap.pick_offer([_listing("Pokemon Chinese 151C Zapdos ex SAR 190/165 NM", 30.0)], row) is not None

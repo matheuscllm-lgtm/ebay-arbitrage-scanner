@@ -11,6 +11,9 @@ Data: 2026-10-07 (fechamento da sessão). Leia junto com [ZH_GAP.md](ZH_GAP.md) 
 - **Código:** branch `claude/zh-gap-ranking` (main `7a44c33` + 9 commits, publicada; **PR não aberto**
   — bloqueio de permissão da sessão; abrir pelo GitHub). `src/zh_gap.py`, `zh_gap.py`,
   `tests/test_zh_gap.py` (68 testes), fixture real, `docs/ZH_GAP.md`, nota no `CLAUDE.md`.
+- **Correções do operador em 07/10 (após o PR #69):** piso chinês US$50; oferta rejeita promo de outro set
+  ("132/S-P" tradicional saiu como Charizard V CS5aC) e vendedor com < 5 avaliações (Mew ex 191: título certo,
+  foto de outra carta, vendedor novo). Célula da oferta mostra `vendedor N aval.`.
 - **Revisão independente** (contexto limpo, páginas reais) aplicada: frete desconhecido = `n/d`;
   junção exige nome-base + sufixo no título da página chinesa; oferta só carta solta; número com
   fronteira de palavra; cache estável; erro por linha. Suíte completa passou antes dos 3 últimos
