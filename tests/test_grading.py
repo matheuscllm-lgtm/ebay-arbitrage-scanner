@@ -177,6 +177,9 @@ PSA10 = {("PSA", 10.0, "")}
     ("Charizard PSA graded card", set()),                  # certificadora sem nota
     ("Charizard PSA", set()),
     ("Charizard ACE 10", set()),                           # certificadora desconhecida
+    ("Charizard CCIC 10 Gem Mint", set()),                 # certificadora chinesa: fora do escopo, não raw
+    ("CCIC 9.5 Umbreon ex Chinese", set()),
+    ("Umbreon ex Chinese PGS 10", set()),
     ("Charizard GRADED 10", set()),
     ("Pikachu TAG 33/236", set()),                         # nota impossivel (1-10)
     ("Charizard PSA 100", set()),
@@ -330,6 +333,12 @@ def test_status_sempre_no_vocabulario():
     for title in ["PSA 10", "NM", "PSA 9 PSA 10", "ACE 10", "PSA", "TAG 9"]:
         assert g.grade_from_title(title).status in {
             "graded", "raw", "ambiguous", "out_of_scope"}
+
+
+@pytest.mark.parametrize("title", ["Pokemon CCG 9 Charizard Chinese", "Charizard CCG Mint 9", "Pokemon CCG 1 Pikachu"])
+def test_ccg_is_card_game_not_grader(title):
+    # Revisão 07/10: "CCG" (collectible card game) seguido de número virava certificadora e derrubava raw
+    assert g.grade_from_title(title).status == "raw"
 
 
 def test_grade_from_title_aceita_none():
