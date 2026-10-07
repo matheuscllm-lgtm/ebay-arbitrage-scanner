@@ -19,6 +19,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from . import cf_fallback
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -115,6 +117,14 @@ def fetch_page(url, cache_dir=RUN_CACHE_DIR):
             if e.code == 429 or e.code >= 500:
                 last_err = e
                 continue
+            if e.code == 403 and cf_fallback.available():
+                # Desafio Cloudflare (06/10/2026): rota reserva via Firecrawl, HTML identico.
+                try:
+                    data = cf_fallback.fetch_raw_html(url).encode("utf-8")
+                except cf_fallback.FirecrawlError as fc_exc:
+                    raise urllib.error.HTTPError(url, 403, f"Forbidden; rota reserva falhou ({fc_exc})",
+                                                 e.headers, None) from e
+                break
             raise  # 4xx (URL errada, bloqueio) nao e transitorio: falha ja
         except OSError as e:  # URLError, TimeoutError, reset -- transitorios
             _last_request_at[0] = time.time()

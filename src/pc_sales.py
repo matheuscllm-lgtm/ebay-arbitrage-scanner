@@ -60,7 +60,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import title_parser
+from . import cf_fallback, title_parser
 from .models import WatchCard
 
 BASE_URL = "https://www.pricecharting.com"
@@ -188,6 +188,13 @@ def fetch_page(url: str, cache_dir: str | None = None) -> str:
             if exc.code == 429 or exc.code >= 500:
                 last_err = exc
                 continue
+            if exc.code == 403 and cf_fallback.available():
+                # Desafio Cloudflare (06/10/2026): rota reserva via Firecrawl, HTML idêntico.
+                try:
+                    data = cf_fallback.fetch_raw_html(url).encode("utf-8")
+                except cf_fallback.FirecrawlError as fc_exc:
+                    raise PcError(f"PriceCharting HTTP 403 e rota reserva falhou ({fc_exc}) em {url}") from exc
+                break
             raise PcError(f"PriceCharting HTTP {exc.code} em {url}") from exc  # 4xx: não transitório
         except OSError as exc:  # URLError, TimeoutError, reset, BadGzipFile — transitórios
             _last_request_at[0] = time.time()
