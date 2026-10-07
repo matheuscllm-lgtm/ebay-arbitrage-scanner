@@ -7,7 +7,10 @@ Este módulo responde só isso — nenhum veredito, nenhuma recomendação de co
 Fontes (cada uma rotulada na tabela):
 - Pares chinês → inglês: ``src/catalog/zh_identity.json`` (52poke wiki, ver
   docs/CHINESE_IDENTITY.md). Só linhas com ``how`` definido (identidade por impressão);
-  ``ambigua``/``sem-par`` ficam fora. O campo ``how`` vai na coluna "Match".
+  ``ambigua``/``sem-par`` ficam fora. O campo ``how`` vai na coluna "Match". O título da
+  página chinesa ainda precisa trazer o nome-base e o sufixo (ex/GX/V/VMAX…) da carta EN:
+  o PriceCharting repete número entre produtos ("Calyrex #162" e "Calyrex VMAX #162") e o
+  catálogo `set+rar` não distingue duas GX do mesmo set.
 - Preço chinês: página de SET do PriceCharting (``/console/pokemon-chinese-<set>``):
   150 cartas por página, colunas Ungraded (raw) / Grade 9 / PSA 10; paginação ``?cursor=``.
   Uma página por 150 cartas em vez de uma página por carta (custo Firecrawl ÷ 150).
@@ -15,7 +18,8 @@ Fontes (cada uma rotulada na tabela):
   canônica da frota para singles raw. Sem match exato de set + número + nome → sem
   referência (a carta fica fora, contada no funil; nunca chuta outro produto).
 - Oferta: anúncio ATIVO mais barato no eBay (Browse API, preço fixo, qualquer país) cujo
-  título diga chinês e NÃO cite nota de gradação — a carta solta, como o ranking compara.
+  título diga chinês e seja carta solta (``grading.grade_from_title`` = raw) — como o
+  ranking compara. Frete desconhecido fica ``n/d`` (nunca vira zero).
 
 Razão = EN market ÷ ZH raw · Desconto = 1 − ZH ÷ EN. Piso: EN market ≥ ``min_en_usd``.
 """
@@ -24,9 +28,10 @@ from __future__ import annotations
 import html
 import json
 import re
+import unicodedata
 from types import SimpleNamespace
 
-from . import chinese_scan, grading, pc_sales, tcg_reference, zh_identity
+from . import chinese_scan, ebay_api, grading, pc_sales, tcg_reference, zh_identity
 
 PC_CONSOLE_URL = "https://www.pricecharting.com/console/pokemon-chinese-{slug}"
 PAGE_SIZE = 150          # linhas por página do console (observado 2026-10-07)
@@ -38,6 +43,7 @@ DEFAULT_PARAMS = {
     "max_pages_per_set": 8,   # guarda: 8 × 150 = 1.200 cartas
     "max_ebay_calls": 300,
     "ebay_limit": 50,
+    "max_consecutive_ebay_errors": 3,
 }
 
 MATCH_LABEL = {
@@ -115,21 +121,49 @@ def parse_console_page(body: str) -> list[dict]:
 
 
 def fetch_console_rows(slug: str, fetch=pc_sales.fetch_page, cache_dir: str | None = None,
-                       max_pages: int = DEFAULT_PARAMS["max_pages_per_set"], log=print) -> tuple[list[dict], int]:
+                       max_pages: int = DEFAULT_PARAMS["max_pages_per_set"], log=print) -> tuple[list[dict], int, bool]:
     """Todas as linhas de um console, página a página (``cursor`` = 0, 150, 300…).
-    Para quando a página vem curta (< PAGE_SIZE). Devolve (linhas, páginas baixadas)."""
+    Para quando a página vem curta (< PAGE_SIZE). Erro numa página (``PcError``) mantém as
+    páginas já lidas e marca o set como parcial. Devolve (linhas, páginas baixadas, parcial)."""
     rows: list[dict] = []
     pages = 0
     for page in range(max_pages):
-        body = fetch(console_url(slug, page * PAGE_SIZE), cache_dir=cache_dir)
+        try:
+            body = fetch(console_url(slug, page * PAGE_SIZE), cache_dir=cache_dir)
+        except pc_sales.PcError as exc:
+            if not rows:
+                raise
+            log(f"  aviso: {slug} parcial — página {page + 1} falhou ({exc}); {len(rows)} cartas lidas")
+            return rows, pages, True
         pages += 1
         got = parse_console_page(body)
         rows.extend(got)
         if len(got) < PAGE_SIZE:
-            break
-    else:
-        log(f"  aviso: {slug} atingiu o teto de {max_pages} páginas; pode haver cartas fora")
-    return rows, pages
+            return rows, pages, False
+    log(f"  aviso: {slug} atingiu o teto de {max_pages} páginas; pode haver cartas fora")
+    return rows, pages, True
+
+
+# --- identidade: título da página chinesa × carta EN -----------------------------------
+_WORD_RE = re.compile(r"[a-z0-9]+")
+
+
+def _words(text: str | None) -> list[str]:
+    t = unicodedata.normalize("NFKD", (text or "")).encode("ascii", "ignore").decode()
+    return _WORD_RE.findall(t.lower().replace("'s", "").replace("'", ""))
+
+
+def title_matches_en(pc_title: str | None, en_name: str | None) -> bool:
+    """O título do PriceCharting ("Ice Rider Calyrex VMAX #162") traz todas as palavras do
+    nome-base da carta EN (sem o dono: "Team Rocket's") e o sufixo (ex/GX/V/VMAX/VSTAR)?
+    Palavra inteira: "Mew ex" NÃO casa com "Mewtwo Ex"; "Dusk Mane Necrozma-GX" NÃO casa
+    com "Dawn Wings Necrozma GX"."""
+    base, suffix = chinese_scan.name_parts(en_name or "")
+    need = _words(base) + ([suffix.replace(".", "").replace(" ", "")] if suffix else [])
+    if not need:
+        return False
+    have = set(_words((pc_title or "").split("#")[0]))
+    return all(w in have for w in need)
 
 
 # --- referência EN (TCGplayer via tcgcsv) --------------------------------------------
@@ -161,8 +195,9 @@ def build_rows(catalog: zh_identity.Catalog, pc_rows_by_slug: dict[str, list[dic
     (maior desconto primeiro). Devolve (linhas, funil)."""
     p = {**DEFAULT_PARAMS, **(params or {})}
     funnel: dict[str, int] = {"pc-linhas": 0, "pc-variante-ignorada": 0, "pc-sem-chave": 0,
-                              "sem-par-no-catalogo": 0, "par-ambiguo": 0, "zh-sem-preco-raw": 0,
-                              "en-sem-referencia-tcg": 0, "en-abaixo-do-piso": 0, "linhas": 0}
+                              "sem-par-no-catalogo": 0, "par-ambiguo": 0, "pc-titulo-nao-casa": 0,
+                              "zh-sem-preco-raw": 0, "en-sem-referencia-tcg": 0, "en-abaixo-do-piso": 0,
+                              "linhas": 0}
     rows: list[dict] = []
     for slug, pc_rows in pc_rows_by_slug.items():
         for pr in pc_rows:
@@ -175,6 +210,9 @@ def build_rows(catalog: zh_identity.Catalog, pc_rows_by_slug: dict[str, list[dic
                 funnel[why] += 1
                 continue
             pair = pairs[0]
+            if not title_matches_en(pr.get("title"), pair["en_name"]):
+                funnel["pc-titulo-nao-casa"] += 1
+                continue
             zh = pr.get("ungraded")
             if not zh or zh <= 0:
                 funnel["zh-sem-preco-raw"] += 1
@@ -203,7 +241,8 @@ def build_rows(catalog: zh_identity.Catalog, pc_rows_by_slug: dict[str, list[dic
 
 
 # --- oferta no eBay (carta solta, em chinês) -------------------------------------------
-_LOT_RE = re.compile(r"\b(?:lot|bundle|bulk|set of|playset|x\s?\d{1,2}|\d{1,2}\s?x)\b|\bdeck\b|booster|\bbox\b|(?<!gem\s)\bpack\b", re.I)   # "gem pack" é produto, não lote
+_LOT_RE = re.compile(r"\b(?:lot|bundle|bulk|set of|playset|x\s?\d{1,2}|\d{1,2}\s?x)\b|\bdeck\b|booster|\bbox\b"
+                     r"|(?<!gem\s)\bpack\b", re.I)   # "gem pack" é produto, não lote
 _PROXY_RE = re.compile(r"\bproxy\b|\bcustom\b|\breplica\b|\bfake\b|\bsticker\b|\bmetal\b", re.I)
 
 
@@ -221,9 +260,16 @@ def _cn_number_token(cn_no: str) -> str:
     return str(int(s)) if s.isdigit() else s
 
 
-def _gem_pack_re(pack: int, num: int) -> re.Pattern[str]:
-    # "4/07", "04/07", "4-07", "04 07" — pacote/carta como os títulos escrevem
-    return re.compile(rf"(?<!\d)0?{pack}\s*[/\-]\s*0?{num}(?!\d)|(?<!\d){pack:02d}\s+{num:02d}(?!\d)")
+def _number_re(cn_no: str) -> re.Pattern[str]:
+    """Número chinês no título, com ou sem zeros à esquerda ("22", "022/208"); Gem Pack
+    como os títulos escrevem: "20-07/07", "4/07", "#607", "1205/07", "0104/15"."""
+    gp = _gem_pack(cn_no)
+    if gp:
+        pack, num = gp
+        return re.compile(rf"(?<!\d)0?{pack}\s*[/\-]\s*0?{num}(?!\d)"      # "20-07/07", "4/07"
+                          rf"|(?<!\d)0?{pack}\s+{num:02d}(?!\d)"            # "CBB4C-16 07/07"
+                          rf"|(?<!\d)0?{pack}{num:02d}(?!\d)")              # "#607", "1205/07", "0104/15"
+    return re.compile(rf"(?<![\d/])0*{re.escape(_cn_number_token(cn_no))}(?!\d)")
 
 
 def offer_query(row: dict) -> str:
@@ -235,53 +281,82 @@ def offer_query(row: dict) -> str:
     return f"{core} {_cn_number_token(row['cn_no'])} (chinese,chn,simplified,中文,简体)"
 
 
+def _title_code_conflicts(title: str, cn_code: str) -> bool:
+    """Título cita um código de set simplificado (CSV9C, CS4aC, CBB4C…) diferente do da linha."""
+    m = zh_identity._TITLE_CODE_RE.search(title)
+    if not m:
+        return False
+    return zh_identity._title_code(m.group(1)) != zh_identity.norm_code(cn_code)
+
+
 def pick_offer(listings, row: dict) -> dict | None:
-    """Anúncio mais barato (item + frete) que seja: chinês (simplificado ou só "Chinese"),
-    SEM nota de gradação no título (carta solta), com o nome-base e o número chinês no
-    título, e não lote/réplica. None = nenhum serve."""
-    base, _suffix = chinese_scan.name_parts(row["en_name"])
-    gp = _gem_pack(row["cn_no"])
-    if gp:
-        num_re = _gem_pack_re(*gp)   # exige "pacote/carta" no título (um "7" solto é outra carta)
-    else:
-        num_re = re.compile(rf"(?<![\d/]){re.escape(_cn_number_token(row['cn_no']))}(?![\d])")
+    """Anúncio mais barato (item + frete conhecido) que seja: chinês (simplificado ou só
+    "Chinese"), carta SOLTA (``grade_from_title`` = raw: nenhuma certificadora citada), com
+    todas as palavras do nome-base + sufixo e o número chinês no título, sem código de set
+    conflitante, sem lote/réplica. Frete desconhecido não vira zero: fica ``None`` e a
+    razão sai marcada. None = nenhum serve."""
+    base, suffix = chinese_scan.name_parts(row["en_name"])
+    need = _words(base) + ([suffix.replace(".", "").replace(" ", "")] if suffix else [])
+    num_re = _number_re(row["cn_no"])
     best = None
+    best_key = None
     for l in listings:
         title = l.title or ""
+        price = getattr(l, "price", None)
+        if price is None:
+            continue
         lang, _why = chinese_scan.chinese_language(title)
         if lang not in ("ZH-HANS", "ZH"):
             continue
-        if grading.grade_mentions(title) or grading.mentions_black_label(title):
+        if grading.grade_from_title(title).status != "raw":
             continue
         if _LOT_RE.search(title) or _PROXY_RE.search(title):
             continue
-        if base not in title.lower() or not num_re.search(title):
+        have = set(_words(title))
+        if not all(w in have for w in need) or not num_re.search(title):
             continue
-        total = float(l.price) + float(l.shipping or 0.0)
-        cand = {"price": float(l.price), "shipping": float(l.shipping or 0.0), "total": total,
+        if _title_code_conflicts(title, row.get("cn_code") or ""):
+            continue
+        shipping = getattr(l, "shipping", None)
+        shipping = float(shipping) if shipping is not None else None
+        key = float(price) + (shipping or 0.0)
+        cand = {"price": float(price), "shipping": shipping,
+                "total": (float(price) + shipping) if shipping is not None else None,
                 "url": l.url, "title": title, "country": getattr(l, "country", "") or "",
                 "language": "simplificado" if lang == "ZH-HANS" else "chinês (não especificado)"}
-        if best is None or total < best["total"]:
-            best = cand
+        if best is None or key < best_key:
+            best, best_key = cand, key
     return best
 
 
-def attach_offers(rows: list[dict], search, max_calls: int, limit: int, log=print) -> int:
-    """Uma busca por linha, na ordem do ranking, até ``max_calls``. Devolve chamadas feitas."""
+def attach_offers(rows: list[dict], search, max_calls: int, limit: int, log=print,
+                  max_consecutive_errors: int = DEFAULT_PARAMS["max_consecutive_ebay_errors"]) -> int:
+    """Uma busca por linha, na ordem do ranking, até ``max_calls``. Orçamento/credencial do
+    eBay esgotados param tudo; outro erro marca a linha e segue (para após
+    ``max_consecutive_errors`` seguidos). Devolve chamadas feitas."""
     calls = 0
+    errors = 0
     for r in rows:
         if calls >= max_calls:
             break
         r.setdefault("offer", None)
+        calls += 1   # tentativa conta no orçamento, com ou sem erro
         try:
             listings = search(offer_query(r), min_price=1.0, limit=limit, fixed_price_only=True,
                               location_country="", max_pages=1)
-        except Exception as exc:  # orçamento/rede: o ranking não depende da oferta
-            log(f"  eBay falhou em {r['en_name']} {r['en_no']}: {exc}")
+            r["offer"] = pick_offer(listings, r)
+            r["offer_searched"] = True
+            errors = 0
+        except (ebay_api.EbayBudgetExceeded, ebay_api.EbayAuthError) as exc:
+            log(f"  eBay parou em {r['en_name']} {r['en_no']}: {exc}")
             break
-        calls += 1
-        r["offer"] = pick_offer(listings, r)
-        r["offer_searched"] = True
+        except Exception as exc:  # erro de uma linha não derruba o ranking
+            errors += 1
+            r["offer_error"] = str(exc)
+            log(f"  eBay falhou em {r['en_name']} {r['en_no']}: {exc}")
+            if errors >= max_consecutive_errors:
+                log(f"  eBay: {errors} erros seguidos — parando as buscas")
+                break
     return calls
 
 
@@ -293,12 +368,21 @@ def _usd(v: float | None) -> str:
 def _row_md(i: int, r: dict) -> str:
     o = r.get("offer")
     if o:
-        offer = f"{_usd(o['price'])} + {_usd(o['shipping'])} ({o['language']})"
-        offer_ratio = f"{r['en_market'] / o['total']:.1f}×" if o.get("total") else "n/d"
+        ship = _usd(o["shipping"]) if o.get("shipping") is not None else "frete n/d"
+        offer = f"{_usd(o['price'])} + {ship} ({o['language']})"
+        if o.get("total"):
+            offer_ratio = f"{r['en_market'] / o['total']:.1f}×"
+        else:
+            offer_ratio = f"{r['en_market'] / o['price']:.1f}× (sem frete)" if o.get("price") else "n/d"
         country = o.get("country") or "n/d"
         links = f"[oferta]({o['url']}) · [ref EN]({r['en_url']}) · [ref ZH]({r['zh_url']})"
     else:
-        offer = "sem anúncio raw chinês no eBay" if r.get("offer_searched") else "não buscado"
+        if r.get("offer_searched"):
+            offer = "sem anúncio raw chinês no eBay"
+        elif r.get("offer_error"):
+            offer = "busca falhou"
+        else:
+            offer = "não buscado"
         offer_ratio = "—"
         country = "—"
         links = f"[ref EN]({r['en_url']}) · [ref ZH]({r['zh_url']})"
@@ -321,11 +405,13 @@ def render_markdown(rows: list[dict], meta: dict, min_ratio: float | None = None
     out.append(f"Razão = TCGplayer market da carta EN ÷ preço raw (Ungraded) da MESMA carta em chinês simplificado no "
                f"PriceCharting. Desconto = 1 − ZH÷EN. Piso: EN market ≥ US${p.get('min_en_usd', 0):g}. "
                f"Pares pelo catálogo 52poke (`Match`: exata = mesma impressão via japonês; forte = set + ilustrador + "
-               f"raridade; fraca = só dois desses). Oferta = anúncio ativo mais barato no eBay (preço fixo, qualquer país) "
-               f"com título chinês e SEM nota de gradação; `ZH PSA 10` é só informação. Nenhuma recomendação de compra.")
+               f"raridade; fraca = só dois desses) e o título da página chinesa tem de trazer nome-base + sufixo da carta EN. "
+               f"Oferta = anúncio ativo mais barato no eBay (preço fixo, qualquer país) com título chinês e carta SOLTA "
+               f"(nenhuma certificadora citada); `ZH PSA 10` é só informação. Nenhuma recomendação de compra.")
     out.append("")
+    partial = meta.get("partial_sets") or []
     out.append(f"Sets chineses baixados: {meta.get('sets', 0)} · páginas PriceCharting: {meta.get('pages', 0)} · "
-               f"chamadas eBay: {meta.get('ebay_calls', 0)}")
+               f"chamadas eBay: {meta.get('ebay_calls', 0)}" + (f" · sets parciais: {', '.join(partial)}" if partial else ""))
     out.append("Funil: " + " · ".join(f"{k}: {v}" for k, v in f.items()))
     out.append("")
     title = (f"## Ranking — razão ≥ {min_ratio:g}× — {len(shown)} linhas (todas as {len(rows)} acima do piso no `.md` completo e no JSON)"
@@ -340,9 +426,11 @@ def render_markdown(rows: list[dict], meta: dict, min_ratio: float | None = None
     out.append("")
     out.append("Legenda: **EN market** = TCGplayer market price (tcgcsv, NM) · **ZH raw** = coluna Ungraded da página "
                "chinesa do PriceCharting (vendas de carta solta; pode ser rala — conferir a página) · **Oferta** = item + "
-               "frete informado pelo anúncio · **Razão EN÷oferta** = EN market ÷ (item + frete) do anúncio achado, a razão "
-               "contra um preço que dá para pagar hoje; `sem anúncio raw chinês no eBay` = a busca voltou só gradadas, lotes ou outro "
-               "idioma · `não buscado` = fora do orçamento de chamadas · `n/d` nunca é zero.")
+               "frete informado pelo anúncio (`frete n/d` = frete calculado no checkout, não vira zero) · **Razão EN÷oferta** = "
+               "EN market ÷ (item + frete) do anúncio achado, a razão contra um preço que dá para pagar hoje (`sem frete` = "
+               "só o item, frete desconhecido); `sem anúncio raw chinês no eBay` = a busca voltou só gradadas, lotes ou outro "
+               "idioma · `não buscado` = fora do orçamento de chamadas · `busca falhou` = erro do eBay nessa linha · `n/d` "
+               "nunca é zero.")
     return "\n".join(out) + "\n"
 
 
