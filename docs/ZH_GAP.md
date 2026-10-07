@@ -15,10 +15,10 @@ política `longterm` (PSA 10, `docs/EBAY_PSA.md`) nem o modo chinês de slabs
 
 | Peça | Fonte | Observação |
 |---|---|---|
-| Par chinês → inglês | `src/catalog/zh_identity.json` (52poke wiki, [CHINESE_IDENTITY.md](CHINESE_IDENTITY.md)) | só linhas com `how` definido; `ambigua`/`sem-par` ficam fora; `how` vira a coluna **Match** (exata / forte / fraca) |
+| Par chinês → inglês | `src/catalog/zh_identity.json` (52poke wiki, [CHINESE_IDENTITY.md](CHINESE_IDENTITY.md)) | só linhas com `how` definido; `ambigua`/`sem-par` ficam fora; `how` vira a coluna **Match** (exata / forte / fraca). O título da página chinesa ainda tem de trazer nome-base + sufixo (ex/GX/V/VMAX…) da carta EN (`title_matches_en`): o PriceCharting repete número entre produtos ("Calyrex #162" e "Calyrex VMAX #162") e o `set+rar` do catálogo trocou Dusk Mane ↔ Dawn Wings Necrozma na coleta de 07/10 |
 | Preço chinês (raw, Grade 9, PSA 10) | página de **set** do PriceCharting `/console/pokemon-chinese-<set>` | 150 cartas por página, paginação `?cursor=`; 1 página ≈ 1 crédito Firecrawl pela rota reserva (`src/cf_fallback.py`) |
 | Preço inglês | TCGplayer market via tcgcsv (`src/tcg_reference.py`) | referência canônica da frota para singles raw; sem match exato de set + número + nome → carta fora (funil `en-sem-referencia-tcg`) |
-| Oferta | eBay Browse API, anúncio ativo mais barato, preço fixo, qualquer país | só título **chinês** (simplificado ou "Chinese") **sem nota de gradação**, com nome-base e número chinês, sem lote/réplica (`pick_offer`) |
+| Oferta | eBay Browse API, anúncio ativo mais barato, preço fixo, qualquer país | só título **chinês** (simplificado ou "Chinese"), carta **solta** (`grading.grade_from_title` = raw: nenhuma certificadora citada, nem ACE/AGS/"PSA graded"), nome-base por palavra inteira + número chinês (zeros à esquerda e formatos de Gem Pack aceitos), código de set do título igual ao da linha, sem lote/réplica (`pick_offer`). Frete calculado no checkout vem `None` → `frete n/d`, razão marcada `(sem frete)`; nunca vira zero |
 
 `Razão = EN market ÷ ZH raw` · `Desconto = 1 − ZH ÷ EN`. Piso padrão: EN market ≥ US$10 (piso da
 frota, R$50) — `--min-en`. A versão para o chat (`<out>.chat.md`) corta em `--min-ratio` (padrão 3×);
@@ -35,8 +35,10 @@ python zh_gap.py --sets CSV10C,151C --no-ebay --out results/zh-gap-teste.json
 ```
 
 Saídas locais (nunca versionadas): `<out>.json`, `<out>.md`, `<out>.chat.md`. Páginas do PriceCharting
-ficam em `data/cache/pc/<dia>/` (reuso no mesmo dia; coleta nova no dia seguinte). Orçamento eBay:
-`--max-ebay-calls` (padrão 300, teto do cliente 500).
+ficam em `--cache-dir/<dia>/` (padrão `data/cache/pc/zh_gap/`, estável entre execuções: rodar de novo no
+mesmo dia não gasta crédito; coleta nova no dia seguinte). Erro numa página mantém as páginas já lidas e o
+set sai marcado como parcial. Orçamento eBay: `--max-ebay-calls` (padrão 300, teto do cliente 500); erro
+numa busca marca só a linha (`busca falhou`) e segue; três erros seguidos param as buscas.
 
 ## Limites conhecidos
 
