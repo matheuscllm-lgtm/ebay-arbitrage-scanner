@@ -158,12 +158,42 @@ def title_matches_en(pc_title: str | None, en_name: str | None) -> bool:
     nome-base da carta EN (sem o dono: "Team Rocket's") e o sufixo (ex/GX/V/VMAX/VSTAR)?
     Palavra inteira: "Mew ex" NÃO casa com "Mewtwo Ex"; "Dusk Mane Necrozma-GX" NÃO casa
     com "Dawn Wings Necrozma GX"."""
-    base, suffix = chinese_scan.name_parts(en_name or "")
-    need = _words(base) + ([suffix.replace(".", "").replace(" ", "")] if suffix else [])
-    if not need:
+    base_words, suffix = _name_parts(en_name)
+    if not base_words:
         return False
-    have = set(_words((pc_title or "").split("#")[0]))
-    return all(w in have for w in need)
+    words = _words((pc_title or "").split("#")[0])
+    if _name_in_words(words, base_words, suffix):
+        return True
+    glued = "".join(base_words) + suffix          # "Zapdosex #190" (site emendou as palavras)
+    return bool(words) and "".join(words) == glued
+
+
+_SUFFIX_WORDS = {"ex", "gx", "v", "vmax", "vstar", "lvx"}
+
+
+def _name_parts(en_name: str | None) -> tuple[list[str], str]:
+    base, suffix = chinese_scan.name_parts(en_name or "")
+    return _words(base), suffix.replace(".", "").replace(" ", "").lower()
+
+
+def _name_in_words(words: list[str], base_words: list[str], suffix: str) -> bool:
+    """Nome-base como FRASE (palavras inteiras, em ordem: "secret art" não casa com
+    "secret rare … full art"; "mew ex" não casa com "mewtwo ex") + sufixo coerente: carta EN
+    sem sufixo não casa com "Zeraora V …" (a palavra logo após o nome é um sufixo); com
+    sufixo, ele tem de aparecer no título."""
+    n = len(base_words)
+    if not n or n > len(words):
+        return False
+    for i in range(len(words) - n + 1):
+        if words[i:i + n] != base_words:
+            continue
+        nxt = words[i + n] if i + n < len(words) else ""
+        if suffix:
+            if suffix in words:
+                return True
+        elif nxt not in _SUFFIX_WORDS:
+            return True
+    return False
 
 
 # --- referência EN (TCGplayer via tcgcsv) --------------------------------------------
@@ -266,10 +296,11 @@ def _number_re(cn_no: str) -> re.Pattern[str]:
     gp = _gem_pack(cn_no)
     if gp:
         pack, num = gp
-        return re.compile(rf"(?<!\d)0?{pack}\s*[/\-]\s*0?{num}(?!\d)"      # "20-07/07", "4/07"
-                          rf"|(?<!\d)0?{pack}\s+{num:02d}(?!\d)"            # "CBB4C-16 07/07"
-                          rf"|(?<!\d)0?{pack}{num:02d}(?!\d)")              # "#607", "1205/07", "0104/15"
-    return re.compile(rf"(?<![\d/])0*{re.escape(_cn_number_token(cn_no))}(?!\d)")
+        return re.compile(rf"(?<![\w/])0?{pack}\s*[/\-]\s*0?{num}(?!\w)"      # "20-07/07", "4/07"
+                          rf"|(?<![\w/])0?{pack}\s+{num:02d}(?!\w)"            # "CBB4C-16 07/07"
+                          rf"|(?<![\w/])0?{pack}{num:02d}(?!\w)")              # "#607", "1205/07", "0104/15"
+    # Número isolado: não vale dentro de "SM8b", "CS3bC" nem como "210 HP" (pontos de vida).
+    return re.compile(rf"(?<![\w/])0*{re.escape(_cn_number_token(cn_no))}(?!\w|\s*hp\b)", re.I)
 
 
 def offer_query(row: dict) -> str:
@@ -292,11 +323,10 @@ def _title_code_conflicts(title: str, cn_code: str) -> bool:
 def pick_offer(listings, row: dict) -> dict | None:
     """Anúncio mais barato (item + frete conhecido) que seja: chinês (simplificado ou só
     "Chinese"), carta SOLTA (``grade_from_title`` = raw: nenhuma certificadora citada), com
-    todas as palavras do nome-base + sufixo e o número chinês no título, sem código de set
+    o nome-base como frase + sufixo coerente e o número chinês no título, sem código de set
     conflitante, sem lote/réplica. Frete desconhecido não vira zero: fica ``None`` e a
     razão sai marcada. None = nenhum serve."""
-    base, suffix = chinese_scan.name_parts(row["en_name"])
-    need = _words(base) + ([suffix.replace(".", "").replace(" ", "")] if suffix else [])
+    base_words, suffix = _name_parts(row["en_name"])
     num_re = _number_re(row["cn_no"])
     best = None
     best_key = None
@@ -312,8 +342,7 @@ def pick_offer(listings, row: dict) -> dict | None:
             continue
         if _LOT_RE.search(title) or _PROXY_RE.search(title):
             continue
-        have = set(_words(title))
-        if not all(w in have for w in need) or not num_re.search(title):
+        if not _name_in_words(_words(title), base_words, suffix) or not num_re.search(title):
             continue
         if _title_code_conflicts(title, row.get("cn_code") or ""):
             continue

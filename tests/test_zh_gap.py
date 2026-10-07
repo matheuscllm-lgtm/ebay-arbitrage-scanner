@@ -128,6 +128,10 @@ def test_fetch_console_rows_keeps_pages_before_a_failure(page):
     ("Hero's Cape #187", "Hero's Cape", True),
     ("Dragonite GX #176", "Dragonite-GX", True),
     ("Flabebe #12", "Flabébé", True),                                   # acentos
+    ("Zapdosex #190", "Zapdos ex", True),                               # site emendou as palavras
+    ("Secret Rare Full Art #250", "Janine's Secret Art", False),        # frase, não palavras soltas
+    ("Zeraora V #55", "Zeraora", False),                                # EN sem sufixo ≠ título com V
+    ("Zeraora #210", "Zeraora", True),
     ("", "Mew ex", False), ("Mew ex #3", "", False),
 ])
 def test_title_matches_en(pc_title, en_name, ok):
@@ -248,9 +252,31 @@ def test_pick_offer_cheapest_raw_chinese_only():
     "Mew ex 268/212 Chinese NM",                   # "mew" não é "mewtwo"
     "Mewtwo ex 268/212 Chinese CS5aC NM",          # código de set conflitante
     "Mewtwo ex 1268 Chinese NM",                   # número colado em outro
+    "Mewtwo ex Chinese SM268b NM",                 # número dentro de um código
+    "Mewtwo ex Chinese 55/122 268 HP",             # pontos de vida, não número
 ])
 def test_pick_offer_rejects(title):
     assert zh_gap.pick_offer([_listing(title, 10.0)], ROW) is None
+
+
+@pytest.mark.parametrize("row,title", [
+    # Casos reais da coleta de 07/10 que passavam com palavras soltas
+    ({"en_name": "Janine's Secret Art", "cn_no": "250", "en_no": "173", "cn_code": "CSV9.5C"},
+     "Duraludon ex 250/222 Secret Rare SR Full Art Holo Chinese"),
+    ({"en_name": "Zeraora", "cn_no": "210", "en_no": "151", "cn_code": "CSV9C"},
+     "Pokémon Zeraora V Rapid Strike Holo 055/122 Chinese 210 HP"),
+    ({"en_name": "Blastoise", "cn_no": "8", "en_no": "25", "cn_code": "CSM2aC"},
+     "Blastoise GX 107/150 Pokémon TCG Chinese Holo RR HP 250 SM8b"),
+])
+def test_pick_offer_rejects_other_card_with_same_words_or_number(row, title):
+    assert zh_gap.pick_offer([_listing(title, 3.0)], row) is None
+
+
+def test_pick_offer_accepts_phrase_with_suffix_anywhere():
+    row = {"en_name": "Zapdos ex", "cn_no": "190", "en_no": "202", "cn_code": "151C"}
+    assert zh_gap.pick_offer([_listing("Pokemon Chinese 151C Zapdos ex SAR 190/165 NM", 30.0)], row) is not None
+    row = {"en_name": "Dragonite-GX", "cn_no": "176", "en_no": "229", "cn_code": "CSM2aC"}
+    assert zh_gap.pick_offer([_listing("Pokemon TCG S-Chinese Sun&Moon CSM2aC-176 SR Dragonite GX Holo", 9.96)], row) is not None
 
 
 def test_pick_offer_accepts_zero_padded_number_and_matching_code():
