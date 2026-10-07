@@ -107,6 +107,11 @@ de `src/scorer.py` também é legada. Nenhuma dessas réguas recomenda compra.
   52poke wiki, liga cada impressão simplificada à carta EN
   ([`docs/CHINESE_IDENTITY.md`](docs/CHINESE_IDENTITY.md)); `ZH_SET_TO_EN` é retaguarda.
   Regenerar o catálogo só em tarefa de catálogo; nunca chutar par ambíguo.
+- Ranking chinês × inglês de carta SOLTA (2026-10-07, pedido do operador): `zh_gap.py` lista as
+  cartas em chinês simplificado mais descontadas em relação à mesma carta em inglês (TCGplayer
+  market ÷ raw chinês do PriceCharting por página de set), piso EN ≥ US$10, oferta raw no eBay.
+  É diagnóstico de mercado, não gate: não altera `longterm` nem o modo chinês de slabs.
+  Método em [`docs/ZH_GAP.md`](docs/ZH_GAP.md); saídas só locais.
 - Orientações antigas em comandos/skills históricos não podem reativar raw,
   retirar custos ou substituir as regras desta versão. Consulte o README atual.
 
