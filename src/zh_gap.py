@@ -278,20 +278,22 @@ def _row_md(i: int, r: dict) -> str:
     o = r.get("offer")
     if o:
         offer = f"{_usd(o['price'])} + {_usd(o['shipping'])} ({o['language']})"
+        offer_ratio = f"{r['en_market'] / o['total']:.1f}×" if o.get("total") else "n/d"
         country = o.get("country") or "n/d"
         links = f"[oferta]({o['url']}) · [ref EN]({r['en_url']}) · [ref ZH]({r['zh_url']})"
     else:
         offer = "sem anúncio raw chinês no eBay" if r.get("offer_searched") else "não buscado"
+        offer_ratio = "—"
         country = "—"
         links = f"[ref EN]({r['en_url']}) · [ref ZH]({r['zh_url']})"
     return (f"| {i} | {r['ratio']:.1f}× | {r['discount']*100:.0f}% | {_usd(r['en_market'])} | "
             f"{_usd(r['zh_ungraded'])} | {_usd(r.get('zh_psa10'))} | {r['en_name']} {r['en_no']} | {r['en_set']} | "
-            f"{r['en_rar'] or 'n/d'} | {r['cn_no']} · {r['cn_code']} | {r['match']} | {offer} | {country} | {links} |")
+            f"{r['en_rar'] or 'n/d'} | {r['cn_no']} · {r['cn_code']} | {r['match']} | {offer} | {offer_ratio} | {country} | {links} |")
 
 
 _HEADER = ("| # | Razão EN÷ZH | Desconto | EN market US$ (TCGplayer) | ZH raw US$ (PC) | ZH PSA 10 US$ (PC) | "
-           "Carta EN | Set EN | Raridade EN | Carta ZH (nº · set) | Match | Oferta eBay (item + frete) | País | Links |\n"
-           "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+           "Carta EN | Set EN | Raridade EN | Carta ZH (nº · set) | Match | Oferta eBay (item + frete) | Razão EN÷oferta | País | Links |\n"
+           "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
 
 
 def render_markdown(rows: list[dict], meta: dict, min_ratio: float | None = None) -> str:
@@ -322,7 +324,8 @@ def render_markdown(rows: list[dict], meta: dict, min_ratio: float | None = None
     out.append("")
     out.append("Legenda: **EN market** = TCGplayer market price (tcgcsv, NM) · **ZH raw** = coluna Ungraded da página "
                "chinesa do PriceCharting (vendas de carta solta; pode ser rala — conferir a página) · **Oferta** = item + "
-               "frete informado pelo anúncio; `sem anúncio raw chinês no eBay` = a busca voltou só gradadas, lotes ou outro "
+               "frete informado pelo anúncio · **Razão EN÷oferta** = EN market ÷ (item + frete) do anúncio achado, a razão "
+               "contra um preço que dá para pagar hoje; `sem anúncio raw chinês no eBay` = a busca voltou só gradadas, lotes ou outro "
                "idioma · `não buscado` = fora do orçamento de chamadas · `n/d` nunca é zero.")
     return "\n".join(out) + "\n"
 

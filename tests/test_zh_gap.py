@@ -222,6 +222,8 @@ def test_render_markdown_two_links_per_row_and_ratio_cut():
     for l in lines:
         assert "[ref EN](https://www.tcgplayer.com/product/9)" in l and "[ref ZH](https://www.pricecharting.com/game/" in l
     assert "[oferta](https://www.ebay.com/itm/7)" in lines[0] and "US$50.00 + US$5.00" in lines[0]
+    assert "| 1.8× |" in lines[0]          # razão EN÷oferta = 100 ÷ 55
+    assert lines[1].count("|") == lines[0].count("|") == zh_gap._HEADER.splitlines()[0].count("|")
     assert "sem anúncio raw chinês no eBay" in lines[1]
     assert "razão ≥ 3×" in chat and "2 linhas" in chat
     full = zh_gap.render_markdown(rows, meta)
