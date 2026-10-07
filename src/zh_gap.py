@@ -38,6 +38,7 @@ PAGE_SIZE = 150          # linhas por página do console (observado 2026-10-07)
 
 DEFAULT_PARAMS = {
     "min_en_usd": 10.0,       # piso da frota para singles (R$50 ≈ US$10)
+    "min_zh_usd": 10.0,       # operador 07/10: a carta CHINESA também vale ≥ US$10 (sinal de chase; corta lixo)
     "min_ratio": 3.0,         # linhas do chat: chinês pelo menos 3× mais barato
     "min_pairs_per_set": 20,  # sets chineses com menos pares no catálogo não são baixados
     "max_pages_per_set": 8,   # guarda: 8 × 150 = 1.200 cartas
@@ -226,8 +227,8 @@ def build_rows(catalog: zh_identity.Catalog, pc_rows_by_slug: dict[str, list[dic
     p = {**DEFAULT_PARAMS, **(params or {})}
     funnel: dict[str, int] = {"pc-linhas": 0, "pc-variante-ignorada": 0, "pc-sem-chave": 0,
                               "sem-par-no-catalogo": 0, "par-ambiguo": 0, "pc-titulo-nao-casa": 0,
-                              "zh-sem-preco-raw": 0, "en-sem-referencia-tcg": 0, "en-abaixo-do-piso": 0,
-                              "linhas": 0}
+                              "zh-sem-preco-raw": 0, "zh-abaixo-do-piso": 0, "en-sem-referencia-tcg": 0,
+                              "en-abaixo-do-piso": 0, "linhas": 0}
     rows: list[dict] = []
     for slug, pc_rows in pc_rows_by_slug.items():
         for pr in pc_rows:
@@ -246,6 +247,9 @@ def build_rows(catalog: zh_identity.Catalog, pc_rows_by_slug: dict[str, list[dic
             zh = pr.get("ungraded")
             if not zh or zh <= 0:
                 funnel["zh-sem-preco-raw"] += 1
+                continue
+            if zh < p["min_zh_usd"]:
+                funnel["zh-abaixo-do-piso"] += 1
                 continue
             ref = en_lookup(pair)
             if ref is None or not getattr(ref, "market_usd", None):
@@ -432,7 +436,8 @@ def render_markdown(rows: list[dict], meta: dict, min_ratio: float | None = None
     f = meta.get("funnel", {})
     out = [f"# Chinês simplificado × inglês — carta solta, preço de mercado — {meta.get('generated_at', '')}", ""]
     out.append(f"Razão = TCGplayer market da carta EN ÷ preço raw (Ungraded) da MESMA carta em chinês simplificado no "
-               f"PriceCharting. Desconto = 1 − ZH÷EN. Piso: EN market ≥ US${p.get('min_en_usd', 0):g}. "
+               f"PriceCharting. Desconto = 1 − ZH÷EN. Pisos: EN market ≥ US${p.get('min_en_usd', 0):g} e "
+               f"ZH raw ≥ US${p.get('min_zh_usd', 0):g} (a carta chinesa também tem de valer algo: sinal de chase). "
                f"Pares pelo catálogo 52poke (`Match`: exata = mesma impressão via japonês; forte = set + ilustrador + "
                f"raridade; fraca = só dois desses) e o título da página chinesa tem de trazer nome-base + sufixo da carta EN. "
                f"Oferta = anúncio ativo mais barato no eBay (preço fixo, qualquer país) com título chinês e carta SOLTA "

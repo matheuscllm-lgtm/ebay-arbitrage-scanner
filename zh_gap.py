@@ -32,6 +32,8 @@ def main(argv=None) -> int:
     ap.add_argument("--sets", default="", help="códigos 52poke (CSV10C,151C,...); vazio = todos com ≥ --min-pairs pares")
     ap.add_argument("--min-pairs", type=int, default=zh_gap.DEFAULT_PARAMS["min_pairs_per_set"])
     ap.add_argument("--min-en", type=float, default=zh_gap.DEFAULT_PARAMS["min_en_usd"], help="piso: EN market >= US$")
+    ap.add_argument("--min-zh", type=float, default=zh_gap.DEFAULT_PARAMS["min_zh_usd"],
+                    help="piso: raw chinês (PriceCharting) >= US$ (operador 07/10: sinal de chase)")
     ap.add_argument("--min-ratio", type=float, default=zh_gap.DEFAULT_PARAMS["min_ratio"], help="corte da versão para o chat")
     ap.add_argument("--max-pages-per-set", type=int, default=zh_gap.DEFAULT_PARAMS["max_pages_per_set"])
     ap.add_argument("--no-ebay", action="store_true", help="não buscar ofertas no eBay")
@@ -83,7 +85,7 @@ def main(argv=None) -> int:
             memo[key] = zh_gap.en_reference(pair)
         return memo[key]
 
-    rows, funnel = zh_gap.build_rows(catalog, pc_rows, en_lookup, {"min_en_usd": args.min_en})
+    rows, funnel = zh_gap.build_rows(catalog, pc_rows, en_lookup, {"min_en_usd": args.min_en, "min_zh_usd": args.min_zh})
     print("Funil: " + " · ".join(f"{k}: {v}" for k, v in funnel.items()))
 
     ebay_calls = 0
@@ -97,7 +99,8 @@ def main(argv=None) -> int:
 
     meta = {
         "generated_at": _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "params": {"min_en_usd": args.min_en, "min_ratio": args.min_ratio, "min_pairs_per_set": args.min_pairs},
+        "params": {"min_en_usd": args.min_en, "min_zh_usd": args.min_zh, "min_ratio": args.min_ratio,
+                   "min_pairs_per_set": args.min_pairs},
         "codes": codes, "sets": len(pc_rows), "pages": pages, "partial_sets": partial_sets,
         "ebay_calls": ebay_calls, "funnel": funnel, "elapsed_s": round(time.time() - t0, 1),
     }

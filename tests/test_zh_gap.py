@@ -185,6 +185,17 @@ def test_build_rows_en_floor_and_missing_reference(page):
     assert rows == [] and funnel["en-sem-referencia-tcg"] == 1
 
 
+def test_build_rows_zh_floor(page):
+    # Operador (07/10): a carta chinesa também tem de valer ≥ US$10 (sinal de chase). O Mewtwo da
+    # fixture vale US$140,47 raw em chinês: passa com piso 10 e cai com piso 200.
+    pc = {"csv10c": zh_gap.parse_console_page(page)}
+    rows, funnel = zh_gap.build_rows(_catalog(), pc, lambda pair: _ref(560.0), {"min_en_usd": 10.0, "min_zh_usd": 10.0})
+    assert len(rows) == 1 and funnel["zh-abaixo-do-piso"] == 0
+    rows, funnel = zh_gap.build_rows(_catalog(), pc, lambda pair: _ref(560.0), {"min_en_usd": 10.0, "min_zh_usd": 200.0})
+    assert rows == [] and funnel["zh-abaixo-do-piso"] == 1
+    assert zh_gap.DEFAULT_PARAMS["min_zh_usd"] == 10.0
+
+
 def _pc(slug, tail, title, ungraded):
     return {"url": f"https://www.pricecharting.com/game/pokemon-chinese-{slug}/{tail}", "title": title,
             "ungraded": ungraded, "grade9": None, "psa10": None, "variant": False}
@@ -208,12 +219,12 @@ def test_build_rows_same_number_twice_keeps_only_the_matching_title():
 
 
 def test_build_rows_sorted_by_ratio_desc():
-    pc = {"x": [_pc("csv10c", "a-1", "A #1", 10.0), _pc("csv10c", "b-2", "B #2", 2.0)]}
+    pc = {"x": [_pc("csv10c", "a-1", "A #1", 20.0), _pc("csv10c", "b-2", "B #2", 10.0)]}
     cat = zh_identity.Catalog([
         {"cn_code": "CSV10C", "cn_no": "1", "en_name": "A", "en_set": "S", "en_no": "1", "how": "tc-jp"},
         {"cn_code": "CSV10C", "cn_no": "2", "en_name": "B", "en_set": "S", "en_no": "2", "how": "tc-jp"},
     ])
-    rows, _ = zh_gap.build_rows(cat, pc, lambda pair: _ref(20.0), {"min_en_usd": 10.0})
+    rows, _ = zh_gap.build_rows(cat, pc, lambda pair: _ref(100.0), {"min_en_usd": 10.0})
     assert [r["en_name"] for r in rows] == ["B", "A"] and rows[0]["ratio"] == 10.0
 
 
