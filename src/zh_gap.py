@@ -207,18 +207,31 @@ _LOT_RE = re.compile(r"\b(?:lot|bundle|bulk|set of|playset|x\s?\d{1,2}|\d{1,2}\s
 _PROXY_RE = re.compile(r"\bproxy\b|\bcustom\b|\breplica\b|\bfake\b|\bsticker\b|\bmetal\b", re.I)
 
 
+def _gem_pack(cn_no: str) -> tuple[int, int] | None:
+    """Gem Pack: "04 07" (pacote 4, carta 07) → (4, 7). Outros formatos → None."""
+    parts = (cn_no or "").split()
+    if len(parts) == 2 and all(p.isdigit() for p in parts):
+        return int(parts[0]), int(parts[1])
+    return None
+
+
 def _cn_number_token(cn_no: str) -> str:
-    """"245/208" → "245"; Gem Pack "04 07" → "4" (número dentro do pacote)."""
-    s = (cn_no or "").strip()
-    if " " in s:
-        s = s.split()[-1]
-    s = s.split("/")[0]
+    """"245/208" → "245". Gem Pack não tem número único: ver `_gem_pack`."""
+    s = (cn_no or "").strip().split("/")[0]
     return str(int(s)) if s.isdigit() else s
+
+
+def _gem_pack_re(pack: int, num: int) -> re.Pattern[str]:
+    # "4/07", "04/07", "4-07", "04 07" — pacote/carta como os títulos escrevem
+    return re.compile(rf"(?<!\d)0?{pack}\s*[/\-]\s*0?{num}(?!\d)|(?<!\d){pack:02d}\s+{num:02d}(?!\d)")
 
 
 def offer_query(row: dict) -> str:
     base, suffix = chinese_scan.name_parts(row["en_name"])
     core = f"{base} {suffix}".strip()
+    gp = _gem_pack(row["cn_no"])
+    if gp:
+        return f"{core} gem pack {gp[0]}/{gp[1]:02d} (chinese,chn,simplified,中文,简体)"
     return f"{core} {_cn_number_token(row['cn_no'])} (chinese,chn,simplified,中文,简体)"
 
 
@@ -227,8 +240,11 @@ def pick_offer(listings, row: dict) -> dict | None:
     SEM nota de gradação no título (carta solta), com o nome-base e o número chinês no
     título, e não lote/réplica. None = nenhum serve."""
     base, _suffix = chinese_scan.name_parts(row["en_name"])
-    num = _cn_number_token(row["cn_no"])
-    num_re = re.compile(rf"(?<![\d/]){re.escape(num)}(?![\d])")
+    gp = _gem_pack(row["cn_no"])
+    if gp:
+        num_re = _gem_pack_re(*gp)   # exige "pacote/carta" no título (um "7" solto é outra carta)
+    else:
+        num_re = re.compile(rf"(?<![\d/]){re.escape(_cn_number_token(row['cn_no']))}(?![\d])")
     best = None
     for l in listings:
         title = l.title or ""

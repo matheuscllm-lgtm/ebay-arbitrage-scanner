@@ -182,6 +182,18 @@ def test_pick_offer_cheapest_raw_chinese_only():
     assert o["url"] == "https://www.ebay.com/itm/2" and o["total"] == 125.0 and o["language"] == "simplificado"
 
 
+def test_pick_offer_gem_pack_requires_pack_and_card_number():
+    # Caso real (07/10): "Eevee 04 07" (Gem Pack vol. 4, carta 07) casava com "Eevee 7 Chinese"
+    # de outro set a US$1.30 e inflava a razão para 60×.
+    row = {"en_name": "Eevee", "cn_no": "04 07", "en_no": "188"}
+    assert zh_gap.offer_query(row).startswith("eevee gem pack 4/07 ")
+    wrong = _listing("Pokemon Chinese Eevee 7 151C NM", 1.30)
+    right = _listing("Pokemon TCG S-Chinese Gem Pack Vol.4 Eevee 04/07 AR", 9.99, url="https://www.ebay.com/itm/44")
+    assert zh_gap.pick_offer([wrong], row) is None
+    assert zh_gap.pick_offer([wrong, right], row)["url"] == "https://www.ebay.com/itm/44"
+    assert zh_gap.pick_offer([_listing("Chinese Gem Pack 4-7 Eevee", 5.0)], row) is not None
+
+
 def test_pick_offer_none_when_only_graded():
     assert zh_gap.pick_offer([_listing("Mewtwo ex 268 Chinese PSA 9", 10.0)], ROW) is None
     assert zh_gap.pick_offer([], ROW) is None
