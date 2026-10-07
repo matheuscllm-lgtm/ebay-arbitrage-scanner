@@ -296,6 +296,18 @@ def test_pick_offer_rejects_promo_of_another_set(row, title):
     assert zh_gap.pick_offer([_listing(title, 14.99)], row) is None
 
 
+@pytest.mark.parametrize("title", [
+    # Casos reais de 07/10: gradadas por certificadora chinesa passavam como carta solta
+    "CCIC 9.5 Pokémon Chinese Terastal Gathering Umbreon ex CSV9.5C-239/208 SAR",
+    "2024 Pokemon TCG S-Chinese CSV9.5C SAR 239 Umbreon ex CCIC 10 Gem Mint",
+    "Umbreon ex 239/208 Chinese CCG 10",
+    "Umbreon ex 239/208 Chinese PGS 10",
+])
+def test_pick_offer_rejects_chinese_graders(title):
+    row = {"en_name": "Umbreon ex", "cn_no": "239", "en_no": "161", "cn_code": "CSV9.5C"}
+    assert zh_gap.pick_offer([_listing(title, 121.25)], row) is None
+
+
 def test_pick_offer_accepts_promo_for_promo_row():
     row = {"en_name": "Magikarp", "cn_no": "24", "en_no": "203", "cn_code": "SV-P"}
     assert zh_gap.pick_offer([_listing("Pokemon Chinese Promo Magikarp 24/SV-P Holo NM", 80.0)], row) is not None

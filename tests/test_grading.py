@@ -177,6 +177,8 @@ PSA10 = {("PSA", 10.0, "")}
     ("Charizard PSA graded card", set()),                  # certificadora sem nota
     ("Charizard PSA", set()),
     ("Charizard ACE 10", set()),                           # certificadora desconhecida
+    ("Charizard CCIC 10 Gem Mint", set()),                 # certificadora chinesa: fora do escopo, não raw
+    ("CCIC 9.5 Umbreon ex Chinese", set()),
     ("Charizard GRADED 10", set()),
     ("Pikachu TAG 33/236", set()),                         # nota impossivel (1-10)
     ("Charizard PSA 100", set()),
