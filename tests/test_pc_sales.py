@@ -1244,3 +1244,34 @@ def test_pricecharting_fetch_page_firecrawl_block_is_not_cached(monkeypatch, tmp
         pcg.fetch_page("https://www.pricecharting.com/game/x/y", cache_dir=str(tmp_path))
     assert ei.value.code == 403
     assert not list(tmp_path.glob("*"))
+
+
+def test_firecrawl_fetch_raw_html_retries_429_with_backoff_then_gives_up(monkeypatch):
+    from src import cf_fallback
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "secret")
+    slept = []
+    monkeypatch.setattr(cf_fallback.time, "sleep", lambda s: slept.append(s))
+    answers = [urllib.error.HTTPError("u", 429, "Too Many Requests", {}, None),
+               urllib.error.HTTPError("u", 429, "Too Many Requests", {}, None)]
+
+    def fake_urlopen(req, timeout=90):
+        if answers:
+            raise answers.pop(0)
+        return _fc_resp({"success": True, "data": {"rawHtml": GOOD_PAGE}})(req, timeout)
+
+    monkeypatch.setattr(cf_fallback.urllib.request, "urlopen", fake_urlopen)
+    assert cf_fallback.fetch_raw_html("https://www.pricecharting.com/game/x/y") == GOOD_PAGE
+    assert len(slept) == 2 and slept[0] > 0 and slept[1] >= slept[0]
+    # esgotou: erro tipado, sem chave
+    monkeypatch.setattr(cf_fallback.urllib.request, "urlopen",
+                        lambda req, timeout=90: _raise(urllib.error.HTTPError("u", 429, "Too Many Requests", {}, None)))
+    with pytest.raises(cf_fallback.FirecrawlError) as ei:
+        cf_fallback.fetch_raw_html("https://www.pricecharting.com/game/x/z")
+    assert "429" in str(ei.value) and "secret" not in str(ei.value)
+    # 402 (sem créditos) não repete
+    slept.clear()
+    monkeypatch.setattr(cf_fallback.urllib.request, "urlopen",
+                        lambda req, timeout=90: _raise(urllib.error.HTTPError("u", 402, "Payment Required", {}, None)))
+    with pytest.raises(cf_fallback.FirecrawlError):
+        cf_fallback.fetch_raw_html("https://www.pricecharting.com/game/x/w")
+    assert slept == []

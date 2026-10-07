@@ -14,12 +14,15 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 
 API_URL = "https://api.firecrawl.dev/v2/scrape"
 ENV_KEY = "FIRECRAWL_API_KEY"
 TIMEOUT_SECONDS = 90
+RETRY_ATTEMPTS = 4            # 429 (limite de taxa do Firecrawl) é transitório
+RETRY_BACKOFF_SECONDS = 6.0   # 6s, 12s, 18s
 MIN_PAGE_BYTES = 2000  # corpo menor = erro/vazio (mesmo piso de pc_sales)
 _BLOCK_TITLE_RE = re.compile(r"<title>\s*(?:Just a moment|Attention Required|Access denied)", re.I)
 
@@ -42,13 +45,19 @@ def fetch_raw_html(url: str, timeout: int = TIMEOUT_SECONDS) -> str:
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
     })
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            body = json.loads(r.read().decode("utf-8", errors="replace"))
-    except urllib.error.HTTPError as exc:
-        raise FirecrawlError(f"Firecrawl HTTP {exc.code} em {url}") from None
-    except (OSError, ValueError) as exc:
-        raise FirecrawlError(f"Firecrawl indisponível ({type(exc).__name__}) em {url}") from None
+    for attempt in range(RETRY_ATTEMPTS):
+        if attempt:
+            time.sleep(RETRY_BACKOFF_SECONDS * attempt)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                body = json.loads(r.read().decode("utf-8", errors="replace"))
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429 and attempt < RETRY_ATTEMPTS - 1:
+                continue
+            raise FirecrawlError(f"Firecrawl HTTP {exc.code} em {url}") from None
+        except (OSError, ValueError) as exc:
+            raise FirecrawlError(f"Firecrawl indisponível ({type(exc).__name__}) em {url}") from None
     if not isinstance(body, dict) or not body.get("success"):
         raise FirecrawlError(f"Firecrawl respondeu sem sucesso em {url}")
     data = body.get("data") if isinstance(body.get("data"), dict) else {}
