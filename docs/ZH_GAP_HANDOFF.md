@@ -7,7 +7,7 @@ Data: 2026-10-07 (fechamento da sessão). Leia junto com [ZH_GAP.md](ZH_GAP.md) 
 
 - **Objetivo fechado com o operador (07/10):** ranking das cartas em chinês simplificado mais
   descontadas em relação à MESMA carta em inglês, carta solta, sem exigir PSA, pisos EN ≥ US$10 e
-  raw chinês ≥ US$10. Operador aprovou o resultado ("a ideia é essa mesma").
+  raw chinês ≥ US$50 (era US$10; operador subiu em 07/10). Operador aprovou o resultado ("a ideia é essa mesma").
 - **Código:** branch `claude/zh-gap-ranking` (main `7a44c33` + 9 commits, publicada; **PR não aberto**
   — bloqueio de permissão da sessão; abrir pelo GitHub). `src/zh_gap.py`, `zh_gap.py`,
   `tests/test_zh_gap.py` (68 testes), fixture real, `docs/ZH_GAP.md`, nota no `CLAUDE.md`.
@@ -15,8 +15,8 @@ Data: 2026-10-07 (fechamento da sessão). Leia junto com [ZH_GAP.md](ZH_GAP.md) 
   junção exige nome-base + sufixo no título da página chinesa; oferta só carta solta; número com
   fronteira de palavra; cache estável; erro por linha. Suíte completa passou antes dos 3 últimos
   commits (`a6b3499`, `c161266`, `3e5bc25`); re-rodar antes do PR.
-- **Coleta de 07/10 (local, `results/`, nunca versionar):** 52 consoles, 69 páginas, 191 cartas acima
-  dos dois pisos, 56 com razão ≥ 3×, 49 com oferta raw no eBay. Prismatic Evolutions (CSV9.5C)
+- **Coleta de 07/10 (local, `results/`, nunca versionar), com piso chinês US$10:** 52 consoles, 69
+  páginas, 191 cartas acima dos dois pisos, 56 com razão ≥ 3×, 49 com oferta raw no eBay. Prismatic Evolutions (CSV9.5C)
   concentra o topo.
 - **Também nesta sessão:** PR #68 (rota reserva Firecrawl para o desafio Cloudflare do PriceCharting)
   mesclado com "autorizo"; PR #66 (GPT) fechado sem merge.

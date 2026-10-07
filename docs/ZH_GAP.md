@@ -21,9 +21,10 @@ política `longterm` (PSA 10, `docs/EBAY_PSA.md`) nem o modo chinês de slabs
 | Oferta | eBay Browse API, anúncio ativo mais barato, preço fixo, qualquer país | só título **chinês** (simplificado ou "Chinese"), carta **solta** (`grading.grade_from_title` = raw: nenhuma certificadora citada, nem ACE/AGS/"PSA graded"), nome-base por palavra inteira + número chinês (zeros à esquerda e formatos de Gem Pack aceitos), código de set do título igual ao da linha, sem lote/réplica (`pick_offer`). Frete calculado no checkout vem `None` → `frete n/d`, razão marcada `(sem frete)`; nunca vira zero |
 
 `Razão = EN market ÷ ZH raw` · `Desconto = 1 − ZH ÷ EN`. Pisos padrão: EN market ≥ US$10 (piso da
-frota, R$50) — `--min-en` — e, desde 07/10 (operador, após aprovar o ranking), raw chinês ≥ US$10 —
+frota, R$50) — `--min-en` — e, desde 07/10 (operador, após aprovar o ranking), raw chinês ≥ US$50 —
 `--min-zh`: a carta chinesa também tem de valer algo (sinal de chase); sem isso o ranking enchia de
-carta sem perspectiva (1.353 linhas cortadas na coleta de 07/10). A versão para o chat (`<out>.chat.md`) corta em `--min-ratio` (padrão 3×);
+carta sem perspectiva (com piso US$10, 1.353 linhas cortadas na coleta de 07/10; o operador subiu
+para US$50 no mesmo dia). A versão para o chat (`<out>.chat.md`) corta em `--min-ratio` (padrão 3×);
 o `.md` completo e o JSON trazem todas as linhas acima do piso.
 
 Impressões paralelas da página chinesa (`[Reverse]`, `[Master Ball]`, `[Poke Ball]`…) são ignoradas

@@ -38,7 +38,7 @@ PAGE_SIZE = 150          # linhas por página do console (observado 2026-10-07)
 
 DEFAULT_PARAMS = {
     "min_en_usd": 10.0,       # piso da frota para singles (R$50 ≈ US$10)
-    "min_zh_usd": 10.0,       # operador 07/10: a carta CHINESA também vale ≥ US$10 (sinal de chase; corta lixo)
+    "min_zh_usd": 50.0,       # operador 07/10: a carta CHINESA também vale ≥ US$50 (sinal de chase; corta lixo)
     "min_ratio": 3.0,         # linhas do chat: chinês pelo menos 3× mais barato
     "min_pairs_per_set": 20,  # sets chineses com menos pares no catálogo não são baixados
     "max_pages_per_set": 8,   # guarda: 8 × 150 = 1.200 cartas
