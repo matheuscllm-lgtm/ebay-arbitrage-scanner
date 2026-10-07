@@ -203,7 +203,7 @@ def build_rows(catalog: zh_identity.Catalog, pc_rows_by_slug: dict[str, list[dic
 
 
 # --- oferta no eBay (carta solta, em chinês) -------------------------------------------
-_LOT_RE = re.compile(r"\b(?:lot|bundle|bulk|set of|playset|x\s?\d{1,2}|\d{1,2}\s?x)\b|\bdeck\b|booster|\bbox\b|\bpack\b", re.I)
+_LOT_RE = re.compile(r"\b(?:lot|bundle|bulk|set of|playset|x\s?\d{1,2}|\d{1,2}\s?x)\b|\bdeck\b|booster|\bbox\b|(?<!gem\s)\bpack\b", re.I)   # "gem pack" é produto, não lote
 _PROXY_RE = re.compile(r"\bproxy\b|\bcustom\b|\breplica\b|\bfake\b|\bsticker\b|\bmetal\b", re.I)
 
 
