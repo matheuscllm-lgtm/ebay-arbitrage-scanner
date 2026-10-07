@@ -300,7 +300,6 @@ def test_pick_offer_rejects_promo_of_another_set(row, title):
     # Casos reais de 07/10: gradadas por certificadora chinesa passavam como carta solta
     "CCIC 9.5 Pokémon Chinese Terastal Gathering Umbreon ex CSV9.5C-239/208 SAR",
     "2024 Pokemon TCG S-Chinese CSV9.5C SAR 239 Umbreon ex CCIC 10 Gem Mint",
-    "Umbreon ex 239/208 Chinese CCG 10",
     "Umbreon ex 239/208 Chinese PGS 10",
 ])
 def test_pick_offer_rejects_chinese_graders(title):
@@ -342,6 +341,13 @@ def test_row_md_marks_suspect_and_ignored_offers():
                            "language": "simplificado", "seller_feedback": 103, "suspect": True, "pct_of_zh": 24}}
     md = zh_gap._row_md(1, r)
     assert "suspeita" in md and "24% do raw PC" in md and "conferir foto" in md
+
+
+def test_pick_offer_accepts_promo_for_mp_row():
+    # Revisão 07/10: o catálogo também tem código "M-P"; "promo" no título não pode conflitar com ele
+    row = {"en_name": "Pikachu", "cn_no": "3", "en_no": "1", "cn_code": "M-P"}
+    assert zh_gap.pick_offer([_listing("Pokemon Chinese Promo Pikachu 003/M-P Holo", 60.0)], row) is not None
+    assert zh_gap.pick_offer([_listing("Pikachu 3 SV-P Chinese promo", 60.0)], row) is None
 
 
 def test_pick_offer_accepts_promo_for_promo_row():

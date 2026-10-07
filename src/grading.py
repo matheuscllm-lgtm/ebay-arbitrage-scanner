@@ -127,7 +127,7 @@ _MENTION_RE = re.compile(
 
 # Certificadoras FORA do escopo (ou "GRADED 10" sem certificadora nenhuma).
 _UNKNOWN_GRADER_RE = re.compile(
-    rf"\b(?P<grader>ACE|MNT|GMA|HGA|AGS|KSA|RCG|CSG|CCIC|CCG|PGS|GRADED)"
+    rf"\b(?P<grader>ACE|MNT|GMA|HGA|AGS|KSA|RCG|CSG|CCIC|PGS|GRADED)"
     rf"(?:{_SEP}\b{_QUAL_TOKEN}\b)*{_SEP}(?P<value>{_VALUE}){_AFTER_VALUE}",
     re.I,
 )

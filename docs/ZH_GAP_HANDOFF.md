@@ -13,7 +13,7 @@ Data: 2026-10-07 (fechamento da sessão). Leia junto com [ZH_GAP.md](ZH_GAP.md) 
   `tests/test_zh_gap.py` (68 testes), fixture real, `docs/ZH_GAP.md`, nota no `CLAUDE.md`.
 - **Correções do operador em 07/10 (após o PR #69):** piso chinês US$50; oferta rejeita promo de outro set
   ("132/S-P" tradicional saiu como Charizard V CS5aC) e vendedor com < 5 avaliações (Mew ex 191: título certo,
-  foto de outra carta, vendedor novo). Célula da oferta mostra `vendedor N aval.`. CCIC/CCG/PGS viraram
+  foto de outra carta, vendedor novo). Célula da oferta mostra `vendedor N aval.`. CCIC/PGS viraram
   certificadoras fora do escopo no `grading`. Oferta abaixo de 50% do raw PC é suspeita (Charizard V "132" a
   US$20 com a 131/127 na foto): a principal é a mais barata plausível, a barata fica como `ignorado [...]`.
 - **Revisão independente** (contexto limpo, páginas reais) aplicada: frete desconhecido = `n/d`;

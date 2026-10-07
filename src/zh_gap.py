@@ -318,9 +318,9 @@ def offer_query(row: dict) -> str:
     return f"{core} {_cn_number_token(row['cn_no'])} (chinese,chn,simplified,中文,简体)"
 
 
-_PROMO_CODE_RE = re.compile(r"\b(?:sv|sm|s)-p\b|(?<=/)(?:sv|sm|s)p\b|\b(?:sv|sm)p\b", re.I)   # "132/S-P", "24/SVP", "SV-P"
+_PROMO_CODE_RE = re.compile(r"\b(?:sv|sm|s|m)-p\b|(?<=/)(?:sv|sm|s|m)p\b|\b(?:sv|sm)p\b", re.I)   # "132/S-P", "24/SVP", "SV-P", "003/M-P"
 _PROMO_WORD_RE = re.compile(r"\bpromos?\b", re.I)
-_PROMO_ROW_CODES = {"svp", "smp", "sp"}
+_PROMO_ROW_CODES = {"svp", "smp", "sp", "mp"}   # cn_code dos promos no catálogo: SV-P, SM-P, S-P, M-P
 
 
 def _title_code_conflicts(title: str, cn_code: str) -> bool:
