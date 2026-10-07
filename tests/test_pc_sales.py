@@ -20,6 +20,7 @@ Nenhum teste vai à rede: ``fetch_page``/``urlopen`` são sempre stubados.
 import dataclasses
 import datetime as dt
 import gzip
+import json
 import re
 import types
 import urllib.error
@@ -1106,3 +1107,140 @@ def test_holo_continua_tolerado_por_ser_cosmetico_e_nao_de_tiragem():
     # O PC escreve "holo" em cartas cujo nome no catalogo nao traz a palavra; isso NAO muda
     # a tiragem nem o preco, entao segue casando (diferente de 1st/shadowless/unlimited).
     assert pc.slug_matches("/game/pokemon-base-set/charizard-holo-4", "Charizard", "004/102")
+
+
+# --- fallback Firecrawl quando o Cloudflare desafia (403 "Just a moment") ------------
+
+def _cf_403():
+    return urllib.error.HTTPError("https://www.pricecharting.com/game/x/y", 403, "Forbidden",
+                                  {"cf-mitigated": "challenge"}, None)
+
+
+def test_fetch_page_uses_firecrawl_on_cloudflare_403_and_caches_the_page(monkeypatch, tmp_path, no_sleep):
+    from src import cf_fallback
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "k")
+    monkeypatch.setattr(pc.urllib.request, "urlopen", lambda req, timeout=30: _raise(_cf_403()))
+    seen = []
+    monkeypatch.setattr(cf_fallback, "fetch_raw_html", lambda url, timeout=90: seen.append(url) or GOOD_PAGE)
+    url = "https://www.pricecharting.com/game/pokemon-base-set/charizard-4"
+    assert pc.fetch_page(url, cache_dir=str(tmp_path)) == GOOD_PAGE
+    assert seen == [url]
+    cached = list(pc.today_cache_dir(tmp_path).glob("*.html"))
+    assert len(cached) == 1 and cached[0].read_text(encoding="utf-8") == GOOD_PAGE
+    # 2ª chamada no dia = cache, sem Firecrawl
+    assert pc.fetch_page(url, cache_dir=str(tmp_path)) == GOOD_PAGE and seen == [url]
+
+
+def test_fetch_page_403_without_firecrawl_key_keeps_failing_fast(monkeypatch, tmp_path, no_sleep):
+    from src import cf_fallback
+    monkeypatch.delenv("FIRECRAWL_API_KEY", raising=False)
+    calls = []
+    monkeypatch.setattr(pc.urllib.request, "urlopen", lambda req, timeout=30: calls.append(1) or _raise(_cf_403()))
+    monkeypatch.setattr(cf_fallback, "fetch_raw_html", lambda url, timeout=90: _raise(AssertionError("não deve chamar")))
+    with pytest.raises(PcError):
+        pc.fetch_page("https://www.pricecharting.com/game/x/y", cache_dir=str(tmp_path))
+    assert calls == [1]
+    assert not list(pc.today_cache_dir(tmp_path).glob("*"))
+
+
+def test_fetch_page_firecrawl_block_page_or_failure_is_pc_error_and_never_cached(monkeypatch, tmp_path, no_sleep):
+    from src import cf_fallback
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "k")
+    monkeypatch.setattr(pc.urllib.request, "urlopen", lambda req, timeout=30: _raise(_cf_403()))
+    block = "<html><head><title>Just a moment...</title></head><body>" + "x" * 5000 + "</body></html>"
+    monkeypatch.setattr(cf_fallback, "fetch_raw_html", lambda url, timeout=90: block)
+    with pytest.raises(PcError):
+        pc.fetch_page("https://www.pricecharting.com/game/x/y", cache_dir=str(tmp_path))
+    monkeypatch.setattr(cf_fallback, "fetch_raw_html",
+                        lambda url, timeout=90: _raise(cf_fallback.FirecrawlError("quota")))
+    with pytest.raises(PcError):
+        pc.fetch_page("https://www.pricecharting.com/game/x/z", cache_dir=str(tmp_path))
+    assert not list(pc.today_cache_dir(tmp_path).glob("*"))
+
+
+def test_firecrawl_fetch_raw_html_posts_v2_scrape_with_bearer_and_returns_raw_html(monkeypatch):
+    from src import cf_fallback
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "secret")
+    seen = {}
+
+    class _R:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return json.dumps({"success": True, "data": {"rawHtml": GOOD_PAGE}}).encode()
+
+    def fake_urlopen(req, timeout=90):
+        seen["url"] = req.full_url
+        seen["auth"] = req.get_header("Authorization")
+        seen["body"] = json.loads(req.data.decode())
+        return _R()
+
+    monkeypatch.setattr(cf_fallback.urllib.request, "urlopen", fake_urlopen)
+    assert cf_fallback.fetch_raw_html("https://www.pricecharting.com/game/x/y") == GOOD_PAGE
+    assert seen["url"] == "https://api.firecrawl.dev/v2/scrape"
+    assert seen["auth"] == "Bearer secret"
+    assert seen["body"]["url"] == "https://www.pricecharting.com/game/x/y"
+    assert seen["body"]["formats"] == ["rawHtml"] and seen["body"]["maxAge"] == 0
+    assert "secret" not in repr(seen["body"])
+
+
+def test_firecrawl_fetch_raw_html_errors_are_typed_and_never_leak_the_key(monkeypatch):
+    from src import cf_fallback
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "secret")
+    monkeypatch.setattr(cf_fallback.urllib.request, "urlopen",
+                        lambda req, timeout=90: _raise(urllib.error.HTTPError(req.full_url, 402, "Payment Required", {}, None)))
+    with pytest.raises(cf_fallback.FirecrawlError) as ei:
+        cf_fallback.fetch_raw_html("https://www.pricecharting.com/game/x/y")
+    assert "402" in str(ei.value) and "secret" not in str(ei.value)
+    monkeypatch.delenv("FIRECRAWL_API_KEY", raising=False)
+    assert cf_fallback.available() is False
+
+
+def _fc_resp(payload):
+    class _R:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return json.dumps(payload).encode()
+    return lambda req, timeout=90: _R()
+
+
+@pytest.mark.parametrize("payload", [
+    # página de bloqueio do Cloudflare devolvida com success:true
+    {"success": True, "data": {"rawHtml": "<html><head><title>Just a moment...</title></head><body>" + "x" * 5000 + "</body></html>",
+                               "metadata": {"statusCode": 200}}},
+    # corpo curto demais = erro/vazio
+    {"success": True, "data": {"rawHtml": "<html></html>", "metadata": {"statusCode": 200}}},
+    # status do alvo não é 200 (404/403 renderizado): nunca virar "sem vendas"
+    {"success": True, "data": {"rawHtml": GOOD_PAGE, "metadata": {"statusCode": 404}}},
+    # JSON que não é objeto
+    ["not", "a", "dict"],
+    # success:false
+    {"success": False, "error": "Insufficient credits"},
+])
+def test_firecrawl_fetch_raw_html_rejects_block_short_non200_and_malformed(monkeypatch, payload):
+    from src import cf_fallback
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "secret")
+    monkeypatch.setattr(cf_fallback.urllib.request, "urlopen", _fc_resp(payload))
+    with pytest.raises(cf_fallback.FirecrawlError) as ei:
+        cf_fallback.fetch_raw_html("https://www.pricecharting.com/game/x/y")
+    assert "secret" not in str(ei.value)
+
+
+def test_firecrawl_fetch_raw_html_accepts_200_without_metadata(monkeypatch):
+    from src import cf_fallback
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "secret")
+    monkeypatch.setattr(cf_fallback.urllib.request, "urlopen",
+                        _fc_resp({"success": True, "data": {"rawHtml": GOOD_PAGE}}))
+    assert cf_fallback.fetch_raw_html("https://www.pricecharting.com/game/x/y") == GOOD_PAGE
+
+
+def test_pricecharting_fetch_page_firecrawl_block_is_not_cached(monkeypatch, tmp_path):
+    from src import cf_fallback, pricecharting as pcg
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "k")
+    monkeypatch.setattr(pcg.time, "sleep", lambda *_: None)
+    monkeypatch.setattr(pcg.urllib.request, "urlopen", lambda req, timeout=30: _raise(_cf_403()))
+    monkeypatch.setattr(cf_fallback, "fetch_raw_html",
+                        lambda url, timeout=90: _raise(cf_fallback.FirecrawlError("página de bloqueio")))
+    with pytest.raises(urllib.error.HTTPError) as ei:
+        pcg.fetch_page("https://www.pricecharting.com/game/x/y", cache_dir=str(tmp_path))
+    assert ei.value.code == 403
+    assert not list(tmp_path.glob("*"))
