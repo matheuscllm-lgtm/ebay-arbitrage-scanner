@@ -308,6 +308,42 @@ def test_pick_offer_rejects_chinese_graders(title):
     assert zh_gap.pick_offer([_listing(title, 121.25)], row) is None
 
 
+def test_pick_offer_prefers_plausible_price_and_keeps_cheaper_as_suspect():
+    # Caso real de 07/10: título e atributos diziam "cs5aC 132", a foto era a 131/127 (outra carta),
+    # US$20 contra raw PC US$82,99. Só o preço denuncia: abaixo de 50% do raw PC vira suspeita e a
+    # próxima oferta plausível é a principal; a barata fica no resultado para conferência.
+    row = {"en_name": "Charizard V", "cn_no": "132", "en_no": "154", "cn_code": "CS5aC", "zh_ungraded": 82.99}
+    cheap = _listing("Pokemon TCG S-Chinese Sword & Shield cs5aC 132 SR Charizard V Holo Card", 20.0, None)
+    real = _listing("Pokemon TCG S-Chinese Sword & Shield cs5aC 132 SR Charizard V Holo Card IN STOCK", 82.33, 0.0,
+                    "https://www.ebay.com/itm/406392460812")
+    o = zh_gap.pick_offer([cheap, real], row)
+    assert o["url"] == "https://www.ebay.com/itm/406392460812" and o.get("suspect") is None
+    assert o["ignored_cheaper"]["price"] == 20.0 and o["ignored_cheaper"]["pct_of_zh"] == 24
+    # Só a barata: continua sendo a oferta, mas marcada como suspeita.
+    o = zh_gap.pick_offer([cheap], row)
+    assert o["price"] == 20.0 and o["suspect"] is True and o["pct_of_zh"] == 24
+    # No limiar (50%) é plausível; sem raw PC na linha nada muda.
+    at = _listing("Charizard V cs5aC 132 Chinese", 41.5, 0.0)
+    assert zh_gap.pick_offer([at], row).get("suspect") is None
+    assert zh_gap.pick_offer([cheap], {**row, "zh_ungraded": None}).get("suspect") is None
+    assert zh_gap.DEFAULT_PARAMS["offer_min_frac_of_zh"] == 0.5
+
+
+def test_row_md_marks_suspect_and_ignored_offers():
+    base = {"en_name": "Charizard V", "en_no": "154", "en_set": "S", "en_rar": "RU", "cn_no": "132", "cn_code": "CS5aC",
+            "zh_title": "Charizard V #132", "match": "exata", "en_market": 285.21, "zh_ungraded": 82.99, "zh_psa10": None,
+            "ratio": 3.4, "discount": 0.71, "en_url": "https://e", "zh_url": "https://z"}
+    r = {**base, "offer": {"price": 82.33, "shipping": 0.0, "total": 82.33, "url": "https://o", "title": "t", "country": "CN",
+                           "language": "simplificado", "seller_feedback": 3872,
+                           "ignored_cheaper": {"price": 20.0, "url": "https://cheap", "title": "c", "pct_of_zh": 24}}}
+    md = zh_gap._row_md(1, r)
+    assert "[oferta](https://o)" in md and "ignorado [US$20.00](https://cheap)" in md and "24% do raw PC" in md
+    r = {**base, "offer": {"price": 20.0, "shipping": None, "total": None, "url": "https://cheap", "title": "c", "country": "US",
+                           "language": "simplificado", "seller_feedback": 103, "suspect": True, "pct_of_zh": 24}}
+    md = zh_gap._row_md(1, r)
+    assert "suspeita" in md and "24% do raw PC" in md and "conferir foto" in md
+
+
 def test_pick_offer_accepts_promo_for_promo_row():
     row = {"en_name": "Magikarp", "cn_no": "24", "en_no": "203", "cn_code": "SV-P"}
     assert zh_gap.pick_offer([_listing("Pokemon Chinese Promo Magikarp 24/SV-P Holo NM", 80.0)], row) is not None

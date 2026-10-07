@@ -43,6 +43,7 @@ DEFAULT_PARAMS = {
     "min_pairs_per_set": 20,  # sets chineses com menos pares no catálogo não são baixados
     "max_pages_per_set": 8,   # guarda: 8 × 150 = 1.200 cartas
     "max_ebay_calls": 300,
+    "offer_min_frac_of_zh": 0.5,  # operador 07/10: anúncio a 24% do raw PC tinha foto de OUTRA carta (131/127 como "132")
     "min_seller_feedback": 5,  # operador 07/10: anúncio com título certo, foto de outra carta e vendedor com 0 avaliações
     "ebay_limit": 50,
     "max_consecutive_ebay_errors": 3,
@@ -339,19 +340,28 @@ def _title_code_conflicts(title: str, cn_code: str) -> bool:
     return False
 
 
-def pick_offer(listings, row: dict, min_seller_feedback: int | None = None) -> dict | None:
+def pick_offer(listings, row: dict, min_seller_feedback: int | None = None,
+               min_frac_of_zh: float | None = None) -> dict | None:
     """Anúncio mais barato (item + frete conhecido) que seja: chinês (simplificado ou só
     "Chinese"), carta SOLTA (``grade_from_title`` = raw: nenhuma certificadora citada), com
     o nome-base como frase + sufixo coerente e o número chinês no título, sem código de set
     conflitante (inclusive promo), sem lote/réplica, de vendedor com pelo menos
     ``min_seller_feedback`` avaliações quando o dado existe. Frete desconhecido não vira zero:
-    fica ``None`` e a razão sai marcada. None = nenhum serve."""
+    fica ``None`` e a razão sai marcada. Preço abaixo de ``min_frac_of_zh`` × raw do
+    PriceCharting (``row["zh_ungraded"]``) não é levado a sério: título e atributos não
+    denunciam foto de outra carta (caso real de 07/10: "cs5aC 132" a US$20 com a 131/127 na
+    foto). A oferta principal é a mais barata PLAUSÍVEL; a barata demais fica em
+    ``ignored_cheaper`` para conferência, ou vira a própria oferta marcada ``suspect`` quando
+    não há outra. None = nenhum serve."""
     if min_seller_feedback is None:
         min_seller_feedback = DEFAULT_PARAMS["min_seller_feedback"]
+    if min_frac_of_zh is None:
+        min_frac_of_zh = DEFAULT_PARAMS["offer_min_frac_of_zh"]
+    zh_raw = row.get("zh_ungraded")
+    floor = float(zh_raw) * min_frac_of_zh if zh_raw else 0.0
     base_words, suffix = _name_parts(row["en_name"])
     num_re = _number_re(row["cn_no"])
-    best = None
-    best_key = None
+    cands: list[tuple[float, dict]] = []
     for l in listings:
         title = l.title or ""
         price = getattr(l, "price", None)
@@ -379,8 +389,22 @@ def pick_offer(listings, row: dict, min_seller_feedback: int | None = None) -> d
                 "url": l.url, "title": title, "country": getattr(l, "country", "") or "",
                 "language": "simplificado" if lang == "ZH-HANS" else "chinês (não especificado)",
                 "seller_feedback": int(feedback) if feedback is not None else None}
-        if best is None or key < best_key:
-            best, best_key = cand, key
+        cands.append((key, cand))
+    if not cands:
+        return None
+    cands.sort(key=lambda kc: kc[0])
+    plausible = [c for _, c in cands if c["price"] >= floor]
+    cheap = [c for _, c in cands if c["price"] < floor]
+    if plausible:
+        best = plausible[0]
+        if cheap:
+            c = cheap[0]
+            best["ignored_cheaper"] = {"price": c["price"], "url": c["url"], "title": c["title"],
+                                       "pct_of_zh": round(100 * c["price"] / float(zh_raw))}
+        return best
+    best = cheap[0]
+    best["suspect"] = True
+    best["pct_of_zh"] = round(100 * best["price"] / float(zh_raw))
     return best
 
 
@@ -427,6 +451,11 @@ def _row_md(i: int, r: dict) -> str:
         offer = f"{_usd(o['price'])} + {ship} ({o['language']})"
         if o.get("seller_feedback") is not None:
             offer += f" · vendedor {o['seller_feedback']} aval."
+        if o.get("suspect"):
+            offer += f" · ⚠ suspeita: {o['pct_of_zh']}% do raw PC, conferir foto"
+        ig = o.get("ignored_cheaper")
+        if ig:
+            offer += f" · ignorado [{_usd(ig['price'])}]({ig['url']}): {ig['pct_of_zh']}% do raw PC, conferir foto"
         if o.get("total"):
             offer_ratio = f"{r['en_market'] / o['total']:.1f}×"
         else:
