@@ -4,6 +4,93 @@ Estado para quem retomar. Sem resultado de coleta aqui: nenhum preço, nenhuma c
 tabela e nenhum número de funil — `DELIVERY_CHAT.md` proíbe publicar resultado, preço ou log de
 coleta no GitHub. Os artefatos ficam **locais**, em `results/`.
 
+## ▶️ Frente ativa — par EN × ZH-S raw no eBay, crivo ≥ 4× (handoff 2026-10-04)
+
+> **Em uma frase:** o operador quer clicar e cair no **anúncio ativo mais barato** do eBay
+> da carta em **inglês** e no **anúncio ativo mais barato da mesma impressão em chinês
+> simplificado**, só quando **EN ÷ ZH ≥ 4×** — os dois links abertos à venda, nunca item
+> vendido/encerrado. Implementado em `tools/zh_ebay_pairs/` com as decisões abaixo aplicadas.
+
+### Decisões fechadas pelo operador (não re-perguntar)
+
+- Comparação **dentro do eBay** (EN × ZH-S), dois anúncios com link clicável. TCGPlayer
+  não é referência de preço aqui (serviu só para ordenar a seleção).
+- **Só anúncios ativos**, preço fixo; o link tem que estar à venda quando a tabela é
+  entregue. **Raw** (sem slab). Preço comparado = item + frete quando conhecido.
+- Mostrar **só pares com EN ÷ ZH ≥ 4×** (só chinês; KR/ID saíram do escopo).
+- Universo: cartas EN de sets **2017–2025** (2026-10-04: o operador mostrou Gengar & Mimikyu
+  GX, Team Up 2019, que a faixa 2022–2025 deixava de fora; 2017 = 1º ano com par no catálogo)
+  com market > US$10 e par ZH-S no `src/catalog/zh_identity.json`. `--years` restringe.
+- Comparação **NM × NM** (invariante da frota): a busca já pede ao eBay "Near Mint or
+  Better" + não graded; sem isso o EN mais barato de carta antiga é cópia jogada e a razão
+  cai abaixo de 4× (caso Gengar & Mimikyu: US$120 "Heavily played").
+- Entrega = tabela no chat (`DELIVERY_CHAT.md`).
+
+### O que existe (implementado e testado offline; validado em coleta real 2026-10-04)
+
+- `tools/zh_ebay_pairs/guards.py` — guards puros, sem rede, reaproveitando o modo chinês
+  PSA 10 (`src/chinese_scan.py`: idioma do título, nome-base + sufixo, lote/réplica):
+  variante EN excluída (Master Ball/Poke Ball/stamp…), escolha da impressão ZH (sem Gem
+  Pack `CBB*C`; raridade compatível com a EN, depois `tc-jp`; empate = flag), nome com o
+  MESMO sufixo (`ex|V|VMAX|VSTAR|GX`), lote (vários "nº/total"), número **e total** da
+  fração no título, "à venda" pelo getItem.
+- `tools/zh_ebay_pairs/ebay_pair.py N [--offset K] [--years A-B]` — N cartas a partir da
+  posição K (market TCGPlayer só ordena), 1 busca Browse API por idioma (EN e ZH-S, filtro
+  NM + não graded; guarda os 10 plausíveis mais baratos e a mediana), depois `verify()`:
+  nos pares que podem chegar a 4× (mediana EN ÷ ZH mais barato), getItem do mais barato ao
+  mais caro até achar, em cada idioma, o 1º anúncio à venda e não jogado (preço renovado; o
+  que caiu é declarado fora da tabela). Saída: só pares ≥ 4×, ordenados pela razão, com o funil na 1ª linha. Grava
+  `results/zh_ebay_pairs.json` (local); `--render` re-renderiza sem coletar.
+- `tools/zh_ebay_pairs/pair_table.py` — tabela de conferência do pareamento (sem eBay).
+- Testes: `tests/test_zh_ebay_pairs.py` (offline, entram no `python -m pytest -q`).
+
+### Limites conhecidos (declarar na entrega)
+
+- Título não prova idioma (visto: "S-Chinese" com foto de carta japonesa) → todo par pede
+  conferir a FOTO do anúncio ZH-S; a tabela diz isso no cabeçalho.
+- Frete desconhecido na busca (frete calculado) conta 0 e a linha leva a flag.
+- Guard "abaixo de 50% da mediana dos plausíveis = lixo" vale nos dois idiomas: visto ao
+  vivo alt art de ~US$800 anunciada como NM a US$10 e a US$80. Custo: um EN barato legítimo
+  abaixo de metade da mediana sai e a razão sobe; um ZH barato legítimo some.
+- "Card Condition: Not Specified" fica fora da busca (o filtro NM exige a declaração).
+- Impressão ZH de outra família de raridade (EN SIR × ZH SR) = sem par; empate entre
+  impressões fica com flag.
+- Teto de 500 chamadas por execução: usar **N=150** (300 buscas + folga para o `verify()`,
+  ~120 chamadas na coleta de 2026-10-04). São 696 candidatas em 2017–2025: o universo
+  inteiro pede 5 execuções (`--offset 0/150/300/450/600`). Cada execução SOBRESCREVE
+  `results/zh_ebay_pairs.json`: entregar a tabela de uma fatia antes de rodar a seguinte.
+
+### Decisão e observações
+
+Decisão do operador (2026-10-04): **fica em `tools/`**, rodada sob pedido — não vira modo
+do repo nem entra no `ebay_summary.py`. Nada pendente nesta frente.
+
+- Catálogo `zh_identity.json`: problemas abaixo (tarefa de catálogo, não desta frente).
+
+### Problemas do catálogo `zh_identity.json` vistos nesta sessão (para outra tarefa)
+
+- `CS4.1C` repete o mesmo número para cartas EN diferentes (ex.: TG13 de 3 sets).
+- Linhas com página 52poke de outro Pokémon (Turtwig GG31 → página Pikachu; Drapion GG49
+  → Zoroark; Palkia GG67 → Giratina; Umbreon V TG22 → 亚洛).
+- `zh_name`/`en_rar` incoerentes (喷火龙V para VSTAR; 174/172 rainbow marcado "RR").
+- `jp` malformado em algumas linhas (ex.: Snom TEF 168 → "sv5k sv5k").
+- Achado de anúncio: título "S-Chinese" com foto de carta japonesa — título sozinho não
+  prova idioma; preço ZH muito abaixo do EN pede conferência de foto.
+
+### Como retomar
+
+```bash
+cd tools/zh_ebay_pairs
+python pair_table.py 10 > pairs_audit.md           # conferência do pareamento (sem eBay)
+python ebay_pair.py 3                              # teste curto (6 buscas + verificação)
+python ebay_pair.py 150                            # cartas 1-150 (~420 chamadas eBay)
+python ebay_pair.py 150 --offset 150               # fatia seguinte (151-300), e assim por diante
+python ebay_pair.py 150 --render                   # re-render do último JSON local
+```
+
+Credenciais: `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` no ambiente. tcgcsv exige
+`User-Agent` (sem ele responde 401).
+
 ## ▶️ Frente ativa — modo CHINÊS (handoff 2026-09-27, PR #47)
 
 > **Em uma frase:** o operador pediu "PSA 10 em chinês pelo menos 4× mais barato que a
